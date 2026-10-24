@@ -1,0 +1,141 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+# One run per ref: a new push cancels the previous, still-running check.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '20'
+  ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+
+jobs:
+  verify:
+    name: Typecheck · test · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck (strict)
+        run: npm run typecheck
+
+      - name: Unit and smoke tests
+        run: npm test
+
+      - name: Production build
+        run: npx vite build
+
+      - name: Report bundle size
+        run: |
+          echo "### Build output" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          du -sh dist && find dist/assets -name '*.js' -printf '%10s  %p\n' | sort -rn | head -12 >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload renderer bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: flow-web-${{ github.sha }}
+          path: dist
+          retention-days: 7
+          if-no-files-found: error
+
+  workflows:
+    name: Validate workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Parse and lint every workflow
+        run: npm run verify:workflows
+
+  hygiene:
+    name: Repo hygiene
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: No emoji in the source or docs
+        run: |
+          # Design rule: Lucide icons only. Fail if an emoji sneaks into source or docs.
+          matches=$(grep -rIlP '[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}\x{FE0F}]' \
+            --include='*.ts' --include='*.tsx' --include='*.md' --include='*.html' --include='*.css' \
+            src landing docs README.md CHANGELOG.md CONTRIBUTING.md 2>/dev/null || true)
+          if [ -n "$matches" ]; then
+            echo "Emoji found in:"; echo "$matches"; exit 1
+          fi
+          echo "No emoji found."
+
+      - name: No leftover placeholders
+        run: |
+          if grep -rn --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=release \
+            -E '(TODO:|FIXME:|coming soon|Coming soon|not implemented)' src landing 2>/dev/null; then
+            echo "Placeholder text left in shipped code."; exit 1
+          fi
+          echo "No placeholders."
+
+      - name: Every workflow referenced in the README exists
+        run: |
+          missing=0
+          for f in .github/workflows/*.yml; do
+            base=$(basename "$f")
+            grep -q "$base" README.md || { echo "README does not mention $base"; missing=1; }
+          done
+          exit $missing
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Production dependency audit
+        run: npm audit --omit=dev --audit-level=high

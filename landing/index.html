@@ -1,0 +1,937 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Flow — all-in-one local-first productivity for the desktop</title>
+<meta name="description" content="Flow is a local-first productivity suite for Windows, macOS and Linux: todos, habits, goals, pomodoro timers, grades, notes, flashcards, a procedural sound studio and 124 tools. No account, no telemetry, no network calls." />
+<meta name="theme-color" content="#0b0d12" />
+<meta name="color-scheme" content="dark light" />
+<link rel="canonical" href="https://opngo.github.io/flow/" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Flow — all-in-one local-first productivity" />
+<meta property="og:description" content="Todos, habits, focus timers, grades, notes, flashcards, a sound studio and 124 tools in one offline desktop app. Free and open source." />
+<meta property="og:url" content="https://opngo.github.io/flow/" />
+<meta property="og:site_name" content="Flow" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Flow — all-in-one local-first productivity" />
+<meta name="twitter:description" content="One offline desktop app for tasks, habits, focus, grades, notes and 124 tools. No account. No telemetry." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%237c8cff'/%3E%3Cg fill='none' stroke='%23fff' stroke-width='4.6' stroke-linecap='round'%3E%3Cpath d='M6 21c9-6 17 6 26 0s17 6 26 0'/%3E%3Cpath d='M6 32c9-6 17 6 26 0s17 6 26 0' opacity='.95'/%3E%3Cpath d='M6 43c9-6 17 6 26 0s17 6 26 0' opacity='.8'/%3E%3C/g%3E%3C/svg%3E" />
+<style>
+  /* ---------------------------------------------------------------------
+     Flow landing page.
+     One file, zero external requests: no fonts, no CDNs, no analytics.
+     That keeps it honest (the app itself makes no network calls) and makes
+     it work from a GitHub Pages subpath, from file://, and inside sandboxed
+     preview frames.
+     --------------------------------------------------------------------- */
+  :root {
+    --surface: #0b0d12;
+    --surface-1: #12151c;
+    --surface-2: #181c25;
+    --surface-3: #1f242f;
+    --text: #e9ecf3;
+    --muted: #9aa2b4;
+    --faint: #6b7383;
+    --accent: #7c8cff;
+    --accent-2: #9d8cff;
+    --success: #4ec9a0;
+    --warning: #e5b567;
+    --danger: #ef6f6c;
+    --radius: 18px;
+    --max: 1120px;
+    --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    * { animation: none !important; transition: none !important; }
+  }
+
+  body {
+    margin: 0;
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+
+  /* No outlines anywhere: focus is a glow, matching the app. */
+  * { outline: none; }
+  :focus-visible {
+    box-shadow: 0 0 0 2px rgba(124, 140, 255, .55), 0 0 26px rgba(124, 140, 255, .35);
+    border-radius: 12px;
+  }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; text-underline-offset: 3px; }
+  h1, h2, h3 { line-height: 1.15; letter-spacing: -.02em; margin: 0; font-weight: 650; }
+  code, kbd { font-family: var(--mono); }
+  kbd {
+    display: inline-block; padding: 2px 7px; border-radius: 7px;
+    background: var(--surface-3); color: var(--text); font-size: 12px;
+    box-shadow: inset 0 -1px 0 rgba(0,0,0,.35);
+  }
+
+  .wrap { width: 100%; max-width: var(--max); margin: 0 auto; padding: 0 22px; }
+  .eyebrow {
+    font-size: 12px; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--faint); font-weight: 600;
+  }
+  .muted { color: var(--muted); }
+  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  /* Ambient background: two soft glows and a faint grid, no images. */
+  .bg { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+  .bg::before, .bg::after {
+    content: ""; position: absolute; width: 720px; height: 720px; border-radius: 50%;
+    filter: blur(120px); opacity: .5;
+  }
+  .bg::before { background: #2b2f70; top: -360px; left: -180px; }
+  .bg::after { background: #1d3b52; bottom: -420px; right: -220px; opacity: .38; }
+  .bg-grid {
+    position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(154,162,180,.05) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(154,162,180,.05) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(circle at 50% 0%, #000 0%, transparent 72%);
+    -webkit-mask-image: radial-gradient(circle at 50% 0%, #000 0%, transparent 72%);
+  }
+
+  /* Header --------------------------------------------------------------- */
+  header.site {
+    position: sticky; top: 0; z-index: 40;
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    background: rgba(11, 13, 18, .72);
+  }
+  .nav { display: flex; align-items: center; gap: 18px; height: 64px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; color: var(--text); letter-spacing: -.01em; }
+  .brand:hover { text-decoration: none; }
+  .brand svg { display: block; }
+  .nav-links { display: flex; gap: 4px; margin-left: 10px; }
+  .nav-links a {
+    color: var(--muted); font-size: 14px; padding: 8px 11px; border-radius: 10px;
+    transition: color .18s ease, background .18s ease;
+  }
+  .nav-links a:hover { color: var(--text); background: var(--surface-2); text-decoration: none; }
+  .nav-cta { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  @media (max-width: 860px) { .nav-links { display: none; } }
+
+  /* Buttons -------------------------------------------------------------- */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+    height: 44px; padding: 0 20px; border-radius: 13px; border: 0;
+    font: inherit; font-weight: 600; font-size: 14.5px; cursor: pointer;
+    color: var(--text); background: var(--surface-2); text-decoration: none;
+    transition: transform .18s ease, background .18s ease, box-shadow .18s ease, color .18s ease;
+  }
+  .btn:hover { text-decoration: none; transform: translateY(-1px); background: var(--surface-3); }
+  .btn:active { transform: translateY(0); }
+  .btn-primary {
+    background: linear-gradient(180deg, #8b98ff, #6b7bf5); color: #fff;
+    box-shadow: 0 10px 30px -12px rgba(124,140,255,.9);
+  }
+  .btn-primary:hover { background: linear-gradient(180deg, #96a2ff, #7382ff); box-shadow: 0 14px 34px -12px rgba(124,140,255,1); }
+  .btn-ghost { background: transparent; box-shadow: inset 0 0 0 1px rgba(154,162,180,.16); }
+  .btn-ghost:hover { background: var(--surface-2); box-shadow: inset 0 0 0 1px rgba(154,162,180,.26); }
+  .btn-sm { height: 36px; padding: 0 14px; font-size: 13px; border-radius: 11px; }
+  .btn svg { flex: none; }
+
+  /* Hero ----------------------------------------------------------------- */
+  .hero { padding: 72px 0 24px; }
+  .hero-inner { display: grid; gap: 40px; align-items: center; grid-template-columns: 1.02fr .98fr; }
+  @media (max-width: 980px) { .hero-inner { grid-template-columns: 1fr; } .hero { padding-top: 46px; } }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px;
+    border-radius: 999px; background: var(--surface-2); color: var(--muted);
+    font-size: 12.5px; font-weight: 550;
+  }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 10px var(--success); }
+  .pill strong { color: var(--text); font-weight: 650; }
+
+  h1.display {
+    font-size: clamp(34px, 4.4vw, 56px);
+    font-weight: 700; letter-spacing: -.035em; margin: 20px 0 0;
+    max-width: 14ch; text-wrap: balance;
+  }
+  h1.display span {
+    background: linear-gradient(100deg, #b9c2ff 10%, #8b98ff 45%, #9d8cff 90%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .lede { margin: 18px 0 0; font-size: 17.5px; color: var(--muted); max-width: 33em; }
+  .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+  .hero-meta { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 20px; font-size: 13px; color: var(--faint); }
+  .hero-meta span { display: inline-flex; align-items: center; gap: 6px; }
+
+  /* App preview ---------------------------------------------------------- */
+  .preview {
+    border-radius: 22px; padding: 10px;
+    background: linear-gradient(160deg, rgba(124,140,255,.20), rgba(124,140,255,.03) 42%, rgba(255,255,255,.02));
+    box-shadow: 0 40px 90px -40px rgba(0,0,0,.9), 0 0 0 1px rgba(255,255,255,.03) inset;
+  }
+  .window {
+    border-radius: 15px; overflow: hidden; background: var(--surface);
+    box-shadow: 0 20px 60px -30px rgba(0,0,0,.9);
+    font-size: 11px;
+  }
+  .titlebar {
+    display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px;
+    background: var(--surface-1);
+  }
+  .titlebar .lights { display: flex; gap: 6px; }
+  .titlebar .lights i { width: 9px; height: 9px; border-radius: 50%; background: var(--surface-3); display: block; }
+  .titlebar .tb-title { color: var(--faint); font-size: 11px; letter-spacing: .02em; }
+  .app { display: grid; grid-template-columns: 148px 1fr; min-height: 318px; }
+  .sidebar { background: var(--surface-1); padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; }
+  .side-item {
+    display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px;
+    color: var(--muted); font-size: 11.5px;
+  }
+  .side-item.active { background: rgba(124,140,255,.16); color: #c9d0ff; }
+  .side-item .ico { width: 12px; height: 12px; border-radius: 4px; background: currentColor; opacity: .55; }
+  .side-item.active .ico { opacity: 1; }
+  .side-group { margin: 10px 0 4px 8px; font-size: 9px; letter-spacing: .12em; color: var(--faint); text-transform: uppercase; }
+  .main { padding: 12px 14px; min-width: 0; }
+  .main-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .main-head h4 { margin: 0; font-size: 14px; letter-spacing: -.01em; }
+  .main-head .chip {
+    margin-left: auto; font-size: 9.5px; padding: 3px 8px; border-radius: 999px;
+    background: var(--surface-2); color: var(--muted);
+  }
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-bottom: 9px; }
+  .stat { background: var(--surface-1); border-radius: 11px; padding: 8px 9px; }
+  .stat b { display: block; font-size: 16px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .stat span { color: var(--faint); font-size: 9.5px; }
+  .grid-2 { display: grid; grid-template-columns: 1.35fr 1fr; gap: 7px; }
+  .card { background: var(--surface-1); border-radius: 12px; padding: 9px 10px; }
+  .card h5 { margin: 0 0 7px; font-size: 10.5px; color: var(--muted); font-weight: 600; letter-spacing: .01em; }
+  .heat { display: grid; grid-auto-flow: column; gap: 2.5px; overflow: hidden; }
+  .heat i { width: 7px; height: 7px; border-radius: 2px; background: rgba(154,162,180,.13); display: block; }
+  .row { display: flex; align-items: center; gap: 7px; padding: 5px 0; }
+  .row .box { width: 10px; height: 10px; border-radius: 3px; background: rgba(124,140,255,.2); flex: none; }
+  .row .box.done { background: var(--accent); }
+  .row .line { height: 6px; border-radius: 3px; background: var(--surface-3); flex: 1; }
+  .row .line.short { flex: 0 0 42%; }
+  .timer { text-align: center; padding: 8px 0 4px; }
+  .timer .time { font-size: 26px; font-weight: 650; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .timer .phase { color: var(--accent); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; }
+  .ring { display: block; margin: 0 auto 2px; }
+  .bars { display: flex; align-items: flex-end; gap: 3px; height: 34px; }
+  .bars i { flex: 1; border-radius: 3px 3px 0 0; background: linear-gradient(180deg, rgba(124,140,255,.85), rgba(124,140,255,.2)); display: block; }
+
+  /* The preview shrinks instead of overflowing on narrow screens. */
+  @media (max-width: 620px) {
+    .app { grid-template-columns: 96px 1fr; min-height: 268px; }
+    .sidebar { padding: 8px 6px; }
+    .side-item { font-size: 10px; padding: 5px 6px; gap: 6px; }
+    .side-group { margin-left: 6px; }
+    .stat-row { grid-template-columns: repeat(2, 1fr); }
+    .grid-2 { grid-template-columns: 1fr; }
+    .heat { overflow: hidden; }
+    .main { padding: 10px; }
+    .main-head .chip { display: none; }
+    .foot-links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  /* Numbers -------------------------------------------------------------- */
+  .numbers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 56px 0 0; }
+  @media (max-width: 760px) { .numbers { grid-template-columns: repeat(2, 1fr); } }
+  .num-card { background: var(--surface-1); border-radius: var(--radius); padding: 18px 20px; }
+  .num-card b { display: block; font-size: 30px; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .num-card span { color: var(--muted); font-size: 13px; }
+
+  /* Sections ------------------------------------------------------------- */
+  section { padding: 84px 0 0; }
+  .section-head { max-width: 660px; }
+  .section-head h2 { font-size: clamp(26px, 3.2vw, 36px); margin-top: 10px; }
+  .section-head p { color: var(--muted); margin: 12px 0 0; font-size: 16px; }
+
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 34px; }
+  @media (max-width: 980px) { .features { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 620px) { .features { grid-template-columns: 1fr; } }
+  .feature {
+    background: linear-gradient(180deg, var(--surface-1), rgba(18,21,28,.55));
+    border-radius: var(--radius); padding: 22px;
+    transition: transform .2s ease, background .2s ease;
+  }
+  .feature:hover { transform: translateY(-2px); background: var(--surface-2); }
+  .feature .fi {
+    width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center;
+    background: rgba(124,140,255,.14); color: #a8b2ff; margin-bottom: 14px;
+  }
+  .feature h3 { font-size: 15.5px; margin-bottom: 6px; }
+  .feature p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.55; }
+  .feature .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; }
+  .tag { font-size: 11px; padding: 3px 8px; border-radius: 999px; background: var(--surface-3); color: var(--muted); }
+
+  /* Showcase ------------------------------------------------------------- */
+  .showcase { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 34px; }
+  @media (max-width: 900px) { .showcase { grid-template-columns: 1fr; } }
+  .shot { background: var(--surface-1); border-radius: var(--radius); padding: 20px; }
+  .shot h3 { font-size: 15px; margin-bottom: 4px; }
+  .shot .sub { color: var(--faint); font-size: 12.5px; margin-bottom: 16px; }
+  .mixer { display: grid; gap: 7px; }
+  .mix-row { display: grid; grid-template-columns: 84px 1fr 40px; align-items: center; gap: 10px; font-size: 12px; }
+  .mix-row .name { color: var(--muted); }
+  .mix-row .track { height: 6px; border-radius: 3px; background: var(--surface-3); position: relative; overflow: hidden; }
+  .mix-row .track i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: linear-gradient(90deg, #7c8cff, #9d8cff); }
+  .mix-row .val { text-align: right; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .grade-rows { display: grid; gap: 6px; }
+  .grade-row {
+    display: grid; grid-template-columns: 1fr 54px 40px 70px; gap: 8px; align-items: center;
+    background: var(--surface-2); border-radius: 10px; padding: 8px 10px; font-size: 12px;
+  }
+  .grade-row .gbar { height: 5px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+  .grade-row .gbar i { display: block; height: 100%; border-radius: 3px; }
+  .whatif { margin-top: 14px; background: rgba(124,140,255,.1); border-radius: 12px; padding: 12px; text-align: center; }
+  .whatif b { display: block; font-size: 26px; letter-spacing: -.02em; color: #aab4ff; font-variant-numeric: tabular-nums; }
+  .whatif span { font-size: 11.5px; color: var(--muted); }
+
+  /* Tools list ----------------------------------------------------------- */
+  .tools-wrap { margin-top: 30px; display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+  .tool-group { background: var(--surface-1); border-radius: 14px; padding: 14px 15px; }
+  .tool-group h4 {
+    margin: 0 0 8px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint);
+  }
+  .tool-group ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 5px; }
+  .tool-group li { font-size: 12.5px; color: var(--muted); display: flex; gap: 7px; align-items: baseline; }
+  .tool-group li::before { content: ""; width: 4px; height: 4px; border-radius: 50%; background: var(--accent); opacity: .7; flex: none; transform: translateY(-2px); }
+
+  /* Install -------------------------------------------------------------- */
+  .install-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 32px; }
+  @media (max-width: 900px) { .install-grid { grid-template-columns: minmax(0, 1fr); } }
+  /* min-width:0 lets long command lines scroll inside the card instead of
+     stretching the whole grid past the viewport. */
+  .install { background: var(--surface-1); border-radius: var(--radius); padding: 22px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .install-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .install-head h3 { font-size: 15px; }
+  .install-head .badge { margin-left: auto; font-size: 10.5px; color: var(--faint); }
+  .install p { margin: 0; color: var(--muted); font-size: 13px; }
+  .cmd {
+    display: flex; align-items: center; gap: 8px; background: var(--surface); max-width: 100%;
+    border-radius: 10px; padding: 9px 10px; font-family: var(--mono); font-size: 12px; color: #cdd3e6;
+    overflow-x: auto;
+  }
+  .cmd code { white-space: nowrap; }
+  .cmd button {
+    margin-left: auto; flex: none; border: 0; border-radius: 8px; padding: 4px 8px; cursor: pointer;
+    background: var(--surface-3); color: var(--muted); font: inherit; font-size: 11px;
+    transition: background .18s ease, color .18s ease;
+  }
+  .cmd button:hover { background: var(--accent); color: #fff; }
+  .install .links { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12.5px; margin-top: auto; }
+  .note { color: var(--faint); font-size: 12px; margin-top: 14px; }
+
+  /* FAQ ------------------------------------------------------------------ */
+  .faq { margin-top: 30px; display: grid; gap: 8px; max-width: 820px; }
+  .qa { background: var(--surface-1); border-radius: 14px; overflow: hidden; }
+  .qa button {
+    width: 100%; display: flex; align-items: center; gap: 12px; text-align: left; cursor: pointer;
+    background: none; border: 0; color: var(--text); font: inherit; font-weight: 600; font-size: 14.5px;
+    padding: 16px 18px;
+  }
+  .qa button .caret { margin-left: auto; color: var(--faint); transition: transform .2s ease; flex: none; }
+  .qa[open] button .caret { transform: rotate(90deg); }
+  .qa .answer { padding: 0 18px 16px; color: var(--muted); font-size: 13.5px; }
+  .qa .answer p { margin: 0 0 8px; }
+  .qa .answer p:last-child { margin: 0; }
+
+  /* Footer --------------------------------------------------------------- */
+  footer { margin-top: 96px; padding: 40px 0 56px; background: var(--surface-1); }
+  .foot { display: flex; flex-wrap: wrap; gap: 28px; justify-content: space-between; align-items: flex-start; }
+  .foot-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, auto)); gap: 24px; min-width: 0; }
+  .foot-links h4 { margin: 0 0 8px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
+  .foot-links a { display: block; color: var(--muted); font-size: 13px; padding: 3px 0; }
+  .foot-links a:hover { color: var(--text); }
+  .foot-note { color: var(--faint); font-size: 12px; max-width: 300px; }
+  .foot-note p { margin: 10px 0 0; }
+
+  /* One-shot entrance for the hero. Content is always present: the animation
+     only translates and fades in from a fully visible end state. */
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: none; }
+  }
+  .hero-inner > * {
+    animation: rise .5s cubic-bezier(.22,.61,.36,1) both;
+  }
+  .hero-inner > *:nth-child(2) { animation-delay: .08s; }
+
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+  }
+  .skip {
+    position: absolute; left: 16px; top: -48px; background: var(--surface-3); color: var(--text);
+    padding: 10px 14px; border-radius: 10px; z-index: 60; transition: top .18s ease;
+  }
+  .skip:focus { top: 12px; }
+</style>
+</head>
+<body>
+<div class="bg" aria-hidden="true"><div class="bg-grid"></div></div>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site">
+  <div class="wrap nav">
+    <a class="brand" href="./" aria-label="Flow home">
+      <svg width="26" height="26" viewBox="0 0 64 64" aria-hidden="true">
+        <rect width="64" height="64" rx="15" fill="#7c8cff"/>
+        <g fill="none" stroke="#fff" stroke-width="4.6" stroke-linecap="round">
+          <path d="M6 21c9-6 17 6 26 0s17 6 26 0" opacity=".75"/>
+          <path d="M6 32c9-6 17 6 26 0s17 6 26 0"/>
+          <path d="M6 43c9-6 17 6 26 0s17 6 26 0" opacity=".6"/>
+        </g>
+      </svg>
+      <span>Flow</span>
+    </a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="#features">Features</a>
+      <a href="#tools">Tools</a>
+      <a href="#install">Install</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="btn btn-ghost btn-sm" href="https://github.com/opngo/flow">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A7.99 7.99 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        GitHub
+      </a>
+      <a class="btn btn-primary btn-sm" href="https://github.com/opngo/flow/releases/latest">Download</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="wrap hero-inner">
+      <div>
+        <p class="pill"><span class="dot" aria-hidden="true"></span> <strong>v1.0.0</strong> &nbsp; Windows · macOS · Linux</p>
+        <h1 class="display" id="hero-title">Everything you were juggling, in <span>one calm app</span>.</h1>
+        <p class="lede">
+          Flow is a complete productivity suite for the desktop: tasks, habits, goals, focus timers,
+          grades, notes, flashcards and 124 tools — reading from a single local database.
+          No account. No subscription. No network calls.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="https://github.com/opngo/flow/releases/latest">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 12 5 5 5-5"/><path d="M5 21h14"/></svg>
+            Download for desktop
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/opngo/flow#readme">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
+            Read the docs
+          </a>
+        </div>
+        <p class="hero-meta">
+          <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> MIT licensed</span>
+          <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Works offline, forever</span>
+          <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Your data stays yours</span>
+        </p>
+      </div>
+
+      <!-- App preview: drawn with HTML and CSS so the page stays a single file. -->
+      <div class="preview" role="img" aria-label="Preview of the Flow dashboard: sidebar navigation, today's stats, a study heatmap, a task list and a focus timer.">
+        <div class="window">
+          <div class="titlebar">
+            <div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
+            <span class="tb-title">Flow — Dashboard</span>
+          </div>
+          <div class="app">
+            <div class="sidebar">
+              <div class="side-item active"><span class="ico"></span>Dashboard</div>
+              <div class="side-item"><span class="ico"></span>Todos</div>
+              <div class="side-item"><span class="ico"></span>Habits</div>
+              <div class="side-item"><span class="ico"></span>Goals</div>
+              <div class="side-group">Time</div>
+              <div class="side-item"><span class="ico"></span>Focus</div>
+              <div class="side-item"><span class="ico"></span>Timers</div>
+              <div class="side-item"><span class="ico"></span>Analytics</div>
+              <div class="side-group">Study</div>
+              <div class="side-item"><span class="ico"></span>Grades</div>
+              <div class="side-item"><span class="ico"></span>Notes</div>
+              <div class="side-item"><span class="ico"></span>Flashcards</div>
+            </div>
+            <div class="main">
+              <div class="main-head">
+                <h4>Good evening</h4>
+                <span class="chip">Tuesday · 3 of 7 done</span>
+              </div>
+              <div class="stat-row">
+                <div class="stat"><b>2h 14m</b><span>focus today</span></div>
+                <div class="stat"><b>18</b><span>day streak</span></div>
+                <div class="stat"><b>4</b><span>due today</span></div>
+                <div class="stat"><b>91.2%</b><span>term average</span></div>
+              </div>
+              <div class="grid-2">
+                <div class="card">
+                  <h5>Study heatmap</h5>
+                  <div class="heat" id="heat" aria-hidden="true"></div>
+                </div>
+                <div class="card">
+                  <h5>Focus</h5>
+                  <div class="timer">
+                    <svg class="ring" width="56" height="56" viewBox="0 0 56 56" aria-hidden="true">
+                      <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(154,162,180,.16)" stroke-width="5"/>
+                      <circle cx="28" cy="28" r="24" fill="none" stroke="#7c8cff" stroke-width="5" stroke-linecap="round"
+                              stroke-dasharray="150.8" stroke-dashoffset="52" transform="rotate(-90 28 28)"/>
+                    </svg>
+                    <div class="time">17:42</div>
+                    <div class="phase">Focus · block 2 of 4</div>
+                  </div>
+                </div>
+              </div>
+              <div class="card" style="margin-top:7px">
+                <h5>Today</h5>
+                <div class="row"><span class="box done"></span><span class="line"></span></div>
+                <div class="row"><span class="box done"></span><span class="line short"></span></div>
+                <div class="row"><span class="box"></span><span class="line"></span></div>
+                <div class="row"><span class="box"></span><span class="line short"></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <div class="numbers">
+        <div class="num-card"><b>124</b><span>tools in the catalogue</span></div>
+        <div class="num-card"><b>0</b><span>network requests at runtime</span></div>
+        <div class="num-card"><b>53 × 7</b><span>day study heatmap</span></div>
+        <div class="num-card"><b>3</b><span>platforms, one database</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" aria-labelledby="features-title">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">What is inside</p>
+        <h2 id="features-title">Nine apps' worth of surface, one place to look.</h2>
+        <p>Flow replaces the to-do app, the habit tracker, the pomodoro timer, the grade spreadsheet, the notes app and the ambient noise tab. Everything shares one schema, so a task can feed a habit, a timer can log study time, and a subject can own both.</p>
+      </div>
+
+      <div class="features">
+        <article class="feature">
+          <div class="fi"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg></div>
+          <h3>Todos with eleven views</h3>
+          <p>List, board, calendar, timeline, day planner, Eisenhower matrix, deadline radar, focus list, overdue rescue, completed log and projects. Drag to reorder, bulk-select, undo anything.</p>
+          <div class="tags"><span class="tag">quick add</span><span class="tag">subtasks</span><span class="tag">reminders</span></div>
+        </article>
+
+        <article class="feature">
+          <div class="fi"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></div>
+          <h3>Habits that keep score</h3>
+          <p>Daily, weekday, times-per-week, alternate-day or full recurrence rules. Streaks, longest runs, consistency, a weekly grid and auto check-in when a linked timer finishes.</p>
+          <div class="tags"><span class="tag">streaks</span><span class="tag">skip reasons</span><span class="tag">insights</span></div>
+        </article>
+
+        <article class="feature">
+          <div class="fi"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+          <h3>Focus engine and timers</h3>
+          <p>Pomodoro profiles with strict mode, breaks, extensions and distraction counting. Plus countdown, stopwatch, interval, routines, tracker and timesheet. Timers are clock-derived, so they survive sleep and restarts.</p>
+          <div class="tags"><span class="tag">zen mode</span><span class="tag">mini mode</span><span class="tag">auto-log</span></div>
+        </article>
+
+        <article class="feature">
+          <div class="fi"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 15l3-4 3 3 4-6"/></svg></div>
+          <h3>Analytics you can read</h3>
+          <p>A 53-by-7 heatmap with filters and a day panel, plus subject, habit, hour and task breakdowns, streak statistics, custom intensity thresholds and SVG or PNG export.</p>
+          <div class="tags"><span class="tag">heatmap</span><span class="tag">exports</span><span class="tag">streaks</span></div>
+        </article>
+
+        <article class="feature">
+          <div class="fi"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg></div>
+          <h3>Grades with real maths</h3>
+          <p>Subjects own weighted categories with drop-lowest and best-N rules. Enter assignments, quizzes, tests and exams, then ask what you need on the final — for one subject or the whole term.</p>
+          <div class="tags"><span class="tag">what-if</span><span class="tag">GPA 4.0 / 5.0</span><span class="tag">trends</span></div>
+        </article>
+
+        <article class="feature">
+          <div class="fi"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/></svg></div>
+          <h3>Notes that link themselves</h3>
+          <p>Markdown editor with live preview, folders, tags, double-bracket links and backlinks, a journal mode with mood tracking, zen mode, and word and reading-time statistics.</p>
+          <div class="tags"><span class="tag">wikilinks</span><span class="tag">journal</span><span class="tag">markdown</span></div>
+        </article>
+
+        <article class="feature">
+          <div class="fi"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="M7 5V3h14v14h-2"/></svg></div>
+          <h3>Flashcards on a schedule</h3>
+          <p>Decks with spaced repetition: rate a card Again, Hard, Good or Easy and Flow sets the next interval and ease. Import a whole deck from CSV.</p>
+          <div class="tags"><span class="tag">SM-2</span><span class="tag">CSV import</span><span class="tag">due counts</span></div>
+        </article>
+
+        <article class="feature">
+          <div class="fi"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h2l2-7 3 14 3-11 2 4h6"/></svg></div>
+          <h3>A procedural sound studio</h3>
+          <p>White, pink, brown, blue, violet and grey noise, plus eighteen nature and city layers — rain, wind, ocean, fire, crickets, cafe, train, fan. Mixed live, saved as presets, with a sleep timer.</p>
+          <div class="tags"><span class="tag">Web Audio</span><span class="tag">presets</span><span class="tag">sleep timer</span></div>
+        </article>
+
+        <article class="feature">
+          <div class="fi"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg></div>
+          <h3>124 tools, no tab farm</h3>
+          <p>Reviews, exam mode, world clock, citation builder, whiteboard, mind map, Cornell notes, converters, hashing, QR codes, regex, JSON, budgets, backups and more — all a keystroke away.</p>
+          <div class="tags"><span class="tag">command palette</span><span class="tag">search</span><span class="tag">offline</span></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="craft-title">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Craft</p>
+        <h2 id="craft-title">Built like software should be.</h2>
+        <p>Local-first storage, a typed schema with migrations, clock-derived timers and a design system with opinions. The details you only notice when they are missing.</p>
+      </div>
+
+      <div class="showcase">
+        <div class="shot">
+          <h3>Sound studio</h3>
+          <p class="sub">Eighteen procedurally generated layers, mixed by you</p>
+          <div class="mixer">
+            <div class="mix-row"><span class="name">Rain, light</span><span class="track"><i style="width:72%"></i></span><span class="val mono">72</span></div>
+            <div class="mix-row"><span class="name">Brown noise</span><span class="track"><i style="width:46%"></i></span><span class="val mono">46</span></div>
+            <div class="mix-row"><span class="name">Cafe murmur</span><span class="track"><i style="width:31%"></i></span><span class="val mono">31</span></div>
+            <div class="mix-row"><span class="name">Fire crackle</span><span class="track"><i style="width:18%"></i></span><span class="val mono">18</span></div>
+            <div class="mix-row"><span class="name">Thunder, far</span><span class="track"><i style="width:9%"></i></span><span class="val mono">09</span></div>
+          </div>
+          <div class="bars" style="margin-top:16px" aria-hidden="true">
+            <i style="height:38%"></i><i style="height:62%"></i><i style="height:44%"></i><i style="height:78%"></i><i style="height:52%"></i><i style="height:88%"></i><i style="height:34%"></i><i style="height:70%"></i><i style="height:58%"></i><i style="height:26%"></i><i style="height:66%"></i><i style="height:48%"></i><i style="height:82%"></i><i style="height:40%"></i><i style="height:56%"></i><i style="height:30%"></i>
+          </div>
+        </div>
+
+        <div class="shot">
+          <h3>What-if grades</h3>
+          <p class="sub">Set a target, see the score every remaining exam needs</p>
+          <div class="grade-rows">
+            <div class="grade-row"><span>Chemistry</span><span class="mono">88.4%</span><span class="mono muted">B+</span><span class="gbar"><i style="width:88%;background:#4ec9a0"></i></span></div>
+            <div class="grade-row"><span>Mathematics</span><span class="mono">91.2%</span><span class="mono muted">A-</span><span class="gbar"><i style="width:91%;background:#7c8cff"></i></span></div>
+            <div class="grade-row"><span>Literature</span><span class="mono">84.0%</span><span class="mono muted">B</span><span class="gbar"><i style="width:84%;background:#e5b567"></i></span></div>
+            <div class="grade-row"><span>Physics</span><span class="mono">78.6%</span><span class="mono muted">C+</span><span class="gbar"><i style="width:79%;background:#ef6f6c"></i></span></div>
+          </div>
+          <div class="whatif">
+            <b>94.1%</b>
+            <span>needed on a 30% final to finish Physics at 90%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="numbers" style="margin-top:12px">
+        <div class="num-card"><b>Local-first</b><span>JSON database with versioned migrations</span></div>
+        <div class="num-card"><b>Clock-derived</b><span>timers recomputed from timestamps, never counted down</span></div>
+        <div class="num-card"><b>Type-safe</b><span>Zod schema, strict TypeScript, 41 tests in CI</span></div>
+        <div class="num-card"><b>Resilient</b><span>per-collection recovery and rolling backups</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tools" aria-labelledby="tools-title">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">The catalogue</p>
+        <h2 id="tools-title">124 tools, organised so you can find them.</h2>
+        <p>Every entry opens a real screen — nothing here is a placeholder. Reach any of them from the sidebar, the command palette, or the tools gallery.</p>
+      </div>
+      <div class="tools-wrap">
+        <div class="tool-group">
+          <h4>Tasks</h4>
+          <ul><li>Quick capture inbox</li><li>Someday maybe</li><li>Waiting for</li><li>Recurring engine</li><li>Task templates</li><li>Daily review</li><li>Weekly review</li><li>Deadline radar</li></ul>
+        </div>
+        <div class="tool-group">
+          <h4>Habits and goals</h4>
+          <ul><li>Achievements</li><li>Vacation mode</li><li>Streak insights</li><li>Milestones</li><li>Habit heatmaps</li><li>Nudge coach</li></ul>
+        </div>
+        <div class="tool-group">
+          <h4>Time</h4>
+          <ul><li>Exam mode</li><li>Mini timer</li><li>Breathwork</li><li>Eye rest</li><li>Stretch breaks</li><li>World clock</li><li>Day progress</li><li>Distraction log</li><li>Countdown events</li></ul>
+        </div>
+        <div class="tool-group">
+          <h4>Study</h4>
+          <ul><li>Study planner</li><li>Assignments</li><li>Timetable</li><li>Reading list</li><li>Citations</li><li>Formula sheet</li><li>Vocabulary</li><li>Practice log</li><li>Final needed</li></ul>
+        </div>
+        <div class="tool-group">
+          <h4>Notes</h4>
+          <ul><li>Scratchpad</li><li>Journal</li><li>Writing mode</li><li>Whiteboard</li><li>Mind map</li><li>Cornell notes</li><li>Outline</li><li>Snippets</li><li>Word count</li></ul>
+        </div>
+        <div class="tool-group">
+          <h4>Utilities</h4>
+          <ul><li>Scientific calculator</li><li>Unit converter</li><li>Percentage calc</li><li>Date difference</li><li>Age calculator</li><li>Colour palette</li><li>Base64</li><li>Hash</li><li>QR code</li><li>Password</li><li>Regex tester</li><li>JSON format</li></ul>
+        </div>
+        <div class="tool-group">
+          <h4>Organise</h4>
+          <ul><li>Budget</li><li>Subscriptions</li><li>Reading list</li><li>Files</li><li>Contacts</li><li>Bookmarks</li><li>Packing list</li><li>Saved views</li></ul>
+        </div>
+        <div class="tool-group">
+          <h4>System</h4>
+          <ul><li>Global search</li><li>Tags</li><li>Undo history</li><li>Activity log</li><li>Backup</li><li>Export</li><li>Shortcuts</li><li>Widgets gallery</li><li>Changelog</li></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="install" aria-labelledby="install-title">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Install</p>
+        <h2 id="install-title">Three platforms, one database format.</h2>
+        <p>Download the installer for your system, or build it yourself from source. The database is a single JSON file you can copy, back up or version.</p>
+      </div>
+
+      <div class="install-grid">
+        <div class="install">
+          <div class="install-head">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18v10H3z"/><path d="M8 19h8"/></svg>
+            <h3>Windows</h3>
+            <span class="badge">10 · 11 · ARM64</span>
+          </div>
+          <p>Per-user install, no administrator rights. Creates a Start Menu shortcut so notifications work.</p>
+          <div class="links">
+            <a class="btn btn-primary btn-sm" data-download="win" href="https://github.com/opngo/flow/releases/download/v1.0.0/Flow-1.0.0-win-x64.exe">Installer (.exe)</a>
+            <a class="btn btn-ghost btn-sm" data-download="winPortable" href="https://github.com/opngo/flow/releases/download/v1.0.0/Flow-1.0.0-portable.exe">Portable</a>
+          </div>
+          <div class="cmd"><code>winget install opngo.flow</code><button type="button" data-copy>Copy</button></div>
+        </div>
+
+        <div class="install">
+          <div class="install-head">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v10"/><path d="M9 8l3 3 3-3"/><rect x="4" y="14" width="16" height="7" rx="2"/></svg>
+            <h3>macOS</h3>
+            <span class="badge">Apple silicon · Intel</span>
+          </div>
+          <p>Drag Flow into Applications. Unsigned builds need a right-click then Open the first time.</p>
+          <div class="links">
+            <a class="btn btn-primary btn-sm" data-download="macArm" href="https://github.com/opngo/flow/releases/download/v1.0.0/Flow-1.0.0-mac-arm64.dmg">Apple silicon</a>
+            <a class="btn btn-ghost btn-sm" data-download="macIntel" href="https://github.com/opngo/flow/releases/download/v1.0.0/Flow-1.0.0-mac-x64.dmg">Intel</a>
+          </div>
+          <div class="cmd"><code>brew install --cask opngo/tap/flow</code><button type="button" data-copy>Copy</button></div>
+        </div>
+
+        <div class="install">
+          <div class="install-head">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15V9a8 8 0 0 1 16 0v6"/><path d="M2 15h20"/><path d="M12 3v4"/></svg>
+            <h3>Linux</h3>
+            <span class="badge">AppImage · deb · tar.gz</span>
+          </div>
+          <p>Run the AppImage directly, or install the deb package if you use Debian, Ubuntu or a derivative.</p>
+          <div class="links">
+            <a class="btn btn-primary btn-sm" data-download="linuxAppImage" href="https://github.com/opngo/flow/releases/download/v1.0.0/Flow-1.0.0-linux-x86_64.AppImage">AppImage</a>
+            <a class="btn btn-ghost btn-sm" data-download="linuxDeb" href="https://github.com/opngo/flow/releases/download/v1.0.0/Flow-1.0.0-linux-amd64.deb">.deb</a>
+          </div>
+          <div class="cmd"><code>chmod +x Flow-1.0.0-linux-x86_64.AppImage</code><button type="button" data-copy>Copy</button></div>
+        </div>
+      </div>
+
+      <p class="note">Downloads resolve to the latest published release. Verify any file against
+        <a data-download="sums" href="https://github.com/opngo/flow/releases/download/v1.0.0/SHA256SUMS.txt">SHA256SUMS.txt</a>. All builds in a release are unsigned unless stated otherwise, so Windows
+        SmartScreen and macOS Gatekeeper will ask once on first launch.</p>
+
+      <div class="shot" style="margin-top:20px">
+        <h3>Build from source</h3>
+        <p class="sub">Node 20 or newer. The packaged app and the browser build share one renderer.</p>
+        <div class="cmd" style="margin-bottom:8px"><code>git clone https://github.com/opngo/flow.git &amp;&amp; cd flow</code><button type="button" data-copy>Copy</button></div>
+        <div class="cmd" style="margin-bottom:8px"><code>npm ci</code><button type="button" data-copy>Copy</button></div>
+        <div class="cmd"><code>npm run dev</code><button type="button" data-copy>Copy</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq" aria-labelledby="faq-title">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Questions</p>
+        <h2 id="faq-title">The things people ask first.</h2>
+      </div>
+      <div class="faq">
+        <div class="qa">
+          <button type="button" aria-expanded="false">
+            Where is my data stored, and can I move it?
+            <svg class="caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <div class="answer" hidden>
+            <p>One JSON database inside the app's user-data folder, plus rolling backups. Settings, Todos, Grades and the rest all read and write that single file.</p>
+            <p>Export it any time from Settings, Data, or press <kbd>Ctrl</kbd> <kbd>K</kbd> and run "Export everything". Import the file back on another machine and you are exactly where you left off.</p>
+          </div>
+        </div>
+        <div class="qa">
+          <button type="button" aria-expanded="false">
+            Does Flow phone home?
+            <svg class="caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <div class="answer" hidden>
+            <p>No. No accounts, no analytics, no crash reporting, no update pings. The only network requests in the entire app are the ones you trigger by opening an external link yourself.</p>
+            <p>You can verify that in the source, and this page follows the same rule: it is one HTML file with no external fonts, scripts or images.</p>
+          </div>
+        </div>
+        <div class="qa">
+          <button type="button" aria-expanded="false">
+            Why is the installer unsigned?
+            <svg class="caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <div class="answer" hidden>
+            <p>Code-signing certificates cost money and Flow is a free project. Windows SmartScreen shows "Windows protected your PC" once: choose "More info" then "Run anyway". On macOS, right-click the app and choose Open.</p>
+            <p>If you would rather not trust a binary, build it yourself in about two minutes — the source is right there.</p>
+          </div>
+        </div>
+        <div class="qa">
+          <button type="button" aria-expanded="false">
+            Will my timers keep running if I close the window?
+            <svg class="caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <div class="answer" hidden>
+            <p>Yes. Closing to the tray keeps timers and reminders alive. Every timer stores its start and end times and the remaining time is recomputed from the clock, so sleep, restarts and throttling cannot make it drift.</p>
+            <p>Reminders are held in the main process and catch up after a restart — a notification you missed arrives marked as missed rather than vanishing.</p>
+          </div>
+        </div>
+        <div class="qa">
+          <button type="button" aria-expanded="false">
+            Which web technologies does it use, and why does that matter?
+            <svg class="caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <div class="answer" hidden>
+            <p>Electron with React, TypeScript, Headless UI, Tailwind and Zod. That means the same renderer runs in a browser tab, so you can try the whole application at <code>npm run dev</code> before installing anything.</p>
+          </div>
+        </div>
+        <div class="qa">
+          <button type="button" aria-expanded="false">
+            Can I contribute?
+            <svg class="caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <div class="answer" hidden>
+            <p>Please do. Issues and pull requests are welcome; start with <a href="https://github.com/opngo/flow/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a> and the open issues labelled "good first issue".</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <div class="foot-note">
+      <a class="brand" href="./" style="color:var(--text)">
+        <svg width="22" height="22" viewBox="0 0 64 64" aria-hidden="true">
+          <rect width="64" height="64" rx="15" fill="#7c8cff"/>
+          <g fill="none" stroke="#fff" stroke-width="4.6" stroke-linecap="round">
+            <path d="M6 21c9-6 17 6 26 0s17 6 26 0" opacity=".75"/>
+            <path d="M6 32c9-6 17 6 26 0s17 6 26 0"/>
+            <path d="M6 43c9-6 17 6 26 0s17 6 26 0" opacity=".6"/>
+          </g>
+        </svg>
+        <span>Flow</span>
+      </a>
+      <p>Local-first productivity for people who would rather own their tools. Free and open source under the MIT licence.</p>
+      <p class="mono" style="color:var(--faint)">v1.0.0 · <a href="https://github.com/opngo/flow/releases/tag/v1.0.0">release notes</a></p>
+    </div>
+    <div class="foot-links">
+      <div>
+        <h4>Project</h4>
+        <a href="https://github.com/opngo/flow">Source code</a>
+        <a href="https://github.com/opngo/flow/releases/latest">Releases</a>
+        <a href="https://github.com/opngo/flow/blob/main/CHANGELOG.md">Changelog</a>
+        <a href="https://github.com/opngo/flow/blob/main/LICENSE">Licence</a>
+      </div>
+      <div>
+        <h4>Support</h4>
+        <a href="https://github.com/opngo/flow/issues/new/choose">Report a bug</a>
+        <a href="https://github.com/opngo/flow/issues">Issues</a>
+        <a href="https://github.com/opngo/flow/discussions">Discussions</a>
+        <a href="https://github.com/opngo/flow/blob/main/SECURITY.md">Security</a>
+      </div>
+      <div>
+        <h4>Contribute</h4>
+        <a href="https://github.com/opngo/flow/blob/main/CONTRIBUTING.md">Contributing</a>
+        <a href="https://github.com/opngo/flow/blob/main/docs/ARCHITECTURE.md">Architecture</a>
+        <a href="https://github.com/opngo/flow/blob/main/docs/RELEASING.md">Releasing</a>
+        <a href="https://github.com/opngo/flow/actions">CI status</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ---------------------------------------------------------------------------
+   Small progressive enhancements. The page is fully readable without this
+   script: it only draws the decorative heatmap, wires the FAQ disclosures and
+   adds copy buttons.
+   --------------------------------------------------------------------------- */
+(function () {
+  'use strict';
+
+  // Decorative heatmap: deterministic so the preview is identical every load.
+  var heat = document.getElementById('heat');
+  if (heat) {
+    var seed = 20261024;
+    function rand() {
+      seed = (seed * 1664525 + 1013904223) % 4294967296;
+      return seed / 4294967296;
+    }
+    var weeks = 21;
+    heat.style.gridTemplateRows = 'repeat(7, 7px)';
+    for (var w = 0; w < weeks; w += 1) {
+      for (var d = 0; d < 7; d += 1) {
+        var cell = document.createElement('i');
+        var level = rand();
+        var alpha = level > 0.82 ? 0.92 : level > 0.62 ? 0.62 : level > 0.4 ? 0.38 : level > 0.2 ? 0.2 : 0;
+        if (alpha === 0) {
+          cell.style.background = 'rgba(154,162,180,.10)';
+        } else {
+          cell.style.background = 'rgba(124,140,255,' + alpha + ')';
+        }
+        heat.appendChild(cell);
+      }
+    }
+  }
+
+  // FAQ: buttons with aria-expanded, answer blocks toggled by the hidden attribute.
+  document.querySelectorAll('.qa button').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var qa = button.closest('.qa');
+      var answer = qa.querySelector('.answer');
+      var open = button.getAttribute('aria-expanded') === 'true';
+      button.setAttribute('aria-expanded', open ? 'false' : 'true');
+      if (answer) answer.hidden = open;
+    });
+  });
+
+  // Copy buttons on command blocks, with a short confirmation and no alert().
+  document.querySelectorAll('[data-copy]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var code = button.parentElement.querySelector('code');
+      if (!code) return;
+      var text = code.textContent;
+      var done = function () {
+        var original = button.textContent;
+        button.textContent = 'Copied';
+        setTimeout(function () { button.textContent = original; }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, done);
+      } else {
+        var area = document.createElement('textarea');
+        area.value = text;
+        document.body.appendChild(area);
+        area.select();
+        try { document.execCommand('copy'); } catch (e) { /* clipboard unavailable */ }
+        document.body.removeChild(area);
+        done();
+      }
+    });
+  });
+
+  // Entrance animation on the hero only: pure CSS, plays once, and the page
+  // never hides content, so it is readable with JS disabled or in a print/PDF.
+  document.documentElement.classList.add('js-ready');
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: '/'
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+    open-pull-requests-limit: 5
+    versioning-strategy: increase
+    commit-message:
+      prefix: 'chore(deps)'
+      include: scope
+    groups:
+      # Batch the noisy families so one PR does not become fifteen.
+      react:
+        patterns: ['react', 'react-dom', '@types/react', '@types/react-dom', 'react-router-dom']
+      electron:
+        patterns: ['electron', 'electron-builder']
+      tooling:
+        patterns: ['vite', '@vitejs/plugin-react', 'vitest', 'typescript', 'tailwindcss', 'postcss', 'autoprefixer']
+      lint-types:
+        patterns: ['@types/*', 'zod', 'yaml']
+    ignore:
+      # Stay on React 18 until the whole tree (Headless UI, dnd-kit) supports 19.
+      - dependency-name: react
+        update-types: ['version-update:semver-major']
+      - dependency-name: react-dom
+        update-types: ['version-update:semver-major']
+
+  - package-ecosystem: github-actions
+    directory: '/'
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: 'chore(ci)'
+    groups:
+      actions:
+        patterns: ['*']

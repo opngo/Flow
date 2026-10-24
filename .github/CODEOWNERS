@@ -1,0 +1,9 @@
+# Every change needs a review from the maintainer until there is a team.
+* @opngo
+
+# Packaging, workflows and release plumbing are higher risk: always reviewed.
+/.github/ @opngo
+/electron/ @opngo
+/build/ @opngo
+/landing/ @opngo
+package.json @opngo

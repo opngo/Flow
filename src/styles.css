@@ -1,0 +1,233 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------
+   Flow design tokens.
+   Hard rule: no outlines, no borders, no focus rings (per §3.1).
+   Separation = tonal elevation + soft shadow + spacing + blur.
+   --------------------------------------------------------------- */
+
+:root {
+  --surface: #0b0d12;
+  --surface-1: #12151c;
+  --surface-2: #181c25;
+  --surface-3: #1f242f;
+  --text: #e9ecf3;
+  --text-muted: #9aa2b4;
+  --text-faint: #6b7383;
+  --accent: #7c8cff;
+  --accent-soft: rgba(124, 140, 255, 0.16);
+  --success: #4ec9a0;
+  --warning: #e5b567;
+  --danger: #ef6f6c;
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.24);
+  --shadow-2: 0 8px 24px -12px rgba(0, 0, 0, 0.55);
+  --shadow-3: 0 24px 60px -24px rgba(0, 0, 0, 0.7);
+
+  --radius: 16px;
+  --blur: 18px;
+  --pad: 1;
+
+  --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-content: 'Inter', Georgia, serif;
+  --font-timer: 'Inter', ui-monospace, monospace;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+  --fs-base: 14.5px;
+  --lh: 1.55;
+  --ls: 0em;
+  --fw: 450;
+  --heading-scale: 1;
+}
+
+* {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--fs-base);
+  line-height: var(--lh);
+  letter-spacing: var(--ls);
+  font-weight: var(--fw);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  user-select: none;
+}
+
+input,
+textarea {
+  user-select: text;
+}
+
+/* Focus without rings: tint + glow + micro scale (spec §3.2) */
+.focusable {
+  transition: box-shadow 180ms ease, background-color 180ms ease, transform 180ms ease,
+    color 180ms ease, opacity 180ms ease;
+}
+.focusable:focus-visible {
+  /* Tint plus a soft outer glow — never a ring, never an outline. */
+  background-color: color-mix(in srgb, var(--accent) 15%, var(--surface-2));
+  color: var(--text);
+  box-shadow: 0 2px 16px -4px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 0 26px color-mix(in srgb, var(--accent) 20%, transparent);
+  transform: scale(1.012);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--text-faint) 32%, transparent);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--text-faint) 55%, transparent);
+  background-clip: content-box;
+}
+
+@layer components {
+  .panel {
+    background: color-mix(in srgb, var(--surface-1) 82%, transparent);
+    backdrop-filter: blur(var(--blur));
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-2);
+  }
+  .panel-flat {
+    background: color-mix(in srgb, var(--surface-1) 60%, transparent);
+    border-radius: var(--radius);
+  }
+  .panel-raised {
+    background: color-mix(in srgb, var(--surface-2) 92%, transparent);
+    backdrop-filter: blur(var(--blur));
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-3);
+  }
+  .row-hover:hover {
+    background: color-mix(in srgb, var(--surface-2) 80%, transparent);
+  }
+  .num {
+    font-family: var(--font-timer);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+  .h1 {
+    font-size: calc(22px * var(--heading-scale));
+    font-weight: 650;
+    letter-spacing: -0.015em;
+  }
+  .h2 {
+    font-size: calc(17px * var(--heading-scale));
+    font-weight: 620;
+    letter-spacing: -0.01em;
+  }
+  .label {
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+    font-weight: 600;
+  }
+  .input {
+    background: color-mix(in srgb, var(--surface-2) 85%, transparent);
+    border-radius: 12px;
+    padding: 9px 12px;
+    color: var(--text);
+    width: 100%;
+    font-size: var(--fs-base);
+    transition: box-shadow 180ms ease, background-color 180ms ease;
+  }
+  .input::placeholder {
+    color: var(--text-faint);
+  }
+  .input:focus-visible {
+    background: color-mix(in srgb, var(--accent) 9%, var(--surface-2));
+    box-shadow: inset 0 0 18px -6px color-mix(in srgb, var(--accent) 70%, transparent);
+  }
+  .divider {
+    height: 1px;
+    background: color-mix(in srgb, var(--text-faint) 12%, transparent);
+    border: 0;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    background: color-mix(in srgb, var(--surface-3) 70%, transparent);
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.drag-region {
+  -webkit-app-region: drag;
+}
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+html[data-reduce-motion='true'] * {
+  animation-duration: 0.001ms !important;
+  transition-duration: 0.001ms !important;
+}
+
+.markdown h1 { font-size: 1.5em; font-weight: 650; margin: 0.6em 0 0.4em; }
+.markdown h2 { font-size: 1.25em; font-weight: 620; margin: 0.6em 0 0.35em; }
+.markdown h3 { font-size: 1.1em; font-weight: 620; margin: 0.5em 0 0.3em; }
+.markdown p { margin: 0.5em 0; }
+.markdown ul { list-style: disc; padding-left: 1.3em; margin: 0.4em 0; }
+.markdown ol { list-style: decimal; padding-left: 1.3em; margin: 0.4em 0; }
+.markdown li { margin: 0.15em 0; }
+.markdown code {
+  font-family: var(--font-mono);
+  background: var(--surface-3);
+  padding: 1px 5px;
+  border-radius: 6px;
+  font-size: 0.9em;
+}
+.markdown pre {
+  background: var(--surface-3);
+  padding: 12px 14px;
+  border-radius: 12px;
+  overflow: auto;
+  margin: 0.6em 0;
+}
+.markdown pre code { background: none; padding: 0; }
+.markdown blockquote {
+  border-left: 3px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  padding-left: 12px;
+  color: var(--text-muted);
+  margin: 0.6em 0;
+}
+.markdown a { color: var(--accent); text-decoration: none; }
+.markdown table { border-collapse: collapse; margin: 0.6em 0; }
+.markdown th, .markdown td { padding: 6px 10px; background: var(--surface-2); }
+.markdown input[type='checkbox'] { accent-color: var(--accent); }

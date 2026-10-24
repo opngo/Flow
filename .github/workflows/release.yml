@@ -1,0 +1,231 @@
+name: Release
+
+# Cut a release by pushing a tag:  git tag v1.0.0 && git push origin v1.0.0
+# Everything after that is automatic: build on all three operating systems,
+# upload the installers to a GitHub Release, publish checksums.
+on:
+  push:
+    tags: ['v*.*.*', 'v*.*.*-*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, e.g. 1.0.0 (requires a matching v-tag to exist)'
+        required: true
+        type: string
+      draft:
+        description: 'Create the release as a draft'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  NODE_VERSION: '20'
+  ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+  # Unsigned builds still ship; add the CSC_*/APPLE_* secrets to sign them.
+  CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+jobs:
+  preflight:
+    name: Preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          # Unquote GITHUB_OUTPUT values: they are written literally into the file.
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if printf '%s' "$VERSION" | grep -qE '(alpha|beta|rc|nightly)'; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Releasing Flow $VERSION"
+
+      - name: Version matches package.json
+        run: |
+          PKG=$(node -p "require('./package.json').version")
+          echo "package.json: $PKG / release: ${{ steps.version.outputs.version }}"
+          if [ "$PKG" != "${{ steps.version.outputs.version }}" ]; then
+            echo "::warning::package.json version ($PKG) does not match the tag (${{ steps.version.outputs.version }})"
+          fi
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Gates must pass before anything is published
+        run: |
+          npm run typecheck
+          npm test
+          npm run verify:workflows
+
+  build:
+    name: Package on ${{ matrix.os }}
+    needs: preflight
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win
+            artifact: flow-windows
+          - os: macos-latest
+            platform: mac
+            artifact: flow-macos
+          - os: ubuntu-latest
+            platform: linux
+            artifact: flow-linux
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Linux packaging tools
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends rpm fakeroot libarchive-tools
+
+      - name: Build renderer
+        run: npm run build
+
+      - name: Package (${{ matrix.platform }})
+        run: npx electron-builder --${{ matrix.platform }} --publish never
+        env:
+          # macOS signing / notarisation are optional: absent secrets mean an
+          # unsigned build, which still installs and runs (with a Gatekeeper prompt).
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: List packaged files
+        shell: bash
+        run: |
+          echo "### ${{ matrix.os }} artifacts" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          ls -lh release | grep -Ev '^total|\.blockmap$|unpacked' >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          # Installers, blockmaps and update metadata only: never the unpacked tree.
+          path: |
+            release/*.exe
+            release/*.msi
+            release/*.dmg
+            release/*.zip
+            release/*.AppImage
+            release/*.deb
+            release/*.rpm
+            release/*.tar.gz
+            release/*.blockmap
+            release/latest*.yml
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Publish release
+    needs: [preflight, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download every installer
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Checksums
+        run: |
+          cd artifacts
+          find . -maxdepth 1 -type f ! -name 'SHA256SUMS.txt' -printf '%f\n' | sort | while read -r f; do
+            sha256sum "$f"
+          done > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Generate release notes
+        run: |
+          node scripts/release-notes.mjs \
+            --version "${{ needs.preflight.outputs.version }}" \
+            --out RELEASE_NOTES.md
+          cat RELEASE_NOTES.md
+
+      - name: Create the GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.preflight.outputs.version }}
+          name: Flow ${{ needs.preflight.outputs.version }}
+          body_path: RELEASE_NOTES.md
+          draft: ${{ github.event_name == 'workflow_dispatch' && inputs.draft || false }}
+          prerelease: ${{ needs.preflight.outputs.prerelease == 'true' }}
+          make_latest: ${{ needs.preflight.outputs.prerelease == 'false' }}
+          files: |
+            artifacts/*.exe
+            artifacts/*.dmg
+            artifacts/*.zip
+            artifacts/*.AppImage
+            artifacts/*.deb
+            artifacts/*.tar.gz
+            artifacts/latest*.yml
+            artifacts/SHA256SUMS.txt
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summarise
+        run: |
+          {
+            echo "## Flow ${{ needs.preflight.outputs.version }} published"
+            echo ""
+            echo "https://github.com/${{ github.repository }}/releases/tag/v${{ needs.preflight.outputs.version }}"
+            echo ""
+            echo "| File | Size |"
+            echo "|---|---|"
+            find artifacts -maxdepth 1 -type f -printf '| %f | %s bytes |\n' | sort
+          } >> "$GITHUB_STEP_SUMMARY"

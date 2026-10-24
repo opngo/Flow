@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or idea
+    url: https://github.com/opngo/flow/discussions
+    about: For usage questions, workflow advice and open-ended ideas, please use Discussions.
+  - name: Security vulnerability
+    url: https://github.com/opngo/flow/security/advisories/new
+    about: Please report security issues privately, never in a public issue.

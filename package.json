@@ -1,0 +1,227 @@
+{
+  "name": "flow",
+  "productName": "Flow",
+  "version": "1.0.0",
+  "description": "Flow — all-in-one, local-first productivity desktop suite",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.cjs",
+  "author": "Flow",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5173",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 4173",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "electron:dev": "node electron/dev.mjs",
+    "build:win": "npm run dist:win",
+    "build:mac": "npm run dist:mac",
+    "build:linux": "npm run dist:linux",
+    "start": "vite --host 0.0.0.0 --port 5173",
+    "test:watch": "vitest",
+    "electron:start": "electron .",
+    "pack": "npm run build && electron-builder --dir --publish never",
+    "dist": "npm run build && electron-builder --publish never",
+    "dist:win": "npm run build && electron-builder --win --publish never",
+    "dist:mac": "npm run build && electron-builder --mac --publish never",
+    "dist:linux": "npm run build && electron-builder --linux --publish never",
+    "landing:stamp": "node scripts/stamp-landing.mjs",
+    "landing:serve": "node scripts/serve-landing.mjs",
+    "verify:workflows": "node scripts/validate-workflows.mjs",
+    "icon": "python3 build/make-icon.py",
+    "release:notes": "node scripts/release-notes.mjs"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.1.0",
+    "@dnd-kit/sortable": "^8.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@headlessui/react": "^2.2.0",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "framer-motion": "^11.11.17",
+    "lucide-react": "^0.460.0",
+    "marked": "^14.1.3",
+    "qrcode": "^1.5.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
+    "recharts": "^2.13.3",
+    "rrule": "^2.8.1",
+    "zod": "^3.23.8",
+    "zustand": "^5.0.1"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^22.9.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "autoprefixer": "^10.4.20",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "jsdom": "^29.1.1",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.5",
+    "yaml": "^2.9.1"
+  },
+  "build": {
+    "appId": "com.flow.app",
+    "productName": "Flow",
+    "copyright": "Copyright © 2026 opngo",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json",
+      "!**/*.map"
+    ],
+    "asar": true,
+    "compression": "maximum",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "opngo",
+        "repo": "flow",
+        "releaseType": "release"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "publisherName": "opngo",
+      "requestedExecutionLevel": "asInvoker",
+      "legalTrademarks": "Flow",
+      "fileAssociations": []
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Flow",
+      "createStartMenuShortcut": true,
+      "createDesktopShortcut": true,
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "license": "LICENSE"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "public.app-category.productivity",
+      "darkModeSupport": true,
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "dmg": {
+      "backgroundColor": "#0b0d12",
+      "window": {
+        "width": 540,
+        "height": 380
+      }
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "tar.gz",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "Utility",
+      "synopsis": "All-in-one local-first productivity suite",
+      "description": "Flow is a local-first productivity suite: todos, habits, goals, focus timers, grades, notes, flashcards, a sound studio and 124 tools in one offline desktop app.",
+      "desktop": {
+        "entry": {
+          "Name": "Flow",
+          "Comment": "All-in-one local-first productivity",
+          "Categories": "Utility;Office;Education;",
+          "StartupWMClass": "Flow"
+        }
+      }
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/opngo/flow.git"
+  },
+  "homepage": "https://opngo.github.io/flow/",
+  "bugs": {
+    "url": "https://github.com/opngo/flow/issues"
+  },
+  "keywords": [
+    "productivity",
+    "electron",
+    "local-first",
+    "pomodoro",
+    "habits",
+    "notes",
+    "flashcards",
+    "grades",
+    "study",
+    "soundscape"
+  ],
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}

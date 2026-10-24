@@ -1,0 +1,61 @@
+name: Feature request
+description: Suggest a capability Flow does not have yet.
+title: '[feat]: '
+labels: ['enhancement', 'needs triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Flow has a rule about scope: it stays local-first, offline and
+        account-free. Ideas that need a server, a subscription or an API key
+        will be turned down politely, so it saves time to check that first.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before you file
+      options:
+        - label: I searched existing issues and discussions
+          required: true
+        - label: This works entirely offline, with no account and no third-party service
+          required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem you have
+      description: Describe the situation, not the solution. What are you trying to get done?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like to see
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you do today instead
+      description: Another app, a spreadsheet, a paper notebook. What is wrong with it?
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - Todos
+        - Habits and goals
+        - Focus and timers
+        - Analytics
+        - Grades
+        - Notes
+        - Flashcards
+        - Calendar
+        - Sound studio
+        - Tools
+        - Appearance and settings
+        - Packaging and updates
+        - Something else
+    validations:
+      required: true

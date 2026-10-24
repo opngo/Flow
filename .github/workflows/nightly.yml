@@ -1,0 +1,95 @@
+name: Nightly
+
+# Package whatever is on main every night and move a single rolling
+# "nightly" pre-release tag onto it. Nothing here is user-facing: it is the
+# smoke test that keeps packaging working between real releases.
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: nightly
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  NODE_VERSION: '20'
+  ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+  CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+jobs:
+  package:
+    name: Nightly on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+          - os: windows-latest
+            platform: win
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Linux packaging tools
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends rpm fakeroot libarchive-tools
+
+      - name: Typecheck and test
+        run: |
+          npm run typecheck
+          npm test
+
+      - name: Build and package
+        run: |
+          npm run build
+          npx electron-builder --${{ matrix.platform }} --publish never
+
+      - name: Upload nightly artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-${{ matrix.platform }}-${{ github.sha }}
+          path: |
+            release/*.exe
+            release/*.AppImage
+            release/*.deb
+            release/*.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Move the nightly tag
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          name: Nightly build
+          body: |
+            Automated build of `main` at ${{ github.sha }} (${{ github.run_id }}).
+
+            These installers are unsigned and may be broken. Use a tagged release for real work.
+          prerelease: true
+          files: |
+            release/*.exe
+            release/*.AppImage
+            release/*.deb
+            release/*.tar.gz
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

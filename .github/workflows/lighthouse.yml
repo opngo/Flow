@@ -1,0 +1,40 @@
+name: Lighthouse
+
+# Audits the shipped landing page (not just the dev version) for performance,
+# accessibility, best practices and SEO. Runs against the built folder, so it
+# needs no deployment and no network host of its own.
+on:
+  pull_request:
+    paths:
+      - 'landing/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Audit landing page
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          staticDistDir: ./landing
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+          configPath: .github/lighthouse-budget.json

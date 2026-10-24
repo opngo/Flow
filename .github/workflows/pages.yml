@@ -1,0 +1,109 @@
+name: Pages
+
+# Builds the landing page in landing/ and deploys it to GitHub Pages:
+#   https://opngo.github.io/flow/
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'landing/**'
+      - 'scripts/stamp-landing.mjs'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  build:
+    name: Build site
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Resolve the latest release tag
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=$(gh release view --json tagName -q .tagName 2>/dev/null || true)
+          if [ -z "$TAG" ]; then
+            TAG="v$(node -p "require('./package.json').version")"
+            echo "No published release yet, falling back to $TAG"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Stamp version and download links into the page
+        run: node scripts/stamp-landing.mjs --version "${{ steps.release.outputs.version }}" --repo "${{ github.repository }}"
+
+      - name: Verify the page is self-contained
+        run: |
+          # The page must load nothing from another origin: no external scripts,
+          # stylesheets, fonts, images or preconnects. Plain <a href> links and
+          # canonical/og metadata URLs are of course allowed.
+          fail=0
+          check() {
+            if grep -nE "$1" landing/index.html; then
+              echo "External asset reference found: $2"
+              fail=1
+            fi
+          }
+          check '<script[^>]+src="https?://' 'script'
+          check '<link[^>]+rel="stylesheet"[^>]*href="https?://' 'stylesheet'
+          check '<link[^>]+rel="preconnect"' 'preconnect'
+          check '<img[^>]+src="https?://' 'image'
+          check '@import[[:space:]]+url\(?["'"'"']?https?://' 'css import'
+          check 'url\(["'"'"']?https?://' 'css url()'
+          if [ "$fail" -ne 0 ]; then exit 1; fi
+          echo "Landing page is self-contained."
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: landing
+          retention-days: 1
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    timeout-minutes: 10
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Summarise
+        run: |
+          {
+            echo "## Landing page deployed"
+            echo ""
+            echo "${{ steps.deployment.outputs.page_url }}"
+          } >> "$GITHUB_STEP_SUMMARY"
