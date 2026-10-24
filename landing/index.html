@@ -1,814 +1,1090 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Flow — all-in-one local-first productivity for the desktop</title>
-<meta name="description" content="Flow is a local-first productivity suite for Windows, macOS and Linux: todos, habits, goals, pomodoro timers, grades, notes, flashcards, a procedural sound studio and 124 tools. No account, no telemetry, no network calls." />
-<meta name="theme-color" content="#0b0d12" />
-<meta name="color-scheme" content="dark light" />
+<title>Flow — a local-first workbench for one person</title>
+<meta name="description" content="Flow is a desktop app for tasks, habits, goals, focus sessions, grades, notes, flashcards, a calendar, a sound studio and 100+ tools. One local file, no accounts, no network calls. MIT licensed." />
+<meta name="theme-color" content="#0a0b0c" />
 <link rel="canonical" href="https://opngo.github.io/flow/" />
+<meta property="og:title" content="Flow — a local-first workbench for one person" />
+<meta property="og:description" content="Twelve tools, one file, no network. A desktop workbench for tasks, study and focus. MIT licensed." />
 <meta property="og:type" content="website" />
-<meta property="og:title" content="Flow — all-in-one local-first productivity" />
-<meta property="og:description" content="Todos, habits, focus timers, grades, notes, flashcards, a sound studio and 124 tools in one offline desktop app. Free and open source." />
-<meta property="og:url" content="https://opngo.github.io/flow/" />
-<meta property="og:site_name" content="Flow" />
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Flow — all-in-one local-first productivity" />
-<meta name="twitter:description" content="One offline desktop app for tasks, habits, focus, grades, notes and 124 tools. No account. No telemetry." />
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%237c8cff'/%3E%3Cg fill='none' stroke='%23fff' stroke-width='4.6' stroke-linecap='round'%3E%3Cpath d='M6 21c9-6 17 6 26 0s17 6 26 0'/%3E%3Cpath d='M6 32c9-6 17 6 26 0s17 6 26 0' opacity='.95'/%3E%3Cpath d='M6 43c9-6 17 6 26 0s17 6 26 0' opacity='.8'/%3E%3C/g%3E%3C/svg%3E" />
 <style>
-  /* ---------------------------------------------------------------------
+  /* =====================================================================
      Flow landing page.
-     One file, zero external requests: no fonts, no CDNs, no analytics.
-     That keeps it honest (the app itself makes no network calls) and makes
-     it work from a GitHub Pages subpath, from file://, and inside sandboxed
-     preview frames.
-     --------------------------------------------------------------------- */
+     One file, no network requests: system fonts, inline SVG, canvas art.
+     Palette and type are deliberately print-like, not app-like: the app
+     has no borders, so the poster uses hairlines everywhere.
+     ===================================================================== */
+
   :root {
-    --surface: #0b0d12;
-    --surface-1: #12151c;
-    --surface-2: #181c25;
-    --surface-3: #1f242f;
-    --text: #e9ecf3;
-    --muted: #9aa2b4;
-    --faint: #6b7383;
-    --accent: #7c8cff;
-    --accent-2: #9d8cff;
-    --success: #4ec9a0;
-    --warning: #e5b567;
-    --danger: #ef6f6c;
-    --radius: 18px;
-    --max: 1120px;
-    --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --ink: #0a0b0c;
+    --ink-2: #0e1012;
+    --panel: #14171a;
+    --panel-2: #191d21;
+    --rule: #24282d;
+    --rule-2: #333941;
+    --bone: #e8e4d9;
+    --dim: #9a978d;
+    --faint: #6a6862;
+    --acid: #c9f24e;
+    --indigo: #7c8cff;
+    --warm: #f0a75a;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --gut: clamp(16px, 4vw, 56px);
+    --max: 1280px;
   }
 
   * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
+
+  html { scroll-behavior: smooth; scroll-padding-top: 72px; }
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
-    * { animation: none !important; transition: none !important; }
   }
 
   body {
     margin: 0;
-    background: var(--surface);
-    color: var(--text);
-    font-family: var(--font);
+    background: var(--ink);
+    color: var(--bone);
+    font-family: var(--sans);
     font-size: 16px;
-    line-height: 1.6;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
-    text-rendering: optimizeLegibility;
     overflow-x: hidden;
   }
 
-  /* No outlines anywhere: focus is a glow, matching the app. */
-  * { outline: none; }
-  :focus-visible {
-    box-shadow: 0 0 0 2px rgba(124, 140, 255, .55), 0 0 26px rgba(124, 140, 255, .35);
-    border-radius: 12px;
+  /* Faint paper tooth over the whole page. Pure CSS, no image request. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 9;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image:
+      repeating-linear-gradient(0deg, #ffffff 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(90deg, #ffffff 0 1px, transparent 1px 3px);
+    mix-blend-mode: overlay;
   }
 
-  a { color: var(--accent); text-decoration: none; }
-  a:hover { text-decoration: underline; text-underline-offset: 3px; }
-  h1, h2, h3 { line-height: 1.15; letter-spacing: -.02em; margin: 0; font-weight: 650; }
-  code, kbd { font-family: var(--mono); }
-  kbd {
-    display: inline-block; padding: 2px 7px; border-radius: 7px;
-    background: var(--surface-3); color: var(--text); font-size: 12px;
-    box-shadow: inset 0 -1px 0 rgba(0,0,0,.35);
+  ::selection { background: var(--acid); color: #0a0b0c; }
+
+  a { color: inherit; text-decoration: none; }
+
+  .wrap {
+    width: 100%;
+    max-width: var(--max);
+    margin: 0 auto;
+    padding-inline: var(--gut);
   }
 
-  .wrap { width: 100%; max-width: var(--max); margin: 0 auto; padding: 0 22px; }
-  .eyebrow {
-    font-size: 12px; letter-spacing: .13em; text-transform: uppercase;
-    color: var(--faint); font-weight: 600;
-  }
-  .muted { color: var(--muted); }
-  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
-
-  /* Ambient background: two soft glows and a faint grid, no images. */
-  .bg { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
-  .bg::before, .bg::after {
-    content: ""; position: absolute; width: 720px; height: 720px; border-radius: 50%;
-    filter: blur(120px); opacity: .5;
-  }
-  .bg::before { background: #2b2f70; top: -360px; left: -180px; }
-  .bg::after { background: #1d3b52; bottom: -420px; right: -220px; opacity: .38; }
-  .bg-grid {
-    position: absolute; inset: 0;
-    background-image: linear-gradient(rgba(154,162,180,.05) 1px, transparent 1px),
-                      linear-gradient(90deg, rgba(154,162,180,.05) 1px, transparent 1px);
-    background-size: 64px 64px;
-    mask-image: radial-gradient(circle at 50% 0%, #000 0%, transparent 72%);
-    -webkit-mask-image: radial-gradient(circle at 50% 0%, #000 0%, transparent 72%);
+  .mono {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
   }
 
-  /* Header --------------------------------------------------------------- */
-  header.site {
-    position: sticky; top: 0; z-index: 40;
-    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-    background: rgba(11, 13, 18, .72);
+  /* ---------------------------------------------------------------- header */
+
+  .site-head {
+    position: fixed;
+    inset: 0 0 auto 0;
+    z-index: 40;
+    height: 58px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding-inline: var(--gut);
+    border-bottom: 1px solid transparent;
+    transition: background-color 200ms linear, border-color 200ms linear;
   }
-  .nav { display: flex; align-items: center; gap: 18px; height: 64px; }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; color: var(--text); letter-spacing: -.01em; }
-  .brand:hover { text-decoration: none; }
+  .site-head[data-stuck="true"] {
+    background: color-mix(in srgb, var(--ink) 88%, transparent);
+    backdrop-filter: blur(14px);
+    border-bottom-color: var(--rule);
+  }
+  .brand { display: flex; align-items: center; gap: 9px; font-weight: 750; letter-spacing: -0.02em; font-size: 15px; }
   .brand svg { display: block; }
-  .nav-links { display: flex; gap: 4px; margin-left: 10px; }
-  .nav-links a {
-    color: var(--muted); font-size: 14px; padding: 8px 11px; border-radius: 10px;
-    transition: color .18s ease, background .18s ease;
+  .brand .tag {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+    color: var(--faint); border-left: 1px solid var(--rule); padding-left: 9px; margin-left: 3px;
+    text-transform: uppercase;
   }
-  .nav-links a:hover { color: var(--text); background: var(--surface-2); text-decoration: none; }
-  .nav-cta { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-  @media (max-width: 860px) { .nav-links { display: none; } }
+  .head-nav { display: none; gap: 4px; margin-left: auto; }
+  .head-nav a {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--dim); padding: 7px 9px; border-radius: 2px;
+    transition: color 160ms linear, background-color 160ms linear;
+  }
+  .head-nav a:hover, .head-nav a[aria-current="true"] { color: var(--bone); background: var(--panel); }
+  .head-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+  .head-nav + .head-right { margin-left: 8px; }
 
-  /* Buttons -------------------------------------------------------------- */
   .btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 9px;
-    height: 44px; padding: 0 20px; border-radius: 13px; border: 0;
-    font: inherit; font-weight: 600; font-size: 14.5px; cursor: pointer;
-    color: var(--text); background: var(--surface-2); text-decoration: none;
-    transition: transform .18s ease, background .18s ease, box-shadow .18s ease, color .18s ease;
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 10px 14px; border-radius: 2px; border: 1px solid var(--rule-2);
+    color: var(--bone); background: transparent;
+    transition: background-color 160ms linear, color 160ms linear, border-color 160ms linear, transform 160ms linear;
+    white-space: nowrap; cursor: pointer;
   }
-  .btn:hover { text-decoration: none; transform: translateY(-1px); background: var(--surface-3); }
-  .btn:active { transform: translateY(0); }
-  .btn-primary {
-    background: linear-gradient(180deg, #8b98ff, #6b7bf5); color: #fff;
-    box-shadow: 0 10px 30px -12px rgba(124,140,255,.9);
-  }
-  .btn-primary:hover { background: linear-gradient(180deg, #96a2ff, #7382ff); box-shadow: 0 14px 34px -12px rgba(124,140,255,1); }
-  .btn-ghost { background: transparent; box-shadow: inset 0 0 0 1px rgba(154,162,180,.16); }
-  .btn-ghost:hover { background: var(--surface-2); box-shadow: inset 0 0 0 1px rgba(154,162,180,.26); }
-  .btn-sm { height: 36px; padding: 0 14px; font-size: 13px; border-radius: 11px; }
-  .btn svg { flex: none; }
+  .btn:hover { border-color: var(--bone); }
+  .btn:active { transform: translateY(1px); }
+  .btn--primary { background: var(--acid); border-color: var(--acid); color: #0b0f04; font-weight: 600; }
+  .btn--primary:hover { background: #d8ff67; border-color: #d8ff67; }
+  .btn--ghost { border-color: transparent; color: var(--dim); }
+  .btn--ghost:hover { color: var(--bone); border-color: var(--rule); }
+  .btn--sm { padding: 7px 10px; font-size: 10.5px; }
 
-  /* Hero ----------------------------------------------------------------- */
-  .hero { padding: 72px 0 24px; }
-  .hero-inner { display: grid; gap: 40px; align-items: center; grid-template-columns: 1.02fr .98fr; }
-  @media (max-width: 980px) { .hero-inner { grid-template-columns: 1fr; } .hero { padding-top: 46px; } }
+  .spacer { flex: 1; }
 
-  .pill {
-    display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px;
-    border-radius: 999px; background: var(--surface-2); color: var(--muted);
-    font-size: 12.5px; font-weight: 550;
-  }
-  .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 10px var(--success); }
-  .pill strong { color: var(--text); font-weight: 650; }
+  /* ------------------------------------------------------------------ hero */
 
-  h1.display {
-    font-size: clamp(34px, 4.4vw, 56px);
-    font-weight: 700; letter-spacing: -.035em; margin: 20px 0 0;
-    max-width: 14ch; text-wrap: balance;
-  }
-  h1.display span {
-    background: linear-gradient(100deg, #b9c2ff 10%, #8b98ff 45%, #9d8cff 90%);
-    -webkit-background-clip: text; background-clip: text; color: transparent;
-  }
-  .lede { margin: 18px 0 0; font-size: 17.5px; color: var(--muted); max-width: 33em; }
-  .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
-  .hero-meta { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 20px; font-size: 13px; color: var(--faint); }
-  .hero-meta span { display: inline-flex; align-items: center; gap: 6px; }
+  .hero { position: relative; padding-top: 58px; overflow: clip; }
 
-  /* App preview ---------------------------------------------------------- */
-  .preview {
-    border-radius: 22px; padding: 10px;
-    background: linear-gradient(160deg, rgba(124,140,255,.20), rgba(124,140,255,.03) 42%, rgba(255,255,255,.02));
-    box-shadow: 0 40px 90px -40px rgba(0,0,0,.9), 0 0 0 1px rgba(255,255,255,.03) inset;
+  .hero-grid {
+    display: grid;
+    gap: clamp(28px, 4vw, 56px);
+    grid-template-columns: minmax(0, 1fr);
+    align-items: center;
+    min-height: calc(100svh - 58px);
+    padding-block: clamp(28px, 6vh, 72px);
   }
-  .window {
-    border-radius: 15px; overflow: hidden; background: var(--surface);
-    box-shadow: 0 20px 60px -30px rgba(0,0,0,.9);
-    font-size: 11px;
-  }
-  .titlebar {
-    display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px;
-    background: var(--surface-1);
-  }
-  .titlebar .lights { display: flex; gap: 6px; }
-  .titlebar .lights i { width: 9px; height: 9px; border-radius: 50%; background: var(--surface-3); display: block; }
-  .titlebar .tb-title { color: var(--faint); font-size: 11px; letter-spacing: .02em; }
-  .app { display: grid; grid-template-columns: 148px 1fr; min-height: 318px; }
-  .sidebar { background: var(--surface-1); padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; }
-  .side-item {
-    display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px;
-    color: var(--muted); font-size: 11.5px;
-  }
-  .side-item.active { background: rgba(124,140,255,.16); color: #c9d0ff; }
-  .side-item .ico { width: 12px; height: 12px; border-radius: 4px; background: currentColor; opacity: .55; }
-  .side-item.active .ico { opacity: 1; }
-  .side-group { margin: 10px 0 4px 8px; font-size: 9px; letter-spacing: .12em; color: var(--faint); text-transform: uppercase; }
-  .main { padding: 12px 14px; min-width: 0; }
-  .main-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-  .main-head h4 { margin: 0; font-size: 14px; letter-spacing: -.01em; }
-  .main-head .chip {
-    margin-left: auto; font-size: 9.5px; padding: 3px 8px; border-radius: 999px;
-    background: var(--surface-2); color: var(--muted);
-  }
-  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-bottom: 9px; }
-  .stat { background: var(--surface-1); border-radius: 11px; padding: 8px 9px; }
-  .stat b { display: block; font-size: 16px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-  .stat span { color: var(--faint); font-size: 9.5px; }
-  .grid-2 { display: grid; grid-template-columns: 1.35fr 1fr; gap: 7px; }
-  .card { background: var(--surface-1); border-radius: 12px; padding: 9px 10px; }
-  .card h5 { margin: 0 0 7px; font-size: 10.5px; color: var(--muted); font-weight: 600; letter-spacing: .01em; }
-  .heat { display: grid; grid-auto-flow: column; gap: 2.5px; overflow: hidden; }
-  .heat i { width: 7px; height: 7px; border-radius: 2px; background: rgba(154,162,180,.13); display: block; }
-  .row { display: flex; align-items: center; gap: 7px; padding: 5px 0; }
-  .row .box { width: 10px; height: 10px; border-radius: 3px; background: rgba(124,140,255,.2); flex: none; }
-  .row .box.done { background: var(--accent); }
-  .row .line { height: 6px; border-radius: 3px; background: var(--surface-3); flex: 1; }
-  .row .line.short { flex: 0 0 42%; }
-  .timer { text-align: center; padding: 8px 0 4px; }
-  .timer .time { font-size: 26px; font-weight: 650; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
-  .timer .phase { color: var(--accent); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; }
-  .ring { display: block; margin: 0 auto 2px; }
-  .bars { display: flex; align-items: flex-end; gap: 3px; height: 34px; }
-  .bars i { flex: 1; border-radius: 3px 3px 0 0; background: linear-gradient(180deg, rgba(124,140,255,.85), rgba(124,140,255,.2)); display: block; }
-
-  /* The preview shrinks instead of overflowing on narrow screens. */
-  @media (max-width: 620px) {
-    .app { grid-template-columns: 96px 1fr; min-height: 268px; }
-    .sidebar { padding: 8px 6px; }
-    .side-item { font-size: 10px; padding: 5px 6px; gap: 6px; }
-    .side-group { margin-left: 6px; }
-    .stat-row { grid-template-columns: repeat(2, 1fr); }
-    .grid-2 { grid-template-columns: 1fr; }
-    .heat { overflow: hidden; }
-    .main { padding: 10px; }
-    .main-head .chip { display: none; }
-    .foot-links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (min-width: 1000px) {
+    .hero-grid { grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr); }
   }
 
-  /* Numbers -------------------------------------------------------------- */
-  .numbers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 56px 0 0; }
-  @media (max-width: 760px) { .numbers { grid-template-columns: repeat(2, 1fr); } }
-  .num-card { background: var(--surface-1); border-radius: var(--radius); padding: 18px 20px; }
-  .num-card b { display: block; font-size: 30px; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
-  .num-card span { color: var(--muted); font-size: 13px; }
-
-  /* Sections ------------------------------------------------------------- */
-  section { padding: 84px 0 0; }
-  .section-head { max-width: 660px; }
-  .section-head h2 { font-size: clamp(26px, 3.2vw, 36px); margin-top: 10px; }
-  .section-head p { color: var(--muted); margin: 12px 0 0; font-size: 16px; }
-
-  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 34px; }
-  @media (max-width: 980px) { .features { grid-template-columns: repeat(2, 1fr); } }
-  @media (max-width: 620px) { .features { grid-template-columns: 1fr; } }
-  .feature {
-    background: linear-gradient(180deg, var(--surface-1), rgba(18,21,28,.55));
-    border-radius: var(--radius); padding: 22px;
-    transition: transform .2s ease, background .2s ease;
+  .kicker {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--dim); margin: 0 0 20px;
   }
-  .feature:hover { transform: translateY(-2px); background: var(--surface-2); }
-  .feature .fi {
-    width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center;
-    background: rgba(124,140,255,.14); color: #a8b2ff; margin-bottom: 14px;
-  }
-  .feature h3 { font-size: 15.5px; margin-bottom: 6px; }
-  .feature p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.55; }
-  .feature .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; }
-  .tag { font-size: 11px; padding: 3px 8px; border-radius: 999px; background: var(--surface-3); color: var(--muted); }
+  .kicker .dot { width: 7px; height: 7px; background: var(--acid); box-shadow: 0 0 12px 1px color-mix(in srgb, var(--acid) 55%, transparent); }
 
-  /* Showcase ------------------------------------------------------------- */
-  .showcase { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 34px; }
-  @media (max-width: 900px) { .showcase { grid-template-columns: 1fr; } }
-  .shot { background: var(--surface-1); border-radius: var(--radius); padding: 20px; }
-  .shot h3 { font-size: 15px; margin-bottom: 4px; }
-  .shot .sub { color: var(--faint); font-size: 12.5px; margin-bottom: 16px; }
-  .mixer { display: grid; gap: 7px; }
-  .mix-row { display: grid; grid-template-columns: 84px 1fr 40px; align-items: center; gap: 10px; font-size: 12px; }
-  .mix-row .name { color: var(--muted); }
-  .mix-row .track { height: 6px; border-radius: 3px; background: var(--surface-3); position: relative; overflow: hidden; }
-  .mix-row .track i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: linear-gradient(90deg, #7c8cff, #9d8cff); }
-  .mix-row .val { text-align: right; color: var(--faint); font-variant-numeric: tabular-nums; }
-  .grade-rows { display: grid; gap: 6px; }
-  .grade-row {
-    display: grid; grid-template-columns: 1fr 54px 40px 70px; gap: 8px; align-items: center;
-    background: var(--surface-2); border-radius: 10px; padding: 8px 10px; font-size: 12px;
+  h1 {
+    margin: 0;
+    font-size: clamp(40px, 6.4vw, 76px);
+    line-height: 0.93;
+    letter-spacing: -0.048em;
+    font-weight: 820;
+    text-wrap: balance;
+    padding-bottom: 16px;
   }
-  .grade-row .gbar { height: 5px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
-  .grade-row .gbar i { display: block; height: 100%; border-radius: 3px; }
-  .whatif { margin-top: 14px; background: rgba(124,140,255,.1); border-radius: 12px; padding: 12px; text-align: center; }
-  .whatif b { display: block; font-size: 26px; letter-spacing: -.02em; color: #aab4ff; font-variant-numeric: tabular-nums; }
-  .whatif span { font-size: 11.5px; color: var(--muted); }
-
-  /* Tools list ----------------------------------------------------------- */
-  .tools-wrap { margin-top: 30px; display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
-  .tool-group { background: var(--surface-1); border-radius: 14px; padding: 14px 15px; }
-  .tool-group h4 {
-    margin: 0 0 8px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint);
+  h1 .pixel-underline {
+    display: inline-block;
+    font-style: normal;
+    color: var(--acid);
+    border-bottom: 6px solid var(--acid);
+    padding-bottom: 10px;
+    margin-bottom: -8px;
   }
-  .tool-group ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 5px; }
-  .tool-group li { font-size: 12.5px; color: var(--muted); display: flex; gap: 7px; align-items: baseline; }
-  .tool-group li::before { content: ""; width: 4px; height: 4px; border-radius: 50%; background: var(--accent); opacity: .7; flex: none; transform: translateY(-2px); }
 
-  /* Install -------------------------------------------------------------- */
-  .install-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 32px; }
-  @media (max-width: 900px) { .install-grid { grid-template-columns: minmax(0, 1fr); } }
-  /* min-width:0 lets long command lines scroll inside the card instead of
-     stretching the whole grid past the viewport. */
-  .install { background: var(--surface-1); border-radius: var(--radius); padding: 22px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-  .install-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .install-head h3 { font-size: 15px; }
-  .install-head .badge { margin-left: auto; font-size: 10.5px; color: var(--faint); }
-  .install p { margin: 0; color: var(--muted); font-size: 13px; }
-  .cmd {
-    display: flex; align-items: center; gap: 8px; background: var(--surface); max-width: 100%;
-    border-radius: 10px; padding: 9px 10px; font-family: var(--mono); font-size: 12px; color: #cdd3e6;
+  .lede {
+    margin: 22px 0 0;
+    max-width: 47ch;
+    font-size: clamp(15px, 1.15vw, 17px);
+    line-height: 1.62;
+    color: #b6b2a7;
+  }
+  .lede code {
+    font-family: var(--mono); font-size: 0.88em; color: var(--bone);
+    background: var(--panel); padding: 1px 5px;
+  }
+
+  .cta-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 28px; }
+  .cta-note { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.1em; color: var(--faint); text-transform: uppercase; }
+
+  .spec-row {
+    display: flex; flex-wrap: wrap; gap: 0;
+    margin: 34px 0 0; padding: 0; list-style: none;
+    border-top: 1px solid var(--rule);
+  }
+  .spec-row li {
+    padding: 12px 18px 6px 0;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--faint);
+  }
+  .spec-row li b { display: block; color: var(--bone); font-size: 12.5px; letter-spacing: 0.02em; text-transform: none; margin-top: 3px; font-weight: 600; }
+  .spec-row li + li { padding-left: 18px; border-left: 1px solid var(--rule); }
+
+  /* --------------------------------------------------------------- the scene */
+
+  .scene-wrap { position: relative; }
+  .scene {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    border: 1px solid var(--rule);
+    background: #06080a;
+    overflow: hidden;
+  }
+  .scene canvas {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    display: block;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+  .scene .tick { position: absolute; width: 9px; height: 9px; background: var(--acid); opacity: 0.85; }
+  .scene .tick.tl { top: -1px; left: -1px; }
+  .scene .tick.tr { top: -1px; right: -1px; }
+  .scene .tick.bl { bottom: -1px; left: -1px; }
+  .scene .tick.br { bottom: -1px; right: -1px; }
+  .scene .scan { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
+  .scene[data-mode="crt"] .scan {
+    opacity: 1;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,0.34) 0 1px, transparent 1px 3px);
+  }
+  .scene-meta {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-top: 10px;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint);
+  }
+  .mode-group { display: flex; gap: 0; border: 1px solid var(--rule); }
+  .mode-group button {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
+    background: transparent; color: var(--dim); border: 0; padding: 6px 10px; cursor: pointer;
+    transition: background-color 150ms linear, color 150ms linear;
+  }
+  .mode-group button + button { border-left: 1px solid var(--rule); }
+  .mode-group button[aria-pressed="true"] { background: var(--acid); color: #0b0f04; }
+  .mode-group button:hover { color: var(--bone); }
+  .mode-group button[aria-pressed="true"]:hover { color: #0b0f04; }
+
+  /* ---------------------------------------------------------------- marquee */
+
+  .marquee {
+    border-block: 1px solid var(--rule);
+    overflow: hidden;
+    background: var(--ink-2);
+    padding-block: 11px;
+  }
+  .marquee-track {
+    display: flex; gap: 34px; width: max-content;
+    animation: slide 44s linear infinite;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--faint);
+  }
+  .marquee-track span { display: inline-flex; align-items: center; gap: 34px; white-space: nowrap; }
+  .marquee-track b { color: var(--dim); font-weight: 500; }
+  .marquee-track i { color: var(--acid); font-style: normal; }
+  @keyframes slide { from { transform: translate3d(0,0,0); } to { transform: translate3d(-50%,0,0); } }
+  @media (prefers-reduced-motion: reduce) {
+    .marquee-track { animation: none; }
+  }
+
+  /* ---------------------------------------------------------------- section */
+
+  section { position: relative; }
+  .band { padding-block: clamp(52px, 7vw, 96px); }
+  .band + .band { border-top: 1px solid var(--rule); }
+
+  .sec-head { display: flex; align-items: flex-end; gap: 16px; margin-bottom: clamp(26px, 4vw, 46px); }
+  .sec-num {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; color: var(--acid);
+    padding-bottom: 6px;
+  }
+  .sec-title {
+    margin: 0;
+    font-size: clamp(26px, 3.3vw, 44px);
+    line-height: 1.02;
+    letter-spacing: -0.035em;
+    font-weight: 780;
+  }
+  .sec-line { flex: 1; height: 1px; background: var(--rule); margin-bottom: 8px; }
+  .sec-sub { margin: 12px 0 0; max-width: 62ch; color: var(--dim); font-size: 15px; }
+
+  /* --------------------------------------------------------------- panorama */
+
+  .pano { height: 620vh; background: var(--ink-2); }
+  .pano-sticky { position: sticky; top: 0; height: 100svh; display: flex; flex-direction: column; overflow: hidden; padding-top: 58px; }
+  .pano-head {
+    display: flex; align-items: flex-end; gap: 16px;
+    padding: clamp(20px, 3vw, 34px) var(--gut) 0;
+  }
+  .pano-count { font-family: var(--mono); font-size: 12px; color: var(--faint); letter-spacing: 0.14em; padding-bottom: 5px; }
+  .pano-count b { color: var(--acid); font-weight: 500; }
+  .pano-viewport { flex: 1; min-height: 0; overflow: hidden; display: flex; align-items: center; }
+  .pano-track {
+    display: flex; gap: 18px; padding-inline: var(--gut);
+    will-change: transform;
+  }
+  .pano-panel {
+    flex: 0 0 min(74vw, 880px);
+    border: 1px solid var(--rule);
+    background: var(--panel);
+    padding: clamp(18px, 2.4vw, 30px);
+    display: grid;
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+    gap: 14px;
+    min-height: min(64svh, 520px);
+    scroll-snap-align: center;
+  }
+  .pano-panel h3 {
+    margin: 0; font-size: clamp(20px, 2.2vw, 30px); letter-spacing: -0.03em; font-weight: 720; line-height: 1.05;
+  }
+  .pano-panel p { margin: 0; color: var(--dim); font-size: 13.5px; line-height: 1.6; max-width: 56ch; }
+  .pano-tag { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
+  .pano-tag b { color: var(--acid); font-weight: 500; }
+  .pano-foot {
+    display: flex; align-items: center; gap: 14px;
+    padding: 0 var(--gut) clamp(16px, 2vw, 26px);
+  }
+  .pano-bar { flex: 1; height: 2px; background: var(--rule); position: relative; overflow: hidden; }
+  .pano-bar i { position: absolute; inset: 0 auto 0 0; width: 0%; background: var(--acid); }
+  .pano-hint { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); }
+
+  /* Mock interfaces inside panorama panels. Pure divs, no screenshots. */
+  .mock { border: 1px solid var(--rule); background: #0b0d0f; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+  .mock-bar { display: flex; align-items: center; gap: 6px; padding: 7px 9px; border-bottom: 1px solid var(--rule); }
+  .mock-bar i { width: 6px; height: 6px; background: var(--rule-2); display: block; }
+  .mock-bar span { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.12em; color: var(--faint); text-transform: uppercase; }
+  .mock-body { flex: 1; display: flex; min-height: 0; }
+  .mock-side { width: 74px; border-right: 1px solid var(--rule); padding: 8px 7px; display: flex; flex-direction: column; gap: 6px; flex: 0 0 auto; }
+  .mock-side i { display: block; height: 6px; background: var(--rule); }
+  .mock-side i.on { background: color-mix(in srgb, var(--acid) 70%, transparent); }
+  .mock-main { flex: 1; padding: 10px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .mrow { display: flex; align-items: center; gap: 7px; }
+  .mrow u { width: 8px; height: 8px; border: 1px solid var(--rule-2); flex: 0 0 auto; text-decoration: none; }
+  .mrow u.done { background: var(--acid); border-color: var(--acid); }
+  .mrow span { height: 6px; background: var(--rule); display: block; }
+  .mrow em { margin-left: auto; font-family: var(--mono); font-size: 9px; font-style: normal; color: var(--faint); letter-spacing: 0.06em; }
+  .mstats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .mstat { border: 1px solid var(--rule); padding: 7px 6px; }
+  .mstat b { display: block; font-family: var(--mono); font-size: 14px; color: var(--bone); letter-spacing: -0.02em; }
+  .mstat span { font-family: var(--mono); font-size: 8px; letter-spacing: 0.1em; color: var(--faint); text-transform: uppercase; }
+  .mdigits { font-family: var(--mono); font-size: clamp(34px, 5vw, 58px); letter-spacing: -0.05em; line-height: 1; color: var(--bone); }
+  .mseg { display: flex; gap: 2px; }
+  .mseg i { flex: 1; height: 7px; background: var(--rule); }
+  .mseg i.on { background: var(--indigo); }
+  .mbar { display: flex; align-items: center; gap: 8px; }
+  .mbar span { font-family: var(--mono); font-size: 9px; color: var(--faint); width: 62px; letter-spacing: 0.06em; }
+  .mbar u { height: 7px; background: var(--indigo); flex: 0 0 auto; }
+  .mbar b { margin-left: auto; font-family: var(--mono); font-size: 9px; color: var(--dim); font-weight: 500; }
+  .mnote h4 { margin: 0 0 6px; font-size: 13px; color: var(--bone); font-weight: 650; letter-spacing: -0.01em; }
+  .mnote p { margin: 0; font-family: var(--mono); font-size: 9.5px; line-height: 1.9; color: var(--faint); }
+  .mnote p b { color: var(--warm); font-weight: 500; }
+  .mfaders { display: flex; gap: 10px; align-items: flex-end; height: 156px; padding-block: 4px; }
+  .mfader { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; justify-content: flex-end; }
+  .mfader u { width: 100%; min-height: 3px; background: linear-gradient(to top, var(--indigo), color-mix(in srgb, var(--indigo) 25%, transparent)); display: block; }
+  .mfader span { font-family: var(--mono); font-size: 8px; letter-spacing: 0.08em; color: var(--faint); }
+  .mtools { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+  .mtool { border: 1px solid var(--rule); padding: 6px 5px; font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.08em; color: var(--dim); text-transform: uppercase; text-align: center; }
+  .mtool.on { border-color: color-mix(in srgb, var(--acid) 60%, transparent); color: var(--acid); }
+
+  /* ----------------------------------------------------------------- detail */
+
+  .detail-grid { display: grid; gap: clamp(24px, 4vw, 64px); grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 940px) { .detail-grid { grid-template-columns: 260px minmax(0, 1fr); } }
+
+  .detail-aside { position: sticky; top: 92px; align-self: start; }
+  .detail-aside .mono { color: var(--faint); }
+  .detail-aside h2 { margin: 10px 0 0; font-size: clamp(24px, 2.6vw, 34px); letter-spacing: -0.035em; line-height: 1.05; font-weight: 760; }
+  .detail-aside p { color: var(--dim); font-size: 13.5px; margin: 12px 0 0; }
+
+  .detail-block { padding-block: 26px; border-top: 1px solid var(--rule); }
+  .detail-block:first-child { border-top: 0; padding-top: 0; }
+  .detail-block h3 { margin: 0 0 8px; font-size: 19px; letter-spacing: -0.02em; font-weight: 700; }
+  .detail-block p { margin: 0 0 14px; color: var(--dim); font-size: 14.5px; line-height: 1.65; max-width: 68ch; }
+  pre {
+    margin: 0;
+    border: 1px solid var(--rule);
+    background: #0b0d0f;
+    padding: 14px 16px;
     overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.85;
+    color: #b9b5aa;
   }
-  .cmd code { white-space: nowrap; }
-  .cmd button {
-    margin-left: auto; flex: none; border: 0; border-radius: 8px; padding: 4px 8px; cursor: pointer;
-    background: var(--surface-3); color: var(--muted); font: inherit; font-size: 11px;
-    transition: background .18s ease, color .18s ease;
-  }
-  .cmd button:hover { background: var(--accent); color: #fff; }
-  .install .links { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12.5px; margin-top: auto; }
-  .note { color: var(--faint); font-size: 12px; margin-top: 14px; }
+  pre b { color: var(--acid); font-weight: 500; }
+  pre i { color: var(--faint); font-style: normal; }
 
-  /* FAQ ------------------------------------------------------------------ */
-  .faq { margin-top: 30px; display: grid; gap: 8px; max-width: 820px; }
-  .qa { background: var(--surface-1); border-radius: 14px; overflow: hidden; }
-  .qa button {
-    width: 100%; display: flex; align-items: center; gap: 12px; text-align: left; cursor: pointer;
-    background: none; border: 0; color: var(--text); font: inherit; font-weight: 600; font-size: 14.5px;
-    padding: 16px 18px;
+  #detail { overflow: clip; }
+  .ghost {
+    position: absolute;
+    will-change: transform;
+    pointer-events: none;
+    right: -2vw;
+    top: 8%;
+    font-size: clamp(120px, 22vw, 300px);
+    font-weight: 850;
+    letter-spacing: -0.06em;
+    color: transparent;
+    -webkit-text-stroke: 1px color-mix(in srgb, var(--rule-2) 90%, transparent);
+    pointer-events: none;
+    user-select: none;
+    line-height: 0.8;
+    z-index: 0;
   }
-  .qa button .caret { margin-left: auto; color: var(--faint); transition: transform .2s ease; flex: none; }
-  .qa[open] button .caret { transform: rotate(90deg); }
-  .qa .answer { padding: 0 18px 16px; color: var(--muted); font-size: 13.5px; }
-  .qa .answer p { margin: 0 0 8px; }
-  .qa .answer p:last-child { margin: 0; }
 
-  /* Footer --------------------------------------------------------------- */
-  footer { margin-top: 96px; padding: 40px 0 56px; background: var(--surface-1); }
-  .foot { display: flex; flex-wrap: wrap; gap: 28px; justify-content: space-between; align-items: flex-start; }
-  .foot-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, auto)); gap: 24px; min-width: 0; }
-  .foot-links h4 { margin: 0 0 8px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
-  .foot-links a { display: block; color: var(--muted); font-size: 13px; padding: 3px 0; }
-  .foot-links a:hover { color: var(--text); }
-  .foot-note { color: var(--faint); font-size: 12px; max-width: 300px; }
-  .foot-note p { margin: 10px 0 0; }
+  /* --------------------------------------------------------------- keyboard */
 
-  /* One-shot entrance for the hero. Content is always present: the animation
-     only translates and fades in from a fully visible end state. */
-  @keyframes rise {
-    from { opacity: 0; transform: translateY(12px); }
-    to { opacity: 1; transform: none; }
+  .keys { display: grid; gap: 0; border-top: 1px solid var(--rule); }
+  .pano-panel { transition: border-color 200ms linear; }
+  .pano-panel:hover { border-color: var(--rule-2); }
+  .key-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 16px;
+    padding: 13px 4px;
+    border-bottom: 1px solid var(--rule);
   }
-  .hero-inner > * {
-    animation: rise .5s cubic-bezier(.22,.61,.36,1) both;
+  .key-row span { color: var(--dim); font-size: 13.5px; }
+  .key-row span b { color: var(--bone); font-weight: 600; }
+  kbd {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 26px; height: 24px; padding: 0 7px;
+    border: 1px solid var(--rule-2); border-bottom-width: 2px;
+    background: var(--panel); color: var(--bone);
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.06em;
   }
-  .hero-inner > *:nth-child(2) { animation-delay: .08s; }
+  .kbd-group { display: flex; align-items: center; gap: 4px; }
 
-  .sr-only {
-    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-    overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+  /* ------------------------------------------------------------- it is not */
+
+  .isnot { display: grid; gap: 26px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 820px) { .isnot { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .isnot ul { margin: 0; padding: 0; list-style: none; }
+  .isnot li {
+    display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px;
+    padding: 11px 0; border-bottom: 1px solid var(--rule);
+    font-size: 14px; color: var(--dim);
   }
-  .skip {
-    position: absolute; left: 16px; top: -48px; background: var(--surface-3); color: var(--text);
-    padding: 10px 14px; border-radius: 10px; z-index: 60; transition: top .18s ease;
+  .isnot li b { color: var(--bone); font-weight: 600; }
+  .isnot li i {
+    font-family: var(--mono); font-style: normal; font-size: 12px; padding-top: 2px;
   }
-  .skip:focus { top: 12px; }
+  .isnot .no i { color: #e0705f; }
+  .isnot .yes i { color: var(--acid); }
+  .isnot h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; font-family: var(--mono); color: var(--faint); font-weight: 500; }
+
+  /* ---------------------------------------------------------------- install */
+
+  .install-grid { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 900px) { .install-grid { grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); } }
+
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--rule); margin-bottom: 18px; flex-wrap: wrap; }
+  .tabs button {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    background: transparent; color: var(--faint); border: 0; border-bottom: 2px solid transparent;
+    padding: 10px 14px; cursor: pointer; transition: color 150ms linear, border-color 150ms linear;
+  }
+  .tabs button[aria-selected="true"] { color: var(--bone); border-bottom-color: var(--acid); }
+  .tabs button:hover { color: var(--bone); }
+
+  .tabpanel[hidden] { display: none; }
+  .file-row {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 12px 0; border-bottom: 1px solid var(--rule);
+  }
+  .file-row:first-of-type { border-top: 1px solid var(--rule); }
+  .file-row .fname { font-family: var(--mono); font-size: 12px; color: var(--bone); word-break: break-all; }
+  .file-row .fmeta { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+  .file-row a.btn { margin-left: auto; }
+
+  .cmdbox {
+    display: flex; align-items: center; gap: 10px;
+    border: 1px solid var(--rule); background: #0b0d0f;
+    padding: 9px 12px; margin-top: 14px;
+  }
+  .cmdbox code {
+    font-family: var(--mono); font-size: 11.5px; color: #b9b5aa; flex: 1; overflow-x: auto; white-space: nowrap;
+    scrollbar-width: none;
+  }
+  .cmdbox code::-webkit-scrollbar { display: none; }
+  .copy {
+    background: transparent; border: 1px solid var(--rule-2); color: var(--dim);
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 5px 8px; cursor: pointer; white-space: nowrap;
+  }
+  .copy:hover { color: var(--bone); border-color: var(--bone); }
+
+  .note { font-size: 12.5px; color: var(--faint); line-height: 1.7; }
+  .note b { color: var(--dim); font-weight: 600; }
+
+  .sourcelist { display: grid; gap: 0; }
+  .sourcelist div { padding: 10px 0; border-bottom: 1px solid var(--rule); display: flex; justify-content: space-between; gap: 12px; font-family: var(--mono); font-size: 11px; color: var(--faint); }
+  .sourcelist div b { color: var(--dim); font-weight: 500; }
+
+  /* ------------------------------------------------------------- meta note */
+
+  .meta {
+    margin-top: clamp(28px, 4vw, 44px);
+    border: 1px solid var(--rule);
+    padding: clamp(18px, 2.4vw, 30px);
+    display: grid;
+    gap: 22px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  @media (min-width: 860px) { .meta { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); } }
+  .meta h3 { margin: 8px 0 0; font-size: clamp(19px, 2vw, 24px); letter-spacing: -0.025em; line-height: 1.12; font-weight: 720; }
+  .meta ol { margin: 0; padding: 0; list-style: none; counter-reset: m; }
+  .meta li {
+    counter-increment: m;
+    position: relative;
+    padding: 9px 0 9px 34px;
+    border-bottom: 1px solid var(--rule);
+    font-size: 13.5px;
+    color: var(--dim);
+    line-height: 1.55;
+  }
+  .meta li:last-child { border-bottom: 0; }
+  .meta li::before {
+    content: counter(m, decimal-leading-zero);
+    position: absolute; left: 0; top: 9px;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+    color: var(--acid);
+  }
+  .meta li b { color: var(--bone); font-weight: 600; }
+
+  /* ----------------------------------------------------------------- footer */
+
+  footer { border-top: 1px solid var(--rule); padding-block: 44px 34px; background: var(--ink-2); }
+  .foot-grid { display: grid; gap: 24px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 760px) { .foot-grid { grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 0.6fr)); } }
+  .foot-brand { display: flex; align-items: center; gap: 10px; font-weight: 750; letter-spacing: -0.02em; }
+  .foot-col h4 { margin: 0 0 10px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); font-weight: 500; }
+  .foot-col a { display: block; padding: 4px 0; color: var(--dim); font-size: 13px; }
+  .foot-col a:hover { color: var(--bone); }
+  .foot-base {
+    display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center;
+    margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--rule);
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint);
+  }
+
+  /* Page-wide pixel mode, toggled with P. */
+  body[data-pixel="true"]::after {
+    content: "";
+    position: fixed; inset: 0; z-index: 60; pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,0.28) 0 1px, transparent 1px 3px);
+    mix-blend-mode: multiply;
+  }
+  body[data-pixel="true"] .scene { filter: saturate(1.15) contrast(1.06); }
+
+  /* Scroll progress */
+  .progress {
+    position: fixed; top: 0; left: 0; height: 2px; width: 0%;
+    background: var(--acid); z-index: 50; pointer-events: none;
+  }
+
+  /* ------------------------------------------------------------ responsive */
+
+  @media (max-width: 999px) {
+    .brand .tag { display: none; }
+    .hero-grid { min-height: 0; }
+  }
+  @media (min-width: 860px) {
+    .head-nav { display: flex; }
+  }
+  @media (max-width: 720px) {
+    .site-head { gap: 10px; }
+    .head-right .btn--primary { display: none; }
+    .spec-row li { padding-right: 14px; }
+    .spec-row li + li { padding-left: 14px; }
+    .ghost { display: none; }
+    .key-row { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+    .key-row .kbd-group { justify-self: start; }
+  }
+
+  /* Panorama becomes a native swipe strip on small screens: no scroll
+     hijacking, no height hack, no horizontal page overflow. */
+  @media (max-width: 900px) {
+    .pano { height: auto; }
+    .pano-sticky { position: static; height: auto; padding-top: 0; }
+    .pano-viewport {
+      overflow-x: auto; overflow-y: hidden;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      padding-block: 22px 12px;
+      scrollbar-width: none;
+    }
+    .pano-viewport::-webkit-scrollbar { display: none; }
+    .pano-track { transform: none !important; gap: 12px; }
+    .pano-panel { flex: 0 0 84vw; min-height: 0; }
+    .pano-head, .pano-foot { padding-inline: var(--gut); }
+    .pano-foot { padding-top: 10px; }
+    .pano-hint, .pano-bar { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; }
+  }
+
+  :focus-visible { outline: 2px solid var(--acid); outline-offset: 3px; }
 </style>
 </head>
-<body>
-<div class="bg" aria-hidden="true"><div class="bg-grid"></div></div>
-<a class="skip" href="#main">Skip to content</a>
 
-<header class="site">
-  <div class="wrap nav">
-    <a class="brand" href="./" aria-label="Flow home">
-      <svg width="26" height="26" viewBox="0 0 64 64" aria-hidden="true">
-        <rect width="64" height="64" rx="15" fill="#7c8cff"/>
-        <g fill="none" stroke="#fff" stroke-width="4.6" stroke-linecap="round">
-          <path d="M6 21c9-6 17 6 26 0s17 6 26 0" opacity=".75"/>
-          <path d="M6 32c9-6 17 6 26 0s17 6 26 0"/>
-          <path d="M6 43c9-6 17 6 26 0s17 6 26 0" opacity=".6"/>
-        </g>
-      </svg>
-      <span>Flow</span>
-    </a>
-    <nav class="nav-links" aria-label="Sections">
-      <a href="#features">Features</a>
-      <a href="#tools">Tools</a>
-      <a href="#install">Install</a>
-      <a href="#faq">FAQ</a>
-    </nav>
-    <div class="nav-cta">
-      <a class="btn btn-ghost btn-sm" href="https://github.com/opngo/flow">
-        <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A7.99 7.99 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
-        GitHub
-      </a>
-      <a class="btn btn-primary btn-sm" href="https://github.com/opngo/flow/releases/latest">Download</a>
-    </div>
+<body>
+<div class="progress" id="progress" aria-hidden="true"></div>
+
+<header class="site-head" id="site-head">
+  <a class="brand" href="#top" aria-label="Flow, back to top">
+    <svg width="20" height="20" viewBox="0 0 10 10" aria-hidden="true" shape-rendering="crispEdges">
+      <rect x="0" y="0" width="10" height="2" fill="#c9f24e"/>
+      <rect x="0" y="4" width="7" height="2" fill="#c9f24e"/>
+      <rect x="0" y="8" width="4" height="2" fill="#c9f24e"/>
+      <rect x="0" y="0" width="2" height="10" fill="#c9f24e"/>
+    </svg>
+    Flow
+    <span class="tag">v<span data-version>1.1.0</span> · MIT</span>
+  </a>
+
+  <nav class="head-nav" aria-label="Sections">
+    <a href="#workbench">01 Workbench</a>
+    <a href="#panorama">02 Panorama</a>
+    <a href="#detail">03 Detail</a>
+    <a href="#install">04 Install</a>
+  </nav>
+
+  <div class="head-right">
+    <a class="btn btn--ghost" href="https://github.com/opngo/flow">Source</a>
+    <a class="btn btn--primary" href="https://github.com/opngo/flow/releases/download/v1.1.0/Flow-1.1.0-mac-arm64.dmg" data-download="macArm">Download</a>
   </div>
 </header>
 
-<main id="main">
-  <section class="hero" aria-labelledby="hero-title">
-    <div class="wrap hero-inner">
-      <div>
-        <p class="pill"><span class="dot" aria-hidden="true"></span> <strong>v1.0.0</strong> &nbsp; Windows · macOS · Linux</p>
-        <h1 class="display" id="hero-title">Everything you were juggling, in <span>one calm app</span>.</h1>
-        <p class="lede">
-          Flow is a complete productivity suite for the desktop: tasks, habits, goals, focus timers,
-          grades, notes, flashcards and 124 tools — reading from a single local database.
-          No account. No subscription. No network calls.
-        </p>
-        <div class="hero-actions">
-          <a class="btn btn-primary" href="https://github.com/opngo/flow/releases/latest">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 12 5 5 5-5"/><path d="M5 21h14"/></svg>
-            Download for desktop
-          </a>
-          <a class="btn btn-ghost" href="https://github.com/opngo/flow#readme">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
-            Read the docs
-          </a>
+<main id="top">
+
+  <!-- ============================================================ hero -->
+  <section class="hero" id="workbench">
+    <div class="wrap">
+      <div class="hero-grid">
+        <div>
+          <p class="kicker"><span class="dot" aria-hidden="true"></span>Desktop app · macOS · Windows · Linux</p>
+
+          <h1>Twelve tools,<br />one file,<br /><span class="pixel-underline">no network</span>.</h1>
+
+          <p class="lede">
+            Flow is a workbench for one person: tasks, habits, goals, a focus timer, grades, notes,
+            flashcards, a calendar, a sound studio built on Web Audio, and a hundred small tools.
+            Everything you type goes into a single JSON file in your user directory. There is no
+            account screen because there are no accounts.
+          </p>
+
+          <div class="cta-row">
+            <a class="btn btn--primary" href="https://github.com/opngo/flow/releases/download/v1.1.0/Flow-1.1.0-mac-arm64.dmg" data-download="macArm">
+              Download for <span data-platform>macOS</span>
+            </a>
+            <a class="btn" href="https://github.com/opngo/flow">Read the source</a>
+            <span class="cta-note">Free · <span data-version>1.1.0</span> · 100 MB</span>
+          </div>
+
+          <ul class="spec-row">
+            <li>Stored<b>One local file</b></li>
+            <li>Built with<b>Electron + React</b></li>
+            <li>Licence<b>MIT, forever</b></li>
+            <li>Telemetry<b>None</b></li>
+          </ul>
         </div>
-        <p class="hero-meta">
-          <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> MIT licensed</span>
-          <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Works offline, forever</span>
-          <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Your data stays yours</span>
-        </p>
+
+        <div class="scene-wrap">
+          <div class="scene" id="scene" data-mode="pixel">
+            <canvas id="scene-canvas" width="240" height="150" aria-label="Pixel illustration of the Flow window" role="img"></canvas>
+            <span class="tick tl" aria-hidden="true"></span><span class="tick tr" aria-hidden="true"></span>
+            <span class="tick bl" aria-hidden="true"></span><span class="tick br" aria-hidden="true"></span>
+            <span class="scan" aria-hidden="true"></span>
+          </div>
+          <div class="scene-meta">
+            <div class="mode-group" role="group" aria-label="Scene rendering">
+              <button type="button" data-mode-btn="pixel" aria-pressed="true">Pixel</button>
+              <button type="button" data-mode-btn="crt" aria-pressed="false">CRT</button>
+              <button type="button" data-mode-btn="clean" aria-pressed="false">Clean</button>
+            </div>
+            <span id="scene-readout">240 × 150 · 5 tones · 0 requests</span>
+            <span class="spacer"></span>
+            <span>Press <b>P</b> for scanlines</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================= marquee -->
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track" id="marquee">
+      <span>
+        <b>No accounts</b><i>/</i> <b>No telemetry</b><i>/</i> <b>No subscription</b><i>/</i>
+        <b>No cloud</b><i>/</i> <b>No sync conflicts</b><i>/</i> <b>No AI assistant guessing at your calendar</b><i>/</i>
+        <b>No newsletter</b><i>/</i> <b>No cookie banner</b><i>/</i>
+      </span>
+      <span aria-hidden="true">
+        <b>No accounts</b><i>/</i> <b>No telemetry</b><i>/</i> <b>No subscription</b><i>/</i>
+        <b>No cloud</b><i>/</i> <b>No sync conflicts</b><i>/</i> <b>No AI assistant guessing at your calendar</b><i>/</i>
+        <b>No newsletter</b><i>/</i> <b>No cookie banner</b><i>/</i>
+      </span>
+    </div>
+  </div>
+
+  <!-- ========================================================= panorama -->
+  <section class="pano" id="panorama" aria-label="A walk through the app">
+    <div class="pano-sticky">
+      <div class="pano-head">
+        <div>
+          <div class="sec-num mono">02 / Panorama</div>
+          <h2 class="sec-title">A day, left to right</h2>
+        </div>
+        <div class="sec-line" aria-hidden="true"></div>
+        <div class="pano-count"><b id="pano-index">01</b> / 06</div>
       </div>
 
-      <!-- App preview: drawn with HTML and CSS so the page stays a single file. -->
-      <div class="preview" role="img" aria-label="Preview of the Flow dashboard: sidebar navigation, today's stats, a study heatmap, a task list and a focus timer.">
-        <div class="window">
-          <div class="titlebar">
-            <div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
-            <span class="tb-title">Flow — Dashboard</span>
-          </div>
-          <div class="app">
-            <div class="sidebar">
-              <div class="side-item active"><span class="ico"></span>Dashboard</div>
-              <div class="side-item"><span class="ico"></span>Todos</div>
-              <div class="side-item"><span class="ico"></span>Habits</div>
-              <div class="side-item"><span class="ico"></span>Goals</div>
-              <div class="side-group">Time</div>
-              <div class="side-item"><span class="ico"></span>Focus</div>
-              <div class="side-item"><span class="ico"></span>Timers</div>
-              <div class="side-item"><span class="ico"></span>Analytics</div>
-              <div class="side-group">Study</div>
-              <div class="side-item"><span class="ico"></span>Grades</div>
-              <div class="side-item"><span class="ico"></span>Notes</div>
-              <div class="side-item"><span class="ico"></span>Flashcards</div>
-            </div>
-            <div class="main">
-              <div class="main-head">
-                <h4>Good evening</h4>
-                <span class="chip">Tuesday · 3 of 7 done</span>
-              </div>
-              <div class="stat-row">
-                <div class="stat"><b>2h 14m</b><span>focus today</span></div>
-                <div class="stat"><b>18</b><span>day streak</span></div>
-                <div class="stat"><b>4</b><span>due today</span></div>
-                <div class="stat"><b>91.2%</b><span>term average</span></div>
-              </div>
-              <div class="grid-2">
-                <div class="card">
-                  <h5>Study heatmap</h5>
-                  <div class="heat" id="heat" aria-hidden="true"></div>
+      <div class="pano-viewport" id="pano-viewport">
+        <div class="pano-track" id="pano-track">
+
+          <article class="pano-panel">
+            <div class="pano-tag"><b>01</b> Dashboard</div>
+            <h3>Today, in one screen</h3>
+            <p>Overdue first, then the next three hours, then the habits you still owe the day. Sections reorder themselves around what is actually late, so the top of the page is the next thing to do rather than the oldest thing you made.</p>
+            <div class="mock" aria-hidden="true">
+              <div class="mock-bar"><i></i><i></i><i></i><span>Dashboard</span></div>
+              <div class="mock-body">
+                <div class="mock-side"><i class="on"></i><i></i><i></i><i></i><i></i></div>
+                <div class="mock-main">
+                  <div class="mstats">
+                    <div class="mstat"><b>7</b><span>open</span></div>
+                    <div class="mstat"><b>3</b><span>late</span></div>
+                    <div class="mstat"><b>2h 40</b><span>focus</span></div>
+                    <div class="mstat"><b>12</b><span>streak</span></div>
+                  </div>
+                  <div class="mrow"><u class="done"></u><span style="width:52%"></span><em>08:30</em></div>
+                  <div class="mrow"><u></u><span style="width:66%"></span><em>now</em></div>
+                  <div class="mrow"><u></u><span style="width:44%"></span><em>14:00</em></div>
+                  <div class="mrow"><u></u><span style="width:58%"></span><em>later</em></div>
                 </div>
-                <div class="card">
-                  <h5>Focus</h5>
-                  <div class="timer">
-                    <svg class="ring" width="56" height="56" viewBox="0 0 56 56" aria-hidden="true">
-                      <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(154,162,180,.16)" stroke-width="5"/>
-                      <circle cx="28" cy="28" r="24" fill="none" stroke="#7c8cff" stroke-width="5" stroke-linecap="round"
-                              stroke-dasharray="150.8" stroke-dashoffset="52" transform="rotate(-90 28 28)"/>
-                    </svg>
-                    <div class="time">17:42</div>
-                    <div class="phase">Focus · block 2 of 4</div>
+              </div>
+            </div>
+          </article>
+
+          <article class="pano-panel">
+            <div class="pano-tag"><b>02</b> Focus</div>
+            <h3>A timer that survives your laptop</h3>
+            <p>Focus blocks store a start timestamp and compute what is left from the clock, so sleeping, closing the lid or reloading the window cannot drift the count. Full screen is one keystroke: digits, progress, one button.</p>
+            <div class="mock" aria-hidden="true">
+              <div class="mock-bar"><i></i><i></i><i></i><span>Focus</span></div>
+              <div class="mock-body">
+                <div class="mock-side"><i></i><i class="on"></i><i></i><i></i><i></i></div>
+                <div class="mock-main" style="justify-content:center;gap:14px">
+                  <div class="mdigits">18:42</div>
+                  <div class="mseg">
+                    <i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i>
+                    <i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i>
+                    <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                  </div>
+                  <div class="mrow"><span style="width:38%"></span><em>Chem lab report</em></div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="pano-panel">
+            <div class="pano-tag"><b>03</b> Grades</div>
+            <h3>What you need on the final</h3>
+            <p>Weighted categories, drop-lowest, best-N and what-if marks. Each subject shows the grade you have, the grade it is heading for, and the mark the final exam has to hit to land on your target.</p>
+            <div class="mock" aria-hidden="true">
+              <div class="mock-bar"><i></i><i></i><i></i><span>Grades</span></div>
+              <div class="mock-body">
+                <div class="mock-side"><i></i><i></i><i class="on"></i><i></i><i></i></div>
+                <div class="mock-main" style="gap:11px">
+                  <div class="mbar"><span>Homework</span><u style="width:34%"></u><b>92</b></div>
+                  <div class="mbar"><span>Quizzes</span><u style="width:26%"></u><b>84</b></div>
+                  <div class="mbar"><span>Labs</span><u style="width:41%"></u><b>88</b></div>
+                  <div class="mbar"><span>Final</span><u style="width:8%"></u><b>—</b></div>
+                  <div class="mrow" style="margin-top:4px"><u class="done"></u><span style="width:62%"></span><em>need 78%</em></div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="pano-panel">
+            <div class="pano-tag"><b>04</b> Notes</div>
+            <h3>Markdown that stays in the same file</h3>
+            <p>Notes, journals and folders live beside the rest of your data, so one search finds the note, the flashcard and the grade that mention the same thing. No plugin system, no proprietary blocks, no export step.</p>
+            <div class="mock" aria-hidden="true">
+              <div class="mock-bar"><i></i><i></i><i></i><span>Notes</span></div>
+              <div class="mock-body">
+                <div class="mock-side"><i></i><i></i><i></i><i class="on"></i><i></i></div>
+                <div class="mock-main">
+                  <div class="mnote">
+                    <h4>Photosynthesis, lecture 4</h4>
+                    <p>
+                      <b>## Light reactions</b><br />
+                      - thylakoid membrane<br />
+                      - water split, O2 released<br />
+                      - ATP and NADPH produced<br />
+                      <b>## Calvin cycle</b><br />
+                      - stroma, RuBisCO
+                    </p>
                   </div>
                 </div>
               </div>
-              <div class="card" style="margin-top:7px">
-                <h5>Today</h5>
-                <div class="row"><span class="box done"></span><span class="line"></span></div>
-                <div class="row"><span class="box done"></span><span class="line short"></span></div>
-                <div class="row"><span class="box"></span><span class="line"></span></div>
-                <div class="row"><span class="box"></span><span class="line short"></span></div>
+            </div>
+          </article>
+
+          <article class="pano-panel">
+            <div class="pano-tag"><b>05</b> Sound studio</div>
+            <h3>Noise beds and tones, synthesised locally</h3>
+            <p>Rain, brown noise, a fan, binaural pairs and oscillators, mixed with faders and saved as presets. Everything is generated by the Web Audio graph on your machine, which is why it works on a plane and why there is nothing to download.</p>
+            <div class="mock" aria-hidden="true">
+              <div class="mock-bar"><i></i><i></i><i></i><span>Sound studio</span></div>
+              <div class="mock-body">
+                <div class="mock-side"><i></i><i></i><i></i><i></i><i class="on"></i></div>
+                <div class="mock-main">
+                  <div class="mfaders">
+                    <div class="mfader"><u style="height:62%"></u><span>rain</span></div>
+                    <div class="mfader"><u style="height:34%"></u><span>brown</span></div>
+                    <div class="mfader"><u style="height:78%"></u><span>fan</span></div>
+                    <div class="mfader"><u style="height:18%"></u><span>pad</span></div>
+                    <div class="mfader"><u style="height:48%"></u><span>hiss</span></div>
+                    <div class="mfader"><u style="height:70%"></u><span>rumble</span></div>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          </article>
+
+          <article class="pano-panel">
+            <div class="pano-tag"><b>06</b> Tools</div>
+            <h3>A hundred small things, one shortcut</h3>
+            <p>Unit and currency-free converters, date arithmetic, text transforms, colour maths, hashes, timers, dice, QR codes. Every tool takes keyboard input first, and the command palette can reach any of them from any screen.</p>
+            <div class="mock" aria-hidden="true">
+              <div class="mock-bar"><i></i><i></i><i></i><span>Tools</span></div>
+              <div class="mock-body">
+                <div class="mock-side"><i></i><i></i><i></i><i></i><i></i><i class="on"></i></div>
+                <div class="mock-main">
+                  <div class="mtools">
+                    <div class="mtool on">units</div><div class="mtool">dates</div>
+                    <div class="mtool">text</div><div class="mtool">colour</div>
+                    <div class="mtool">hash</div><div class="mtool">qr</div>
+                    <div class="mtool">dice</div><div class="mtool">grade</div>
+                    <div class="mtool">bmi</div><div class="mtool">loan</div>
+                    <div class="mtool">time</div><div class="mtool">csv</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
         </div>
       </div>
-    </div>
 
-    <div class="wrap">
-      <div class="numbers">
-        <div class="num-card"><b>124</b><span>tools in the catalogue</span></div>
-        <div class="num-card"><b>0</b><span>network requests at runtime</span></div>
-        <div class="num-card"><b>53 × 7</b><span>day study heatmap</span></div>
-        <div class="num-card"><b>3</b><span>platforms, one database</span></div>
-      </div>
-    </div>
-  </section>
-
-  <section id="features" aria-labelledby="features-title">
-    <div class="wrap">
-      <div class="section-head">
-        <p class="eyebrow">What is inside</p>
-        <h2 id="features-title">Nine apps' worth of surface, one place to look.</h2>
-        <p>Flow replaces the to-do app, the habit tracker, the pomodoro timer, the grade spreadsheet, the notes app and the ambient noise tab. Everything shares one schema, so a task can feed a habit, a timer can log study time, and a subject can own both.</p>
-      </div>
-
-      <div class="features">
-        <article class="feature">
-          <div class="fi"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg></div>
-          <h3>Todos with eleven views</h3>
-          <p>List, board, calendar, timeline, day planner, Eisenhower matrix, deadline radar, focus list, overdue rescue, completed log and projects. Drag to reorder, bulk-select, undo anything.</p>
-          <div class="tags"><span class="tag">quick add</span><span class="tag">subtasks</span><span class="tag">reminders</span></div>
-        </article>
-
-        <article class="feature">
-          <div class="fi"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></div>
-          <h3>Habits that keep score</h3>
-          <p>Daily, weekday, times-per-week, alternate-day or full recurrence rules. Streaks, longest runs, consistency, a weekly grid and auto check-in when a linked timer finishes.</p>
-          <div class="tags"><span class="tag">streaks</span><span class="tag">skip reasons</span><span class="tag">insights</span></div>
-        </article>
-
-        <article class="feature">
-          <div class="fi"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
-          <h3>Focus engine and timers</h3>
-          <p>Pomodoro profiles with strict mode, breaks, extensions and distraction counting. Plus countdown, stopwatch, interval, routines, tracker and timesheet. Timers are clock-derived, so they survive sleep and restarts.</p>
-          <div class="tags"><span class="tag">zen mode</span><span class="tag">mini mode</span><span class="tag">auto-log</span></div>
-        </article>
-
-        <article class="feature">
-          <div class="fi"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 15l3-4 3 3 4-6"/></svg></div>
-          <h3>Analytics you can read</h3>
-          <p>A 53-by-7 heatmap with filters and a day panel, plus subject, habit, hour and task breakdowns, streak statistics, custom intensity thresholds and SVG or PNG export.</p>
-          <div class="tags"><span class="tag">heatmap</span><span class="tag">exports</span><span class="tag">streaks</span></div>
-        </article>
-
-        <article class="feature">
-          <div class="fi"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg></div>
-          <h3>Grades with real maths</h3>
-          <p>Subjects own weighted categories with drop-lowest and best-N rules. Enter assignments, quizzes, tests and exams, then ask what you need on the final — for one subject or the whole term.</p>
-          <div class="tags"><span class="tag">what-if</span><span class="tag">GPA 4.0 / 5.0</span><span class="tag">trends</span></div>
-        </article>
-
-        <article class="feature">
-          <div class="fi"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/></svg></div>
-          <h3>Notes that link themselves</h3>
-          <p>Markdown editor with live preview, folders, tags, double-bracket links and backlinks, a journal mode with mood tracking, zen mode, and word and reading-time statistics.</p>
-          <div class="tags"><span class="tag">wikilinks</span><span class="tag">journal</span><span class="tag">markdown</span></div>
-        </article>
-
-        <article class="feature">
-          <div class="fi"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="M7 5V3h14v14h-2"/></svg></div>
-          <h3>Flashcards on a schedule</h3>
-          <p>Decks with spaced repetition: rate a card Again, Hard, Good or Easy and Flow sets the next interval and ease. Import a whole deck from CSV.</p>
-          <div class="tags"><span class="tag">SM-2</span><span class="tag">CSV import</span><span class="tag">due counts</span></div>
-        </article>
-
-        <article class="feature">
-          <div class="fi"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h2l2-7 3 14 3-11 2 4h6"/></svg></div>
-          <h3>A procedural sound studio</h3>
-          <p>White, pink, brown, blue, violet and grey noise, plus eighteen nature and city layers — rain, wind, ocean, fire, crickets, cafe, train, fan. Mixed live, saved as presets, with a sleep timer.</p>
-          <div class="tags"><span class="tag">Web Audio</span><span class="tag">presets</span><span class="tag">sleep timer</span></div>
-        </article>
-
-        <article class="feature">
-          <div class="fi"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg></div>
-          <h3>124 tools, no tab farm</h3>
-          <p>Reviews, exam mode, world clock, citation builder, whiteboard, mind map, Cornell notes, converters, hashing, QR codes, regex, JSON, budgets, backups and more — all a keystroke away.</p>
-          <div class="tags"><span class="tag">command palette</span><span class="tag">search</span><span class="tag">offline</span></div>
-        </article>
+      <div class="pano-foot">
+        <span class="pano-hint">Scroll to pan</span>
+        <div class="pano-bar"><i id="pano-bar"></i></div>
+        <span class="pano-hint">06 panels</span>
       </div>
     </div>
   </section>
 
-  <section aria-labelledby="craft-title">
+  <!-- =========================================================== detail -->
+  <section class="band" id="detail">
+    <div class="ghost" aria-hidden="true" data-speed="-0.09">FLOW</div>
     <div class="wrap">
-      <div class="section-head">
-        <p class="eyebrow">Craft</p>
-        <h2 id="craft-title">Built like software should be.</h2>
-        <p>Local-first storage, a typed schema with migrations, clock-derived timers and a design system with opinions. The details you only notice when they are missing.</p>
-      </div>
-
-      <div class="showcase">
-        <div class="shot">
-          <h3>Sound studio</h3>
-          <p class="sub">Eighteen procedurally generated layers, mixed by you</p>
-          <div class="mixer">
-            <div class="mix-row"><span class="name">Rain, light</span><span class="track"><i style="width:72%"></i></span><span class="val mono">72</span></div>
-            <div class="mix-row"><span class="name">Brown noise</span><span class="track"><i style="width:46%"></i></span><span class="val mono">46</span></div>
-            <div class="mix-row"><span class="name">Cafe murmur</span><span class="track"><i style="width:31%"></i></span><span class="val mono">31</span></div>
-            <div class="mix-row"><span class="name">Fire crackle</span><span class="track"><i style="width:18%"></i></span><span class="val mono">18</span></div>
-            <div class="mix-row"><span class="name">Thunder, far</span><span class="track"><i style="width:9%"></i></span><span class="val mono">09</span></div>
-          </div>
-          <div class="bars" style="margin-top:16px" aria-hidden="true">
-            <i style="height:38%"></i><i style="height:62%"></i><i style="height:44%"></i><i style="height:78%"></i><i style="height:52%"></i><i style="height:88%"></i><i style="height:34%"></i><i style="height:70%"></i><i style="height:58%"></i><i style="height:26%"></i><i style="height:66%"></i><i style="height:48%"></i><i style="height:82%"></i><i style="height:40%"></i><i style="height:56%"></i><i style="height:30%"></i>
-          </div>
+      <div class="detail-grid">
+        <div class="detail-aside">
+          <div class="mono">03 / Detail</div>
+          <h2>Three decisions that shape the whole app</h2>
+          <p>Not features. Constraints: the things that had to be true before any screen was worth building.</p>
         </div>
 
-        <div class="shot">
-          <h3>What-if grades</h3>
-          <p class="sub">Set a target, see the score every remaining exam needs</p>
-          <div class="grade-rows">
-            <div class="grade-row"><span>Chemistry</span><span class="mono">88.4%</span><span class="mono muted">B+</span><span class="gbar"><i style="width:88%;background:#4ec9a0"></i></span></div>
-            <div class="grade-row"><span>Mathematics</span><span class="mono">91.2%</span><span class="mono muted">A-</span><span class="gbar"><i style="width:91%;background:#7c8cff"></i></span></div>
-            <div class="grade-row"><span>Literature</span><span class="mono">84.0%</span><span class="mono muted">B</span><span class="gbar"><i style="width:84%;background:#e5b567"></i></span></div>
-            <div class="grade-row"><span>Physics</span><span class="mono">78.6%</span><span class="mono muted">C+</span><span class="gbar"><i style="width:79%;background:#ef6f6c"></i></span></div>
+        <div>
+          <div class="detail-block">
+            <h3>Your database is a file you can open</h3>
+            <p>
+              A versioned JSON document with a schema, migrations and per-collection recovery: if one array is
+              corrupt it is reset on its own instead of taking the file down with it. Saves are debounced,
+              and the desktop build keeps rolling backups next to the file.
+            </p>
+<pre><i>// a focus block, as stored</i>
+{
+  <b>"phase"</b>: "focus",
+  <b>"startedAt"</b>: "2026-10-24T18:12:04.221Z",
+  <b>"endsAt"</b>:    "2026-10-24T18:37:04.221Z",
+  <b>"remainingMs"</b>: 1498000,
+  <b>"sessionsDone"</b>: 1
+}</pre>
           </div>
-          <div class="whatif">
-            <b>94.1%</b>
-            <span>needed on a 30% final to finish Physics at 90%</span>
+
+          <div class="detail-block">
+            <h3>Timers are timestamps, not countdowns</h3>
+            <p>
+              Every running timer derives what is left from the wall clock, so a suspended process, a sleeping
+              laptop or a reloaded window cannot make it drift. A safety tick runs every thirty seconds and the
+              desktop build reschedules reminders when the machine wakes up.
+            </p>
+<pre>remaining = endsAt <i>−</i> now()          <i>// never a counter</i>
+on resume:  recheck, then reschedule   <i>// powerMonitor</i>
+on reload:  read endsAt, keep running  <i>// no state loss</i></pre>
           </div>
-        </div>
-      </div>
 
-      <div class="numbers" style="margin-top:12px">
-        <div class="num-card"><b>Local-first</b><span>JSON database with versioned migrations</span></div>
-        <div class="num-card"><b>Clock-derived</b><span>timers recomputed from timestamps, never counted down</span></div>
-        <div class="num-card"><b>Type-safe</b><span>Zod schema, strict TypeScript, 41 tests in CI</span></div>
-        <div class="num-card"><b>Resilient</b><span>per-collection recovery and rolling backups</span></div>
-      </div>
-    </div>
-  </section>
-
-  <section id="tools" aria-labelledby="tools-title">
-    <div class="wrap">
-      <div class="section-head">
-        <p class="eyebrow">The catalogue</p>
-        <h2 id="tools-title">124 tools, organised so you can find them.</h2>
-        <p>Every entry opens a real screen — nothing here is a placeholder. Reach any of them from the sidebar, the command palette, or the tools gallery.</p>
-      </div>
-      <div class="tools-wrap">
-        <div class="tool-group">
-          <h4>Tasks</h4>
-          <ul><li>Quick capture inbox</li><li>Someday maybe</li><li>Waiting for</li><li>Recurring engine</li><li>Task templates</li><li>Daily review</li><li>Weekly review</li><li>Deadline radar</li></ul>
-        </div>
-        <div class="tool-group">
-          <h4>Habits and goals</h4>
-          <ul><li>Achievements</li><li>Vacation mode</li><li>Streak insights</li><li>Milestones</li><li>Habit heatmaps</li><li>Nudge coach</li></ul>
-        </div>
-        <div class="tool-group">
-          <h4>Time</h4>
-          <ul><li>Exam mode</li><li>Mini timer</li><li>Breathwork</li><li>Eye rest</li><li>Stretch breaks</li><li>World clock</li><li>Day progress</li><li>Distraction log</li><li>Countdown events</li></ul>
-        </div>
-        <div class="tool-group">
-          <h4>Study</h4>
-          <ul><li>Study planner</li><li>Assignments</li><li>Timetable</li><li>Reading list</li><li>Citations</li><li>Formula sheet</li><li>Vocabulary</li><li>Practice log</li><li>Final needed</li></ul>
-        </div>
-        <div class="tool-group">
-          <h4>Notes</h4>
-          <ul><li>Scratchpad</li><li>Journal</li><li>Writing mode</li><li>Whiteboard</li><li>Mind map</li><li>Cornell notes</li><li>Outline</li><li>Snippets</li><li>Word count</li></ul>
-        </div>
-        <div class="tool-group">
-          <h4>Utilities</h4>
-          <ul><li>Scientific calculator</li><li>Unit converter</li><li>Percentage calc</li><li>Date difference</li><li>Age calculator</li><li>Colour palette</li><li>Base64</li><li>Hash</li><li>QR code</li><li>Password</li><li>Regex tester</li><li>JSON format</li></ul>
-        </div>
-        <div class="tool-group">
-          <h4>Organise</h4>
-          <ul><li>Budget</li><li>Subscriptions</li><li>Reading list</li><li>Files</li><li>Contacts</li><li>Bookmarks</li><li>Packing list</li><li>Saved views</li></ul>
-        </div>
-        <div class="tool-group">
-          <h4>System</h4>
-          <ul><li>Global search</li><li>Tags</li><li>Undo history</li><li>Activity log</li><li>Backup</li><li>Export</li><li>Shortcuts</li><li>Widgets gallery</li><li>Changelog</li></ul>
+          <div class="detail-block">
+            <h3>Nothing leaves the machine</h3>
+            <p>
+              No analytics, no crash reporting, no update ping, no account. The app requests nothing over the
+              network, which also means it works the same on a plane, on a locked-down school laptop and on a
+              machine that has not been updated since you installed it.
+            </p>
+<pre>requests:   <i>0 per session</i>
+accounts:   <i>none</i>
+sync:       <i>none — export the file if you want it elsewhere</i></pre>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <section id="install" aria-labelledby="install-title">
+  <!-- ========================================================== keyboard -->
+  <section class="band" id="keys">
     <div class="wrap">
-      <div class="section-head">
-        <p class="eyebrow">Install</p>
-        <h2 id="install-title">Three platforms, one database format.</h2>
-        <p>Download the installer for your system, or build it yourself from source. The database is a single JSON file you can copy, back up or version.</p>
+      <div class="sec-head">
+        <div class="sec-num mono">04</div>
+        <h2 class="sec-title">Reachable without the mouse</h2>
+        <div class="sec-line" aria-hidden="true"></div>
+      </div>
+
+      <div class="keys">
+        <div class="key-row"><span><b>Command palette</b> — search, run a command, jump anywhere</span><span class="kbd-group"><kbd>⌘</kbd><kbd>K</kbd></span></div>
+        <div class="key-row"><span><b>Quick capture</b> — add a task from whatever you are doing</span><span class="kbd-group"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>Space</kbd></span></div>
+        <div class="key-row"><span><b>Immersive timer</b> — full screen clock, digits only</span><span class="kbd-group"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>↵</kbd></span></div>
+        <div class="key-row"><span><b>Mini mode</b> — a small always-available window</span><span class="kbd-group"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>F</kbd></span></div>
+        <div class="key-row"><span><b>Start or pause the running timer</b></span><span class="kbd-group"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>P</kbd></span></div>
+        <div class="key-row"><span><b>Undo</b> — the store keeps a history, not just the last edit</span><span class="kbd-group"><kbd>⌘</kbd><kbd>Z</kbd></span></div>
+        <div class="key-row"><span><b>Inside the immersive timer</b> — space, skip, distraction, log, ±5 min</span><span class="kbd-group"><kbd>Space</kbd><kbd>S</kbd><kbd>N</kbd><kbd>↑</kbd><kbd>Esc</kbd></span></div>
+        <div class="key-row"><span><b>Pixel mode on this page</b> — scanlines, nothing else changes</span><span class="kbd-group"><kbd>P</kbd></span></div>
+      </div>
+      <p class="note" style="margin-top:16px">On Windows and Linux, replace ⌘ with Ctrl. Every shortcut is editable in Settings.</p>
+    </div>
+  </section>
+
+  <!-- ============================================================ isnot -->
+  <section class="band" id="limits">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="sec-num mono">05</div>
+        <h2 class="sec-title">What it is, and what it is not</h2>
+        <div class="sec-line" aria-hidden="true"></div>
+      </div>
+
+      <div class="isnot">
+        <div class="yes">
+          <h3>It is</h3>
+          <ul>
+            <li><i>+</i><span><b>A single-user desktop app</b> for one person's day, built to be opened first and closed last.</span></li>
+            <li><i>+</i><span><b>Offline by construction.</b> The only network code in the app is the download you used to install it.</span></li>
+            <li><i>+</i><span><b>Backed by a file you own</b>, with plain JSON export and import.</span></li>
+            <li><i>+</i><span><b>Fast on old hardware.</b> No web fonts, no remote assets, no background sync.</span></li>
+          </ul>
+        </div>
+        <div class="no">
+          <h3>It is not</h3>
+          <ul>
+            <li><i>−</i><span><b>A team product.</b> No sharing, no comments, no permissions, no seats.</span></li>
+            <li><i>−</i><span><b>Sync.</b> One file, one machine. Move it with your own tools.</span></li>
+            <li><i>−</i><span><b>An AI product.</b> Nothing is generated, summarised or predicted for you.</span></li>
+            <li><i>−</i><span><b>A mobile app.</b> Desktop only, and the window is not responsive below a tablet.</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="meta">
+        <div>
+          <div class="mono" style="color:var(--faint)">A note on this page</div>
+          <h3>Nothing on this page was generated for it</h3>
+          <p class="note" style="margin-top:12px">
+            Marketing pages for software usually arrive with a stock photograph of a desk, a hosted webfont,
+            an illustration set and a script that watches what you do with them. This one has none of that,
+            because the product it describes has none of that either.
+          </p>
+        </div>
+        <ol>
+          <li><b>Every illustration is drawn in code.</b> The hero scene, the six interface panels and the logo are canvas draws and divs in this file.</li>
+          <li><b>The photograph pretends to be a photograph.</b> It is a five-tone dithered render of a desk, generated pixel by pixel; the counter under it is honest about the tone count.</li>
+          <li><b>System type only.</b> No webfonts are loaded, which is why the page looks slightly different on every machine and loads in one request.</li>
+          <li><b>Copy written by a person.</b> No listicle headers, no "unlock your potential", no invented statistics and no testimonials from companies that do not exist.</li>
+          <li><b>No analytics.</b> The page ships no scripts other than its own, sets no cookies and stores nothing about your visit.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================== install -->
+  <section class="band" id="install">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="sec-num mono">06</div>
+        <h2 class="sec-title">Install</h2>
+        <div class="sec-line" aria-hidden="true"></div>
       </div>
 
       <div class="install-grid">
-        <div class="install">
-          <div class="install-head">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18v10H3z"/><path d="M8 19h8"/></svg>
-            <h3>Windows</h3>
-            <span class="badge">10 · 11 · ARM64</span>
+        <div>
+          <div class="tabs" role="tablist" aria-label="Platform">
+            <button role="tab" id="tab-mac" aria-controls="panel-mac" aria-selected="true" data-tab="mac">macOS</button>
+            <button role="tab" id="tab-win" aria-controls="panel-win" aria-selected="false" data-tab="win">Windows</button>
+            <button role="tab" id="tab-linux" aria-controls="panel-linux" aria-selected="false" data-tab="linux">Linux</button>
           </div>
-          <p>Per-user install, no administrator rights. Creates a Start Menu shortcut so notifications work.</p>
-          <div class="links">
-            <a class="btn btn-primary btn-sm" data-download="win" href="https://github.com/opngo/flow/releases/download/v1.0.0/Flow-1.0.0-win-x64.exe">Installer (.exe)</a>
-            <a class="btn btn-ghost btn-sm" data-download="winPortable" href="https://github.com/opngo/flow/releases/download/v1.0.0/Flow-1.0.0-portable.exe">Portable</a>
+
+          <div class="tabpanel" id="panel-mac" role="tabpanel" aria-labelledby="tab-mac">
+            <div class="file-row">
+              <span class="fname">Flow-<span data-version>1.1.0</span>-mac-arm64.dmg</span>
+              <span class="fmeta">Apple silicon</span>
+              <a class="btn btn--sm" data-download="macArm" href="https://github.com/opngo/flow/releases/download/v1.1.0/Flow-1.1.0-mac-arm64.dmg">Download</a>
+            </div>
+            <div class="file-row">
+              <span class="fname">Flow-<span data-version>1.1.0</span>-mac-x64.dmg</span>
+              <span class="fmeta">Intel</span>
+              <a class="btn btn--sm" data-download="macIntel" href="https://github.com/opngo/flow/releases/download/v1.1.0/Flow-1.1.0-mac-x64.dmg">Download</a>
+            </div>
+            <div class="cmdbox"><code>open Flow-<span data-version>1.1.0</span>-mac-arm64.dmg</code><button class="copy" data-copy>Copy</button></div>
+            <p class="note" style="margin-top:12px">Builds are unsigned. On first launch, right-click the app and choose Open, or allow it in System Settings, Privacy and Security.</p>
           </div>
-          <div class="cmd"><code>winget install opngo.flow</code><button type="button" data-copy>Copy</button></div>
+
+          <div class="tabpanel" id="panel-win" role="tabpanel" aria-labelledby="tab-win" hidden>
+            <div class="file-row">
+              <span class="fname">Flow-<span data-version>1.1.0</span>-win-x64.exe</span>
+              <span class="fmeta">Installer · x64</span>
+              <a class="btn btn--sm" data-download="win" href="https://github.com/opngo/flow/releases/download/v1.1.0/Flow-1.1.0-win-x64.exe">Download</a>
+            </div>
+            <div class="file-row">
+              <span class="fname">Flow-<span data-version>1.1.0</span>-portable.exe</span>
+              <span class="fmeta">Portable · no install</span>
+              <a class="btn btn--sm" data-download="winPortable" href="https://github.com/opngo/flow/releases/download/v1.1.0/Flow-1.1.0-portable.exe">Download</a>
+            </div>
+            <div class="cmdbox"><code>Flow-<span data-version>1.1.0</span>-portable.exe</code><button class="copy" data-copy>Copy</button></div>
+            <p class="note" style="margin-top:12px">The installer is unsigned, so SmartScreen shows a warning once. Choose More info, then Run anyway.</p>
+          </div>
+
+          <div class="tabpanel" id="panel-linux" role="tabpanel" aria-labelledby="tab-linux" hidden>
+            <div class="file-row">
+              <span class="fname">Flow-<span data-version>1.1.0</span>-linux-x86_64.AppImage</span>
+              <span class="fmeta">AppImage · portable</span>
+              <a class="btn btn--sm" data-download="linuxAppImage" href="https://github.com/opngo/flow/releases/download/v1.1.0/Flow-1.1.0-linux-x86_64.AppImage">Download</a>
+            </div>
+            <div class="cmdbox"><code>chmod +x Flow-*.AppImage &amp;&amp; ./Flow-*.AppImage</code><button class="copy" data-copy>Copy</button></div>
+            <p class="note" style="margin-top:12px">If your distribution blocks AppImages, build from source below. The app needs a working audio device for the sound studio only.</p>
+          </div>
+
+          <div class="file-row" style="margin-top:14px">
+            <span class="fname">SHA256SUMS.txt</span>
+            <span class="fmeta">Verify your download</span>
+            <a class="btn btn--sm" data-download="sums" href="https://github.com/opngo/flow/releases/download/v1.1.0/SHA256SUMS.txt">Checksums</a>
+          </div>
         </div>
 
-        <div class="install">
-          <div class="install-head">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v10"/><path d="M9 8l3 3 3-3"/><rect x="4" y="14" width="16" height="7" rx="2"/></svg>
-            <h3>macOS</h3>
-            <span class="badge">Apple silicon · Intel</span>
+        <div>
+          <div class="sec-head" style="margin-bottom:12px"><h3 style="margin:0;font-size:15px;letter-spacing:-0.01em">Build from source</h3><div class="sec-line"></div></div>
+          <div class="cmdbox"><code>git clone https://github.com/opngo/flow</code><button class="copy" data-copy>Copy</button></div>
+          <div class="cmdbox"><code>cd flow &amp;&amp; npm ci &amp;&amp; npm run dev</code><button class="copy" data-copy>Copy</button></div>
+          <div class="sourcelist" style="margin-top:18px">
+            <div><span>Engine</span><b>Electron</b></div>
+            <div><span>Interface</span><b>React + TypeScript</b></div>
+            <div><span>Build</span><b>electron-vite</b></div>
+            <div><span>Packaging</span><b>electron-builder</b></div>
+            <div><span>Tests</span><b>Vitest</b></div>
+            <div><span>Node</span><b>20 or newer</b></div>
           </div>
-          <p>Drag Flow into Applications. Unsigned builds need a right-click then Open the first time.</p>
-          <div class="links">
-            <a class="btn btn-primary btn-sm" data-download="macArm" href="https://github.com/opngo/flow/releases/download/v1.0.0/Flow-1.0.0-mac-arm64.dmg">Apple silicon</a>
-            <a class="btn btn-ghost btn-sm" data-download="macIntel" href="https://github.com/opngo/flow/releases/download/v1.0.0/Flow-1.0.0-mac-x64.dmg">Intel</a>
-          </div>
-          <div class="cmd"><code>brew install --cask opngo/tap/flow</code><button type="button" data-copy>Copy</button></div>
-        </div>
-
-        <div class="install">
-          <div class="install-head">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15V9a8 8 0 0 1 16 0v6"/><path d="M2 15h20"/><path d="M12 3v4"/></svg>
-            <h3>Linux</h3>
-            <span class="badge">AppImage · deb · tar.gz</span>
-          </div>
-          <p>Run the AppImage directly, or install the deb package if you use Debian, Ubuntu or a derivative.</p>
-          <div class="links">
-            <a class="btn btn-primary btn-sm" data-download="linuxAppImage" href="https://github.com/opngo/flow/releases/download/v1.0.0/Flow-1.0.0-linux-x86_64.AppImage">AppImage</a>
-            <a class="btn btn-ghost btn-sm" data-download="linuxDeb" href="https://github.com/opngo/flow/releases/download/v1.0.0/Flow-1.0.0-linux-amd64.deb">.deb</a>
-          </div>
-          <div class="cmd"><code>chmod +x Flow-1.0.0-linux-x86_64.AppImage</code><button type="button" data-copy>Copy</button></div>
-        </div>
-      </div>
-
-      <p class="note">Downloads resolve to the latest published release. Verify any file against
-        <a data-download="sums" href="https://github.com/opngo/flow/releases/download/v1.0.0/SHA256SUMS.txt">SHA256SUMS.txt</a>. All builds in a release are unsigned unless stated otherwise, so Windows
-        SmartScreen and macOS Gatekeeper will ask once on first launch.</p>
-
-      <div class="shot" style="margin-top:20px">
-        <h3>Build from source</h3>
-        <p class="sub">Node 20 or newer. The packaged app and the browser build share one renderer.</p>
-        <div class="cmd" style="margin-bottom:8px"><code>git clone https://github.com/opngo/flow.git &amp;&amp; cd flow</code><button type="button" data-copy>Copy</button></div>
-        <div class="cmd" style="margin-bottom:8px"><code>npm ci</code><button type="button" data-copy>Copy</button></div>
-        <div class="cmd"><code>npm run dev</code><button type="button" data-copy>Copy</button></div>
-      </div>
-    </div>
-  </section>
-
-  <section id="faq" aria-labelledby="faq-title">
-    <div class="wrap">
-      <div class="section-head">
-        <p class="eyebrow">Questions</p>
-        <h2 id="faq-title">The things people ask first.</h2>
-      </div>
-      <div class="faq">
-        <div class="qa">
-          <button type="button" aria-expanded="false">
-            Where is my data stored, and can I move it?
-            <svg class="caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-          </button>
-          <div class="answer" hidden>
-            <p>One JSON database inside the app's user-data folder, plus rolling backups. Settings, Todos, Grades and the rest all read and write that single file.</p>
-            <p>Export it any time from Settings, Data, or press <kbd>Ctrl</kbd> <kbd>K</kbd> and run "Export everything". Import the file back on another machine and you are exactly where you left off.</p>
-          </div>
-        </div>
-        <div class="qa">
-          <button type="button" aria-expanded="false">
-            Does Flow phone home?
-            <svg class="caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-          </button>
-          <div class="answer" hidden>
-            <p>No. No accounts, no analytics, no crash reporting, no update pings. The only network requests in the entire app are the ones you trigger by opening an external link yourself.</p>
-            <p>You can verify that in the source, and this page follows the same rule: it is one HTML file with no external fonts, scripts or images.</p>
-          </div>
-        </div>
-        <div class="qa">
-          <button type="button" aria-expanded="false">
-            Why is the installer unsigned?
-            <svg class="caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-          </button>
-          <div class="answer" hidden>
-            <p>Code-signing certificates cost money and Flow is a free project. Windows SmartScreen shows "Windows protected your PC" once: choose "More info" then "Run anyway". On macOS, right-click the app and choose Open.</p>
-            <p>If you would rather not trust a binary, build it yourself in about two minutes — the source is right there.</p>
-          </div>
-        </div>
-        <div class="qa">
-          <button type="button" aria-expanded="false">
-            Will my timers keep running if I close the window?
-            <svg class="caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-          </button>
-          <div class="answer" hidden>
-            <p>Yes. Closing to the tray keeps timers and reminders alive. Every timer stores its start and end times and the remaining time is recomputed from the clock, so sleep, restarts and throttling cannot make it drift.</p>
-            <p>Reminders are held in the main process and catch up after a restart — a notification you missed arrives marked as missed rather than vanishing.</p>
-          </div>
-        </div>
-        <div class="qa">
-          <button type="button" aria-expanded="false">
-            Which web technologies does it use, and why does that matter?
-            <svg class="caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-          </button>
-          <div class="answer" hidden>
-            <p>Electron with React, TypeScript, Headless UI, Tailwind and Zod. That means the same renderer runs in a browser tab, so you can try the whole application at <code>npm run dev</code> before installing anything.</p>
-          </div>
-        </div>
-        <div class="qa">
-          <button type="button" aria-expanded="false">
-            Can I contribute?
-            <svg class="caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-          </button>
-          <div class="answer" hidden>
-            <p>Please do. Issues and pull requests are welcome; start with <a href="https://github.com/opngo/flow/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a> and the open issues labelled "good first issue".</p>
-          </div>
+          <p class="note" style="margin-top:16px">Source, issues and release notes live at <a href="https://github.com/opngo/flow" style="color:var(--dim);border-bottom:1px solid var(--rule-2)">github.com/opngo/flow</a>.</p>
         </div>
       </div>
     </div>
@@ -816,121 +1092,444 @@
 </main>
 
 <footer>
-  <div class="wrap foot">
-    <div class="foot-note">
-      <a class="brand" href="./" style="color:var(--text)">
-        <svg width="22" height="22" viewBox="0 0 64 64" aria-hidden="true">
-          <rect width="64" height="64" rx="15" fill="#7c8cff"/>
-          <g fill="none" stroke="#fff" stroke-width="4.6" stroke-linecap="round">
-            <path d="M6 21c9-6 17 6 26 0s17 6 26 0" opacity=".75"/>
-            <path d="M6 32c9-6 17 6 26 0s17 6 26 0"/>
-            <path d="M6 43c9-6 17 6 26 0s17 6 26 0" opacity=".6"/>
-          </g>
-        </svg>
-        <span>Flow</span>
-      </a>
-      <p>Local-first productivity for people who would rather own their tools. Free and open source under the MIT licence.</p>
-      <p class="mono" style="color:var(--faint)">v1.0.0 · <a href="https://github.com/opngo/flow/releases/tag/v1.0.0">release notes</a></p>
-    </div>
-    <div class="foot-links">
+  <div class="wrap">
+    <div class="foot-grid">
       <div>
-        <h4>Project</h4>
-        <a href="https://github.com/opngo/flow">Source code</a>
-        <a href="https://github.com/opngo/flow/releases/latest">Releases</a>
-        <a href="https://github.com/opngo/flow/blob/main/CHANGELOG.md">Changelog</a>
-        <a href="https://github.com/opngo/flow/blob/main/LICENSE">Licence</a>
+        <div class="foot-brand">
+          <svg width="18" height="18" viewBox="0 0 10 10" aria-hidden="true" shape-rendering="crispEdges">
+            <rect x="0" y="0" width="10" height="2" fill="#c9f24e"/><rect x="0" y="4" width="7" height="2" fill="#c9f24e"/>
+            <rect x="0" y="8" width="4" height="2" fill="#c9f24e"/><rect x="0" y="0" width="2" height="10" fill="#c9f24e"/>
+          </svg>
+          Flow
+        </div>
+        <p class="note" style="margin:12px 0 0;max-width:34ch">A local-first workbench for one person. Built by opngo, released under the MIT licence.</p>
       </div>
-      <div>
-        <h4>Support</h4>
-        <a href="https://github.com/opngo/flow/issues/new/choose">Report a bug</a>
-        <a href="https://github.com/opngo/flow/issues">Issues</a>
-        <a href="https://github.com/opngo/flow/discussions">Discussions</a>
+      <div class="foot-col">
+        <h4>App</h4>
+        <a href="#workbench">Overview</a>
+        <a href="#panorama">Panorama</a>
+        <a href="#install">Install</a>
+      </div>
+      <div class="foot-col">
+        <h4>Repository</h4>
+        <a href="https://github.com/opngo/flow">Source</a>
+        <a href="https://github.com/opngo/flow/blob/main/CHANGELOG.md">Changelog</a>
+        <a href="https://github.com/opngo/flow/releases">Releases</a>
+      </div>
+      <div class="foot-col">
+        <h4>Docs</h4>
+        <a href="https://github.com/opngo/flow/blob/main/README.md">Readme</a>
+        <a href="https://github.com/opngo/flow/blob/main/docs/WORKFLOWS.md">Workflows</a>
         <a href="https://github.com/opngo/flow/blob/main/SECURITY.md">Security</a>
       </div>
-      <div>
-        <h4>Contribute</h4>
-        <a href="https://github.com/opngo/flow/blob/main/CONTRIBUTING.md">Contributing</a>
-        <a href="https://github.com/opngo/flow/blob/main/docs/ARCHITECTURE.md">Architecture</a>
-        <a href="https://github.com/opngo/flow/blob/main/docs/RELEASING.md">Releasing</a>
-        <a href="https://github.com/opngo/flow/actions">CI status</a>
-      </div>
+    </div>
+    <div class="foot-base">
+      <span>© 2026 opngo</span>
+      <span>MIT</span>
+      <span>v<span data-version>1.1.0</span></span>
+      <span class="spacer"></span>
+      <span>No cookies · no analytics · no newsletter</span>
     </div>
   </div>
 </footer>
 
 <script>
-/* ---------------------------------------------------------------------------
-   Small progressive enhancements. The page is fully readable without this
-   script: it only draws the decorative heatmap, wires the FAQ disclosures and
-   adds copy buttons.
-   --------------------------------------------------------------------------- */
-(function () {
+(() => {
   'use strict';
 
-  // Decorative heatmap: deterministic so the preview is identical every load.
-  var heat = document.getElementById('heat');
-  if (heat) {
-    var seed = 20261024;
-    function rand() {
-      seed = (seed * 1664525 + 1013904223) % 4294967296;
-      return seed / 4294967296;
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+  /* ------------------------------------------------------------- header */
+  const head = $('#site-head');
+  const progress = $('#progress');
+  const onScrollChrome = () => {
+    const y = window.scrollY;
+    head.dataset.stuck = String(y > 12);
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    progress.style.width = (max > 0 ? (y / max) * 100 : 0) + '%';
+  };
+  onScrollChrome();
+
+  /* ------------------------------------------------------- hero scene */
+  const canvas = $('#scene-canvas');
+  const sceneEl = $('#scene');
+  const ctx = canvas.getContext('2d');
+  const W = 240;
+  const H = 150;
+  let mode = 'pixel';
+  let sceneT = 0;
+  let pointer = { x: 0, y: 0 };
+  let sky = null;
+
+  const BAYER = [
+    [0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5],
+  ].map((r) => r.map((v) => (v + 0.5) / 16));
+
+  function hash(x, y) {
+    let h = Math.imul(x | 0, 374761393) ^ Math.imul(y | 0, 668265263);
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+  }
+
+  /** Sky: a five-tone dithered gradient, built once per mode. */
+  function buildSky() {
+    const c = document.createElement('canvas');
+    c.width = W;
+    c.height = H;
+    const g = c.getContext('2d');
+    if (mode === 'clean') {
+      const grad = g.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, '#101724');
+      grad.addColorStop(0.55, '#0b1018');
+      grad.addColorStop(1, '#070a0d');
+      g.fillStyle = grad;
+      g.fillRect(0, 0, W, H);
+      const glow = g.createRadialGradient(70, 92, 4, 70, 92, 120);
+      glow.addColorStop(0, 'rgba(124,140,255,0.16)');
+      glow.addColorStop(1, 'rgba(124,140,255,0)');
+      g.fillStyle = glow;
+      g.fillRect(0, 0, W, H);
+      return c;
     }
-    var weeks = 21;
-    heat.style.gridTemplateRows = 'repeat(7, 7px)';
-    for (var w = 0; w < weeks; w += 1) {
-      for (var d = 0; d < 7; d += 1) {
-        var cell = document.createElement('i');
-        var level = rand();
-        var alpha = level > 0.82 ? 0.92 : level > 0.62 ? 0.62 : level > 0.4 ? 0.38 : level > 0.2 ? 0.2 : 0;
-        if (alpha === 0) {
-          cell.style.background = 'rgba(154,162,180,.10)';
-        } else {
-          cell.style.background = 'rgba(124,140,255,' + alpha + ')';
-        }
-        heat.appendChild(cell);
+    const tones = ['#0d131c', '#0a0f16', '#070b10', '#05080b', '#030506'];
+    const img = g.createImageData(W, H);
+    for (let y = 0; y < H; y += 1) {
+      for (let x = 0; x < W; x += 1) {
+        const horizon = 92;
+        let v = clamp((y / H) * 1.25 + (x / W) * 0.06, 0, 1);
+        // glow above the horizon, brightest at 60% width
+        const d = Math.hypot((x - 78) / 150, (y - horizon) / 120);
+        v -= Math.max(0, 0.42 - d * 0.55);
+        const scaled = clamp(v, 0, 0.999) * (tones.length - 1);
+        const base = Math.floor(scaled);
+        const step = scaled - base > BAYER[y % 4][x % 4] ? 1 : 0;
+        const idx = clamp(base + step, 0, tones.length - 1);
+        const rgb = parseInt(tones[idx].slice(1), 16);
+        const i = (y * W + x) * 4;
+        img.data[i] = (rgb >> 16) & 255;
+        img.data[i + 1] = (rgb >> 8) & 255;
+        img.data[i + 2] = rgb & 255;
+        img.data[i + 3] = 255;
       }
+    }
+    g.putImageData(img, 0, 0);
+    // a few stars, only in the upper half
+    g.fillStyle = '#cfd8ff';
+    for (let i = 0; i < 46; i += 1) {
+      const x = Math.floor(hash(i, 3) * W);
+      const y = Math.floor(hash(i, 9) * 74);
+      g.globalAlpha = 0.15 + hash(i, 11) * 0.5;
+      g.fillRect(x, y, 1, 1);
+    }
+    g.globalAlpha = 1;
+    return c;
+  }
+
+  function px(x, y, w, h, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(w)), Math.max(1, Math.round(h)));
+  }
+
+  function ring(cx, cy, r, from, to, color) {
+    ctx.fillStyle = color;
+    for (let a = from; a < to; a += 0.035) {
+      const x = cx + Math.cos(a) * r;
+      const y = cy + Math.sin(a) * r;
+      if (mode !== 'clean') ctx.fillRect(Math.round(x), Math.round(y), 1.4, 1.4);
+      else ctx.fillRect(x, y, 1.1, 1.1);
     }
   }
 
-  // FAQ: buttons with aria-expanded, answer blocks toggled by the hidden attribute.
-  document.querySelectorAll('.qa button').forEach(function (button) {
-    button.addEventListener('click', function () {
-      var qa = button.closest('.qa');
-      var answer = qa.querySelector('.answer');
-      var open = button.getAttribute('aria-expanded') === 'true';
-      button.setAttribute('aria-expanded', open ? 'false' : 'true');
-      if (answer) answer.hidden = open;
+  function drawScene(t) {
+    ctx.clearRect(0, 0, W, H);
+    if (sky) ctx.drawImage(sky, 0, 0);
+
+    const parallaxX = pointer.x * 3;
+    const parallaxY = pointer.y * 2;
+    ctx.save();
+    ctx.translate(parallaxX, parallaxY);
+
+    /* retro floor grid */
+    ctx.globalAlpha = mode === 'clean' ? 0.5 : 0.65;
+    for (let i = -12; i <= 12; i += 1) {
+      px(120 + i * 7, 92, 1, 58, 'rgba(124,140,255,0.16)');
+    }
+    for (let i = 1; i < 8; i += 1) {
+      const y = 92 + Math.pow(i / 8, 1.9) * 58;
+      px(0, y, W, 1, 'rgba(124,140,255,0.13)');
+    }
+    ctx.globalAlpha = 1;
+
+    /* dust */
+    for (let i = 0; i < 30; i += 1) {
+      const speed = 0.6 + hash(i, 21) * 0.9;
+      const x = (hash(i, 5) * W + t * speed * 3 + parallaxX * 2) % W;
+      const y = (hash(i, 13) * H - t * speed * 1.4 + parallaxY) % H;
+      ctx.globalAlpha = 0.12 + hash(i, 7) * 0.25;
+      px(x, (y + H) % H, 1, 1, i % 3 === 0 ? '#c9f24e' : '#8e9bd8');
+    }
+    ctx.globalAlpha = 1;
+
+    /* desk */
+    px(0, 118, W, 32, '#0a0c0f');
+    px(0, 118, W, 1, '#2a3038');
+
+    /* monitor */
+    px(58, 36, 124, 74, '#151a20');
+    px(59, 37, 122, 72, '#0c1116');
+    px(61, 39, 118, 68, '#070a0d');
+    // sidebar
+    px(61, 39, 20, 68, '#0a0e13');
+    for (let i = 0; i < 5; i += 1) {
+      px(64, 46 + i * 7, 14, 3, i === 0 ? '#4a5c33' : '#1a2029');
+    }
+    // top bar
+    px(81, 39, 98, 6, '#0a0e13');
+    px(84, 41, 18, 2, '#232c37');
+    // task rows
+    const rows = [52, 60, 68, 76];
+    rows.forEach((y, i) => {
+      const done = i < 2;
+      px(84, y, 5, 5, done ? '#c9f24e' : '#232c37');
+      if (done) px(85, y + 1, 3, 3, '#0b0d0f');
+      px(93, y + 1, 34 + (i % 2) * 12, 3, done ? '#1b232c' : '#2a3442');
+    });
+    // progress ring on the right of the screen
+    ring(159, 68, 13, -Math.PI / 2, -Math.PI / 2 + Math.PI * 1.35, '#2a3442');
+    const sweep = (t * 0.22) % (Math.PI * 1.6);
+    ring(159, 68, 13, -Math.PI / 2, -Math.PI / 2 + sweep, '#c9f24e');
+    px(154, 64, 10, 3, '#3a4757');
+    px(156, 70, 6, 2, '#232c37');
+    // monitor stand
+    px(112, 110, 16, 6, '#141a20');
+    px(104, 116, 32, 3, '#1a222b');
+
+    /* keyboard */
+    px(84, 122, 72, 9, '#11161b');
+    for (let i = 0; i < 14; i += 1) px(87 + (i % 7) * 9, 124 + Math.floor(i / 7) * 4, 6, 2, '#1d242d');
+
+    /* steaming cup */
+    px(186, 108, 13, 12, '#1a222b');
+    px(187, 109, 11, 3, '#2c3644');
+    px(199, 111, 3, 6, '#1a222b');
+    for (let i = 0; i < 3; i += 1) {
+      const wob = Math.sin(t * 1.6 + i) * 1.5;
+      const yy = 104 - ((t * 6 + i * 7) % 14);
+      ctx.globalAlpha = clamp(0.5 - (104 - yy) * 0.03, 0.05, 0.5);
+      if (yy > 92) px(189 + i * 4 + wob, yy, 1, 2, '#9aa6c4');
+    }
+    ctx.globalAlpha = 1;
+
+    ctx.restore();
+
+    /* CRT pass: scanlines, slow band, chromatic fringe */
+    if (mode === 'crt') {
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = '#000';
+      for (let y = 0; y < H; y += 2) ctx.fillRect(0, y, W, 1);
+      ctx.globalAlpha = 1;
+      const bandY = (t * 26) % (H + 40) - 20;
+      const grad = ctx.createLinearGradient(0, bandY, 0, bandY + 26);
+      grad.addColorStop(0, 'rgba(255,255,255,0)');
+      grad.addColorStop(0.5, 'rgba(200,230,255,0.055)');
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, bandY, W, 26);
+      ctx.globalAlpha = 0.05;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.drawImage(canvas, 1, 0);
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+    }
+  }
+
+  function frame(now) {
+    sceneT = now / 1000;
+    drawScene(sceneT);
+    requestAnimationFrame(frame);
+  }
+
+  function setMode(next) {
+    mode = next;
+    sceneEl.dataset.mode = next;
+    canvas.style.imageRendering = next === 'clean' ? 'auto' : 'pixelated';
+    const size = next === 'clean' ? 2 : 1;
+    canvas.width = W * size;
+    canvas.height = H * size;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (size === 2) ctx.scale(2, 2);
+    ctx.imageSmoothingEnabled = next === 'clean';
+    sky = buildSky();
+    $('#scene-readout').textContent =
+      next === 'clean'
+        ? '480 × 300 · smooth pass · 0 requests'
+        : next === 'crt'
+          ? '240 × 150 · scanlines · 0 requests'
+          : '240 × 150 · 5 tones · 0 requests';
+    $$('[data-mode-btn]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.modeBtn === next)));
+    if (reduceMotion) drawScene(0);
+  }
+
+  $$('[data-mode-btn]').forEach((btn) => {
+    btn.addEventListener('click', () => setMode(btn.dataset.modeBtn));
+  });
+
+  sceneEl.addEventListener('pointermove', (e) => {
+    const r = sceneEl.getBoundingClientRect();
+    pointer.x = ((e.clientX - r.left) / r.width - 0.5) * 2;
+    pointer.y = ((e.clientY - r.top) / r.height - 0.5) * 2;
+  });
+  sceneEl.addEventListener('pointerleave', () => { pointer.x = 0; pointer.y = 0; });
+
+  setMode('pixel');
+  if (!reduceMotion) requestAnimationFrame(frame);
+
+  /* -------------------------------------------------------- panorama */
+  const pano = $('#panorama');
+  const track = $('#pano-track');
+  const viewport = $('#pano-viewport');
+  const bar = $('#pano-bar');
+  const indexEl = $('#pano-index');
+  const panels = $$('.pano-panel');
+  let maxShift = 0;
+  let lastIndex = 1;
+
+  function measurePano() {
+    maxShift = Math.max(0, track.scrollWidth - viewport.clientWidth);
+  }
+
+  function scrollPano() {
+    if (window.innerWidth <= 900) {
+      bar.style.width = '100%';
+      return;
+    }
+    const rect = pano.getBoundingClientRect();
+    const total = pano.offsetHeight - window.innerHeight;
+    if (total <= 0) return;
+    const p = clamp(-rect.top / total, 0, 1);
+    track.style.transform = `translate3d(${-maxShift * p}px, 0, 0)`;
+    bar.style.width = (p * 100).toFixed(2) + '%';
+    const index = clamp(Math.round(p * (panels.length - 1)) + 1, 1, panels.length);
+    if (index !== lastIndex) {
+      lastIndex = index;
+      indexEl.textContent = String(index).padStart(2, '0');
+    }
+  }
+
+  /* --------------------------------------------------------- parallax */
+  const ghosts = $$('[data-speed]');
+  function scrollParallax() {
+    if (reduceMotion) return;
+    const y = window.scrollY;
+    ghosts.forEach((el) => {
+      const speed = parseFloat(el.dataset.speed || '0');
+      el.style.transform = `translate3d(0, ${(y * speed).toFixed(2)}px, 0)`;
+    });
+  }
+
+  let ticking = false;
+  function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      onScrollChrome();
+      scrollPano();
+      scrollParallax();
+      ticking = false;
+    });
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', () => { measurePano(); onScroll(); });
+  window.addEventListener('load', () => { measurePano(); onScroll(); });
+  measurePano();
+  onScroll();
+
+  /* ------------------------------------------------------------- tabs */
+  const tabs = $$('[data-tab]');
+  function selectTab(id) {
+    tabs.forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === id)));
+    ['mac', 'win', 'linux'].forEach((key) => {
+      const panel = document.getElementById('panel-' + key);
+      if (panel) panel.hidden = key !== id;
+    });
+  }
+  tabs.forEach((t) => {
+    t.addEventListener('click', () => selectTab(t.dataset.tab));
+    t.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      const i = tabs.indexOf(t);
+      const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+      next.focus();
+      selectTab(next.dataset.tab);
     });
   });
 
-  // Copy buttons on command blocks, with a short confirmation and no alert().
-  document.querySelectorAll('[data-copy]').forEach(function (button) {
-    button.addEventListener('click', function () {
-      var code = button.parentElement.querySelector('code');
+  const ua = navigator.userAgent;
+  if (/Windows/i.test(ua)) selectTab('win');
+  else if (/Linux/i.test(ua) && !/Android/i.test(ua)) selectTab('linux');
+
+  const platformLabel = /Windows/i.test(ua) ? 'Windows' : /Linux/i.test(ua) ? 'Linux' : 'macOS';
+  $$('[data-platform]').forEach((el) => { el.textContent = platformLabel; });
+  if (platformLabel === 'Windows') {
+    $$('a.btn--primary[data-download="macArm"]').forEach((a) => { a.dataset.download = 'win'; a.href = 'https://github.com/opngo/flow/releases/download/v1.1.0/Flow-1.1.0-win-x64.exe'; });
+  } else if (platformLabel === 'Linux') {
+    $$('a.btn--primary[data-download="macArm"]').forEach((a) => { a.dataset.download = 'linuxAppImage'; a.href = 'https://github.com/opngo/flow/releases/download/v1.1.0/Flow-1.1.0-linux-x86_64.AppImage'; });
+  }
+
+  /* ------------------------------------------------------------ copy */
+  $$('[data-copy]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const code = btn.parentElement.querySelector('code');
       if (!code) return;
-      var text = code.textContent;
-      var done = function () {
-        var original = button.textContent;
-        button.textContent = 'Copied';
-        setTimeout(function () { button.textContent = original; }, 1600);
-      };
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(done, done);
-      } else {
-        var area = document.createElement('textarea');
-        area.value = text;
-        document.body.appendChild(area);
-        area.select();
-        try { document.execCommand('copy'); } catch (e) { /* clipboard unavailable */ }
-        document.body.removeChild(area);
-        done();
+      const text = code.textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        btn.textContent = 'Copied';
+      } catch {
+        const range = document.createRange();
+        range.selectNodeContents(code);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        btn.textContent = 'Select';
       }
+      setTimeout(() => { btn.textContent = 'Copy'; }, 1600);
     });
   });
 
-  // Entrance animation on the hero only: pure CSS, plays once, and the page
-  // never hides content, so it is readable with JS disabled or in a print/PDF.
-  document.documentElement.classList.add('js-ready');
+  /* ------------------------------------------------------------ pixel */
+  document.addEventListener('keydown', (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const tag = e.target && e.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    if (e.key.toLowerCase() === 'p') {
+      const on = document.body.dataset.pixel === 'true';
+      document.body.dataset.pixel = String(!on);
+    }
+  });
+
+  /* ------------------------------------------------------- active nav */
+  const navLinks = $$('.head-nav a');
+  const sections = navLinks
+    .map((a) => document.querySelector(a.getAttribute('href')))
+    .filter(Boolean);
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          navLinks.forEach((a) => a.setAttribute('aria-current', String(a.getAttribute('href') === '#' + entry.target.id)));
+        });
+      },
+      { rootMargin: '-45% 0px -50% 0px' },
+    );
+    sections.forEach((s) => io.observe(s));
+  }
 })();
 </script>
 </body>

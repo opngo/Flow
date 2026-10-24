@@ -47,6 +47,15 @@ html = html
   .replaceAll('__FLOW_RELEASE_URL__', `${releaseBase}/latest`)
   .replaceAll('__FLOW_TAG_URL__', `${releaseBase}/tag/v${version}`);
 
+// Version references are normalised even when the placeholders are already
+// gone: the page is committed with real values so it renders correctly when
+// opened from disk, and this step moves them forward on every release.
+html = html
+  .replace(/(releases\/download\/)v\d+\.\d+\.\d+/g, `$1v${version}`)
+  .replace(/(releases\/tag\/)v\d+\.\d+\.\d+/g, `$1v${version}`)
+  .replace(/(Flow-)\d+\.\d+\.\d+/g, `$1${version}`)
+  .replace(/(<span[^>]*data-version[^>]*>)\s*v?\d+\.\d+\.\d+\s*(<\/span>)/g, `$1${version}$2`);
+
 // Any remaining data-download="key" anchor gets its href resolved.
 for (const [key, href] of Object.entries(assets)) {
   html = html.replace(new RegExp(`(<a[^>]*data-download="${key}"[^>]*href=")[^"]*(")`, 'g'), `$1${href}$2`);

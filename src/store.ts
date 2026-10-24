@@ -13,6 +13,7 @@ export type NotificationInput = Omit<z.input<typeof NotificationRecordSchema>, '
 export type SessionInput = Omit<z.input<typeof FocusSessionSchema>, 'id'>;
 import { repo, debounce } from './lib/repo';
 import { seedDB } from './lib/seed';
+import { mergeDemo, stripDemo } from './lib/demo';
 import { nowISO, uuid } from './lib/utils';
 import { spawnNextTodo } from './lib/habits';
 import { escalatingOverdueTimes, todoReminderTimes } from './lib/scheduler';
@@ -138,6 +139,10 @@ export type FlowState = {
   /* system ------------------------------------------------------- */
   resetAll: () => Promise<void>;
   loadSeed: () => void;
+  /** Add the example records without touching settings or tutorial state. */
+  loadDemoData: () => number;
+  /** Remove only demo records. */
+  clearDemoData: () => number;
   exportJSON: () => string;
   importJSON: (json: string) => boolean;
 };
@@ -822,6 +827,23 @@ export const useFlow = create<FlowState>((set, get) => ({
     const db = seedDB();
     set({ db, past: [], future: [] });
     persist(db);
+  },
+  loadDemoData() {
+    const { db } = get();
+    const { db: next, added } = mergeDemo(db);
+    set({ db: next, past: [], future: [] });
+    persist(next);
+    if (added) get().logActivity('demo', `Added ${added} demo records`);
+    return added;
+  },
+  clearDemoData() {
+    const { db } = get();
+    const { db: next, removed } = stripDemo(db);
+    if (!removed) return 0;
+    set({ db: next, past: [], future: [] });
+    persist(next);
+    get().logActivity('demo', `Removed ${removed} demo records`);
+    return removed;
   },
   exportJSON() {
     return JSON.stringify(get().db, null, 2);

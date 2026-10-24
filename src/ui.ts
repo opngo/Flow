@@ -11,6 +11,7 @@ type UIState = {
   sidebarPinned: boolean;
   miniMode: boolean;
   focusMode: boolean;
+  immersive: boolean;
   locked: boolean;
   toasts: ToastItem[];
   openPalette: (query?: string) => void;
@@ -21,6 +22,7 @@ type UIState = {
   toggleSidebarPinned: () => void;
   setMiniMode: (v: boolean) => void;
   setFocusMode: (v: boolean) => void;
+  setImmersive: (v: boolean) => void;
   setLocked: (v: boolean) => void;
   toast: (t: Omit<ToastItem, 'id'>) => void;
   dismissToast: (id: string) => void;
@@ -35,6 +37,7 @@ export const useUI = create<UIState>((set, get) => ({
   sidebarPinned: false,
   miniMode: false,
   focusMode: false,
+  immersive: false,
   locked: false,
   toasts: [],
   openPalette: (query = '') => set({ paletteOpen: true, paletteQuery: query }),
@@ -45,6 +48,7 @@ export const useUI = create<UIState>((set, get) => ({
   toggleSidebarPinned: () => set({ sidebarPinned: !get().sidebarPinned }),
   setMiniMode: (v) => set({ miniMode: v }),
   setFocusMode: (v) => set({ focusMode: v }),
+  setImmersive: (v) => set({ immersive: v }),
   setLocked: (v) => set({ locked: v }),
   toast: (t) => {
     const id = Math.random().toString(36).slice(2);

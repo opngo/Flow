@@ -41,6 +41,9 @@ const migrations: Record<number, (db: Raw) => Raw> = {
     return { ...db, todos: todos.map((t) => ({ ...t, loggedMin: typeof t.loggedMin === 'number' ? t.loggedMin : 0 })) };
   },
   3: (db) => db,
+  /* 4 adds settings.backdrop; the schema default fills it in for every
+     existing database, so the step itself only records the version. */
+  4: (db) => db,
 };
 
 export function migrate(raw: Raw): DB {

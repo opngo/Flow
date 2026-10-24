@@ -90,6 +90,7 @@ export function fontStack(name: string): string {
 export function applyTheme(opts: {
   preset: string; mode: 'dark' | 'light' | 'system'; accent: string; overrides: Record<string, string>;
   density: number; radius: number; blur: number; reduceMotion: boolean;
+  corners?: 'rounded' | 'sharp';
   typography: { ui: string; content: string; timer: string; mono: string; baseSize: number; lineHeight: number; letterSpacing: number; weight: number; headingScale: number };
 }) {
   const root = document.documentElement;
@@ -100,7 +101,12 @@ export function applyTheme(opts: {
   set('--accent', t.accent);
   set('--accent-soft', `color-mix(in srgb, ${t.accent} 18%, transparent)`);
   set('--success', t.success); set('--warning', t.warning); set('--danger', t.danger);
-  set('--radius', `${opts.radius}px`);
+  // One token drives both the named surfaces (`.panel`, `.input`) and every
+  // literal `rounded-[Npx]` utility, through --radius-scale in styles.css.
+  const radius = opts.corners === 'sharp' ? 0 : opts.radius;
+  set('--radius', `${radius}px`);
+  set('--radius-scale', String(Math.max(0, radius) / 16));
+  root.dataset.corners = opts.corners === 'sharp' ? 'sharp' : 'rounded';
   set('--blur', `${opts.blur}px`);
   set('--pad', String(opts.density));
   const y = opts.typography;

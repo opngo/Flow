@@ -138,6 +138,28 @@ More detail, including the design rules the UI is held to (no borders, no
 outlines, tint-and-glow focus, Lucide only, Headless UI for every control), is in
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
+## Atmosphere and appearance
+
+Appearance is a first-class feature, and every part of it is opt-in.
+
+- **Backdrop effects** — Settings → Appearance → Backdrop. Eight atmospheres behind
+  the interface: CRT wrap (scanlines, aperture grille, vignette, rolling band),
+  ordered dither, dot grid, aurora, hyperspeed, silk and film grain. Each has
+  intensity, speed and, where it applies, pixel size. The preview runs the real
+  renderer, so what you see is what you get. Effects pause when the window is
+  hidden, cap themselves at 24,000 buffer cells and 30 frames per second, and
+  render a single still frame when reduced motion is on.
+- **Immersive timer** — the titlebar button, the Focus page, the palette, or
+  `Ctrl/Cmd+Shift+Enter`. Digits, segmented progress, today's minutes, and its own
+  keys: `Space` start or pause, `S` skip, `N` distraction, `F` log, `↑`/`↓` five
+  minutes, `Esc` out.
+- **Corner rounding** — one slider from 0 to 28 px that every surface follows, plus
+  a sharp mode that flattens everything, pills included.
+- **Demo data** — Settings → Data. The example records are tagged and merged
+  additively, so loading them beside your own work leaves your theme, backdrop,
+  corners, sidebar, tools, shortcuts, running timer and tutorial state exactly as
+  they were. Removing the demo set strips only the tagged records.
+
 ## Keyboard
 
 | Keys | Action |
@@ -145,18 +167,37 @@ outlines, tint-and-glow focus, Lucide only, Headless UI for every control), is i
 | `Ctrl/Cmd K` | Command palette: pages, tools, records, commands |
 | `Ctrl/Cmd Shift Space` | Quick capture from anywhere |
 | `Ctrl/Cmd Shift F` | Mini mode |
+| `Ctrl/Cmd Shift Enter` | Immersive full-screen timer |
 | `Ctrl/Cmd Shift P` | Start or pause the focus timer |
 | `Ctrl/Cmd Z` / `Shift` | Undo / redo |
 | `?` | Shortcut sheet |
 | `Esc` | Close overlay, leave focus mode |
 | Todos list | `j` `k` move · `Space` complete · `e` edit · `d` delete · `t` today · `p` priority · `/` search |
+| Immersive timer | `Space` start or pause · `S` skip · `N` distraction · `F` log · `↑` `↓` five minutes · `Esc` exit |
 
 ## The landing page
 
 [`landing/index.html`](landing/index.html) is a single self-contained file: inline
-CSS, inline SVG, no fonts from a CDN, no scripts from anywhere but itself. That
-keeps the marketing page honest about the product's own promise, and it means it
-works from a Pages subpath, from `file://`, and inside a sandboxed preview frame.
+CSS, inline SVG and canvas, no fonts from a CDN, no scripts from anywhere but
+itself. That keeps the marketing page honest about the product's own promise, and
+it means it works from a Pages subpath, from `file://`, and inside a sandboxed
+preview frame.
+
+The page is built around three pieces, all of them drawn in code rather than
+shipped as images:
+
+- **A pixel hero scene** rendered on a 240 × 150 canvas: a dithered five-tone sky,
+  a desk, a monitor showing the app, drifting dust and steam. Three rendering
+  modes (pixel, CRT with scanlines and a rolling band, clean with smoothing), a
+  parallax offset that follows the pointer, and an honest readout under it.
+- **A horizontal panorama** of six product panels. Vertical scroll pins the section
+  and translates the track sideways, with a progress bar and a panel counter; below
+  900 px it degrades to a native swipe strip with no scroll hijacking.
+- **A parallax wordmark and a page-wide scanline toggle** (`P`), plus platform-aware
+  download buttons and keyboard-operable tabs.
+
+It is committed with real version numbers so it renders correctly when opened from
+disk; the stamp step moves those numbers forward on every release.
 
 ```sh
 npm run landing:serve     # http://localhost:5180

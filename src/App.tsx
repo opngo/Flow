@@ -8,6 +8,8 @@ import { Toasts } from './components/Toasts';
 import { Onboarding } from './components/Onboarding';
 import { LockScreen } from './components/LockScreen';
 import { MiniMode } from './components/MiniMode';
+import { AppBackdrop } from './components/Backdrop';
+import { TimerFullscreen } from './components/TimerFullscreen';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useFlow } from './store';
 import { useUI } from './ui';
@@ -99,6 +101,7 @@ function AppBody() {
   const ready = useFlow((s) => s.ready);
   const settings = useFlow((s) => s.db.settings);
   const focusMode = useUI((s) => s.focusMode);
+  const backdrop = settings.backdrop.effect;
   const miniMode = useUI((s) => s.miniMode);
   const locked = useUI((s) => s.locked);
   const setLocked = useUI((s) => s.setLocked);
@@ -142,7 +145,12 @@ function AppBody() {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden" style={{ background: 'var(--surface)' }}>
+    <div className="relative flex h-full flex-col overflow-hidden" style={{ background: 'var(--surface)' }}>
+        {/* Opt-in atmosphere layer. It sits under a scrim so text keeps its
+            contrast no matter which effect is running. */}
+        {!miniMode && <AppBackdrop />}
+        <div className="relative z-[1] flex min-h-0 flex-1 flex-col"
+          style={backdrop !== 'none' ? { background: 'color-mix(in srgb, var(--surface) 82%, transparent)' } : undefined}>
         {miniMode ? (
           <MiniMode />
         ) : (
@@ -159,8 +167,10 @@ function AppBody() {
         <CommandPalette />
         <QuickCapture />
         <Toasts />
+        </div>
         {!settings.onboardingComplete && <Onboarding />}
         {locked && <LockScreen onUnlock={() => setLocked(false)} />}
+        {!miniMode && <TimerFullscreen />}
     </div>
   );
 }

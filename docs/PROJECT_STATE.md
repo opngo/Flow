@@ -1,13 +1,14 @@
 # Project state
 
-_Last updated: 2026-10-24 — release 1.0.0_
+_Last updated: 2026-10-24 — release 1.1.0_
 
 ## Where things stand
 
 | Area | State |
 |---|---|
 | Application | Complete. 16 routes, 76 tool pages, 124 catalogue entries, all functional |
-| Tests | 41 tests across 6 files, all passing |
+| Atmosphere | Backdrop effects, immersive timer, corner rounding and sharp mode, removable demo data |
+| Tests | 67 tests across 8 files, all passing |
 | Type check | Strict, zero errors |
 | Build | Clean; boot chunk 150 kB (48 kB gzip), every page lazy-loaded |
 | Desktop shell | Complete and code-verified; cannot be launched in a headless sandbox |
@@ -25,7 +26,8 @@ _Last updated: 2026-10-24 — release 1.0.0_
   corruption recovery, undo and redo, spaced repetition, JSON round-trip,
   calculator grammar, error recovery.
 - **Verified by screenshot:** the landing page at 390, 820 and 1280 px, checked
-  for horizontal overflow, focus behaviour and console errors.
+  for horizontal overflow, focus behaviour and console errors; the backdrop
+  preview, sharp mode, the immersive timer and the demo-data panel in the app.
 - **Code-verified only:** tray, native notifications, global shortcuts and window
   controls. These need a desktop session, which the build sandbox does not have.
   Run `npm run electron:dev` on a real machine to confirm them.

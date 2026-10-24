@@ -17,6 +17,7 @@ export function useThemeSync() {
       overrides: settings.theme.overrides,
       density: settings.theme.density,
       radius: settings.theme.radius,
+      corners: settings.theme.corners,
       blur: settings.theme.blur,
       reduceMotion: settings.behavior.reduceMotion,
       typography: settings.typography,
@@ -81,7 +82,7 @@ export function useScheduler() {
 
 /** Global keyboard shortcuts. */
 export function useGlobalKeys() {
-  const { openPalette, setQuickAdd, setFocusMode, setMiniMode } = useUI();
+  const { openPalette, setQuickAdd, setFocusMode, setMiniMode, setImmersive, immersive } = useUI();
   const undo = useFlow((s) => s.undo);
   const redo = useFlow((s) => s.redo);
   const ready = useFlow((s) => s.ready);
@@ -106,6 +107,11 @@ export function useGlobalKeys() {
         setQuickAdd(true);
         return;
       }
+      if (mod && e.shiftKey && e.key.toLowerCase() === 'enter') {
+        e.preventDefault();
+        setImmersive(!immersive);
+        return;
+      }
       if (mod && e.shiftKey && e.key.toLowerCase() === 'f') {
         e.preventDefault();
         setMiniMode(true);
@@ -122,7 +128,7 @@ export function useGlobalKeys() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [openPalette, setQuickAdd, setFocusMode, setMiniMode, undo, redo, ready]);
+  }, [openPalette, setQuickAdd, setFocusMode, setMiniMode, setImmersive, immersive, undo, redo, ready]);
 }
 
 /** Keep the Electron tray label and main-process schedule in sync. */

@@ -14,7 +14,7 @@ export function Titlebar() {
   const settings = useFlow((s) => s.db.settings);
   const updateSettings = useFlow((s) => s.updateSettings);
   const unread = useUnreadCount();
-  const { openPalette, setQuickAdd, setMiniMode, miniMode } = useUI();
+  const { openPalette, setQuickAdd, setMiniMode, miniMode, setImmersive } = useUI();
   const [maximized, setMaximized] = useState(false);
   const [time, setTime] = useState(new Date());
 
@@ -60,6 +60,7 @@ export function Titlebar() {
           <Icon name="Plus" size={14} />
           Capture
         </button>
+        <IconBtn icon="Maximize" label="Immersive timer" onClick={() => setImmersive(true)} />
         <IconBtn icon="AppWindow" label="Mini mode" active={miniMode} onClick={() => setMiniMode(!miniMode)} />
         <button
           onClick={() => navigate('/notifications')}

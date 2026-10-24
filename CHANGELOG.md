@@ -15,6 +15,55 @@ so keep headings exactly as `## [x.y.z] - YYYY-MM-DD`.
 - Optional encrypted database at rest
 - Split view: two panes side by side in one window
 
+## [1.1.0] - 2026-10-24
+
+### Added
+
+- **Opt-in backdrop effects.** Eight atmospheres behind the interface, off by
+  default and chosen in Settings, Appearance, Backdrop: CRT wrap (scanlines,
+  aperture grille, vignette, rolling band), ordered dither, dot grid, aurora,
+  hyperspeed, silk, film grain. Intensity, speed and pixel-size sliders, a live
+  preview that runs the real renderer, an option to also show the effect in the
+  immersive timer, and a still frame when reduced motion is on. Canvas effects
+  draw into a small buffer capped at 24,000 cells and 30 frames per second, and
+  pause when the window is hidden.
+- **Immersive timer.** A full-screen clock on its own surface: native fullscreen
+  where the platform allows it, segmented progress, session dots, today's
+  minutes, and a keyboard of its own (Space, S, N, F, arrows, Escape). Reachable
+  from the titlebar, the Focus page, the command palette and `Ctrl/Cmd+Shift+Enter`.
+- **Demo data you can add and remove.** Every seeded record is tagged `demo-` and
+  merged additively, so loading it next to real work changes nothing else:
+  preferences, theme, backdrop, corners mode, sidebar, enabled tools, hotkeys,
+  the running focus engine and the tutorial state are left exactly as they were.
+  Removing the demo set strips only the tagged records. Available in Settings,
+  Data and from the command palette.
+- **Corner rounding.** A scale slider (0 to 28 px with presets) that every literal
+  radius in the interface follows through a single `--radius-scale` token, plus a
+  sharp mode that flattens every corner including pills. The preview shows a
+  panel, an icon plate and a pill at the current setting.
+- **A new landing page.** Pixel-art hero scene rendered on canvas in three
+  rendering modes, a horizontally panned six-panel product panorama driven by
+  vertical scroll, parallax layer, scroll progress, platform-aware downloads,
+  keyboard-navigable tabs, and a `P` shortcut for page-wide scanlines. Still one
+  self-contained file with no external requests.
+
+### Changed
+
+- Settings, Appearance is now grouped: theme presets, custom tokens, backdrop and
+  corners each get their own panel.
+- The landing page is committed with real version numbers instead of placeholders;
+  `stamp-landing.mjs` now rewrites existing version strings as well as
+  placeholders, so the file renders correctly when opened from disk.
+- Database schema version 4 adds `settings.backdrop` and `settings.theme.corners`;
+  both carry defaults, so existing databases migrate without intervention.
+
+### Fixed
+
+- The dither renderer no longer shifts a whole grid row by one column when the
+  frame wraps.
+- Segmented timer bars use a theme-aware inactive tone instead of a hard-coded
+  surface colour, which made them invisible in light mode.
+
 ## [1.0.0] - 2026-10-24
 
 First public release. Everything below ships in the installers.

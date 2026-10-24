@@ -231,3 +231,106 @@ html[data-reduce-motion='true'] * {
 .markdown table { border-collapse: collapse; margin: 0.6em 0; }
 .markdown th, .markdown td { padding: 6px 10px; background: var(--surface-2); }
 .markdown input[type='checkbox'] { accent-color: var(--accent); }
+
+/* ---------------------------------------------------------------
+   Backdrop: CRT wrap (opt-in, Settings → Appearance → Backdrop).
+   Pure overlays, no filters on content, so text stays sharp.
+   --------------------------------------------------------------- */
+.flow-crt-scanlines {
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.34) 0px,
+    rgba(0, 0, 0, 0.34) 1px,
+    rgba(0, 0, 0, 0) 1px,
+    rgba(0, 0, 0, 0) 3px
+  );
+}
+.flow-crt-grille {
+  background: repeating-linear-gradient(
+    to right,
+    rgba(255, 40, 80, 0.05) 0px,
+    rgba(255, 40, 80, 0.05) 1px,
+    rgba(60, 255, 170, 0.045) 1px,
+    rgba(60, 255, 170, 0.045) 2px,
+    rgba(70, 110, 255, 0.05) 2px,
+    rgba(70, 110, 255, 0.05) 3px
+  );
+  mix-blend-mode: screen;
+}
+.flow-crt-vignette {
+  background: radial-gradient(
+    120% 100% at 50% 50%,
+    rgba(0, 0, 0, 0) 42%,
+    rgba(0, 0, 0, 0.35) 78%,
+    rgba(0, 0, 0, 0.66) 100%
+  );
+  box-shadow: inset 0 0 160px 40px rgba(0, 0, 0, 0.45);
+}
+.flow-crt-roll {
+  height: 22vh;
+  top: -22vh;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.045) 45%,
+    rgba(255, 255, 255, 0.075) 55%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: flow-crt-roll 9s linear infinite;
+  mix-blend-mode: screen;
+}
+@keyframes flow-crt-roll {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(140vh); }
+}
+
+/* Immersive timer: full-bleed surface with its own type scale. */
+.immersive {
+  --immersive-pad: clamp(20px, 4vw, 56px);
+}
+.immersive-digits {
+  font-family: var(--font-timer);
+  font-size: clamp(84px, 19vw, 300px);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 0.86;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+.immersive-seg {
+  height: 10px;
+  border-radius: 2px;
+  flex: 1 1 0;
+  min-width: 2px;
+  transition: background-color 220ms linear, opacity 220ms linear;
+}
+
+/* ---------------------------------------------------------------
+   Corner rounding.
+   The slider in Settings writes --radius-scale, which stretches every
+   literal radius used by the interface in proportion to the base 16px
+   surface. Sharp mode zeroes all of them in one rule.
+   --------------------------------------------------------------- */
+html {
+  --radius-scale: 1;
+}
+.rounded-\[3px\] { border-radius: calc(3px * var(--radius-scale)); }
+.rounded-\[4px\] { border-radius: calc(4px * var(--radius-scale)); }
+.rounded-\[5px\] { border-radius: calc(5px * var(--radius-scale)); }
+.rounded-\[6px\] { border-radius: calc(6px * var(--radius-scale)); }
+.rounded-\[7px\] { border-radius: calc(7px * var(--radius-scale)); }
+.rounded-\[8px\] { border-radius: calc(8px * var(--radius-scale)); }
+.rounded-\[9px\] { border-radius: calc(9px * var(--radius-scale)); }
+.rounded-\[10px\] { border-radius: calc(10px * var(--radius-scale)); }
+.rounded-\[11px\] { border-radius: calc(11px * var(--radius-scale)); }
+.rounded-\[12px\] { border-radius: calc(12px * var(--radius-scale)); }
+.rounded-\[14px\] { border-radius: calc(14px * var(--radius-scale)); }
+.rounded-\[15px\] { border-radius: calc(15px * var(--radius-scale)); }
+.rounded-\[16px\] { border-radius: calc(16px * var(--radius-scale)); }
+.rounded-\[20px\] { border-radius: calc(20px * var(--radius-scale)); }
+
+html[data-corners='sharp'] *,
+html[data-corners='sharp'] *::before,
+html[data-corners='sharp'] *::after {
+  border-radius: 0 !important;
+}

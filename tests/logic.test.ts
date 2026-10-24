@@ -6,7 +6,7 @@ import { parseQuickAdd } from '../src/lib/nlp';
 import { dueReminders, nextFireAt, quietHoursActive } from '../src/lib/scheduler';
 import { migrate } from '../src/lib/repo';
 import type { Category, Habit, HabitLog, Mark, Reminder, Settings, Subject, Todo } from '../src/lib/types';
-import { DBSchema, TodoSchema } from '../src/lib/types';
+import { DBSchema, SCHEMA_VERSION, TodoSchema } from '../src/lib/types';
 
 const iso = (d: string) => new Date(d).toISOString();
 
@@ -214,7 +214,7 @@ describe('database migration', () => {
       }],
     };
     const db = migrate(old);
-    expect(db.version).toBe(3);
+    expect(db.version).toBe(SCHEMA_VERSION);
     expect(db.projects).toEqual([]);
     expect(db.timers).toEqual([]);
     // The migration adds loggedMin to pre-v2 todos instead of dropping them.

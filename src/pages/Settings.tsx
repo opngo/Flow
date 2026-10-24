@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { format } from 'date-fns';
 import { useFlow } from '../store';
 import { useUI } from '../ui';
 import {
@@ -11,6 +12,9 @@ import { DEFAULT_SIDEBAR, NAV } from '../lib/nav';
 import { download, isElectron } from '../lib/platform';
 import { cn, uuid } from '../lib/utils';
 import { engine } from '../audio/engine';
+import { countDemoItems } from '../lib/demo';
+import { BackdropPanel } from '../components/BackdropPanel';
+import { CornersPanel } from '../components/CornersPanel';
 
 type Tab = 'appearance' | 'type' | 'sidebar' | 'notifications' | 'behavior' | 'timers' | 'data' | 'security' | 'about';
 
@@ -52,6 +56,7 @@ export default function Settings() {
       </div>
 
       {tab === 'appearance' && (
+        <div className="space-y-3">
         <div className="grid gap-3 lg:grid-cols-2">
           <Panel className="p-4">
             <SectionHead title="Theme" subtitle="Presets, mode and accent" />
@@ -108,10 +113,16 @@ export default function Settings() {
             </div>
             <div className="mt-3 space-y-2">
               <Field label={`Density — ${s.theme.density.toFixed(2)}`}><input type="range" min={0.85} max={1.2} step={0.01} value={s.theme.density} onChange={(e) => updateSettings((x) => ({ ...x, theme: { ...x.theme, density: Number(e.target.value) } }))} className="w-full accent-[var(--accent)]" /></Field>
-              <Field label={`Corner radius — ${s.theme.radius}px`}><input type="range" min={6} max={24} value={s.theme.radius} onChange={(e) => updateSettings((x) => ({ ...x, theme: { ...x.theme, radius: Number(e.target.value) } }))} className="w-full accent-[var(--accent)]" /></Field>
+              <div className="flex items-center justify-between rounded-[10px] bg-s1 px-2.5 py-2 text-[11.5px] text-muted">
+                <span>Corner rounding</span>
+                <span className="num text-faint">{s.theme.corners === 'sharp' ? 'sharp mode' : `${s.theme.radius}px`} · adjust below</span>
+              </div>
               <Field label={`Blur — ${s.theme.blur}px`}><input type="range" min={0} max={40} value={s.theme.blur} onChange={(e) => updateSettings((x) => ({ ...x, theme: { ...x.theme, blur: Number(e.target.value) } }))} className="w-full accent-[var(--accent)]" /></Field>
             </div>
           </Panel>
+        </div>
+        <BackdropPanel />
+        <CornersPanel />
         </div>
       )}
 
@@ -467,8 +478,12 @@ function TimersPanel() {
 function DataPanel() {
   const flow = useFlow.getState();
   const db = useFlow((s) => s.db);
+  const loadDemoData = useFlow((s) => s.loadDemoData);
+  const clearDemoData = useFlow((s) => s.clearDemoData);
   const toast = useUI((s) => s.toast);
   const [confirmReset, setConfirmReset] = useState(false);
+  const demoItems = countDemoItems(db);
+  const demoLoaded = demoItems > 0;
   return (
     <div className="grid gap-3 lg:grid-cols-2">
       <Panel className="p-4">
@@ -494,18 +509,45 @@ function DataPanel() {
           ))}
         </div>
       </Panel>
+
       <Panel className="p-4">
-        <SectionHead title="Danger zone" subtitle="These cannot be undone" />
+        <SectionHead title="Demo data" subtitle="Example records you can add and remove at any time"
+          right={<span className="chip" style={demoLoaded ? { color: 'var(--accent)' } : undefined}>{demoLoaded ? `${demoItems} items` : 'not loaded'}</span>} />
         <div className="space-y-2">
-          <Btn variant="soft" icon="Database" full onClick={() => { flow.loadSeed(); toast({ title: 'Demo data restored', tone: 'success' }); }}>Reload demo data</Btn>
-          <Btn variant="danger" icon="Trash2" full onClick={() => setConfirmReset(true)}>Delete everything and reseed</Btn>
+          <Btn variant={demoLoaded ? 'soft' : 'primary'} icon="Sparkles" full
+            onClick={() => {
+              const added = loadDemoData();
+              toast({ title: added ? `Added ${added} demo records` : 'Demo data is already loaded', tone: 'success' });
+            }}>{demoLoaded ? 'Add demo data again' : 'Load demo data'}</Btn>
+          <Btn variant="soft" icon="Eraser" full
+            onClick={() => {
+              const removed = clearDemoData();
+              toast({ title: removed ? `Removed ${removed} demo records` : 'No demo records to remove', tone: 'success' });
+            }}>Remove demo data</Btn>
+        </div>
+        <div className="mt-3 rounded-[12px] bg-s1 p-3 text-[11.5px] leading-relaxed text-muted">
+          Demo records are tagged and additive. Loading or removing them never touches your theme, sidebar,
+          enabled tools, keyboard shortcuts, notification settings, the running timer or the tutorial state.
+          Your own records are never removed.
+          {db.demo?.loadedAt && (
+            <span className="mt-1 block text-faint">Added {format(new Date(db.demo.loadedAt), 'd MMM yyyy, h:mm a')}.</span>
+          )}
+        </div>
+      </Panel>
+
+      <Panel className="p-4 lg:col-span-2">
+        <SectionHead title="Danger zone" subtitle="These cannot be undone" />
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Btn variant="soft" icon="RotateCcw" onClick={() => { flow.loadSeed(); toast({ title: 'Example database restored', tone: 'success' }); }}>Replace everything with the example set</Btn>
+          <Btn variant="danger" icon="Trash2" onClick={() => setConfirmReset(true)}>Delete all records</Btn>
         </div>
         <div className="mt-3 rounded-[12px] bg-s1 p-3 text-[11.5px] text-muted">
           Autosave is debounced at 350ms. In Electron every save also writes a rolling backup with retention in the user data directory.
         </div>
       </Panel>
-      <ConfirmDialog open={confirmReset} onClose={() => setConfirmReset(false)} danger confirmLabel="Reset database"
-        title="Reset everything?" body="All todos, notes, marks, habits and sessions are replaced with the demo dataset."
+
+      <ConfirmDialog open={confirmReset} onClose={() => setConfirmReset(false)} danger confirmLabel="Delete everything"
+        title="Delete every record?" body="Todos, notes, marks, habits, sessions and the demo set are removed and the database is reseeded with the example records."
         onConfirm={async () => { await flow.resetAll(); toast({ title: 'Database reset', tone: 'success' }); }} />
     </div>
   );

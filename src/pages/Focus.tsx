@@ -36,6 +36,7 @@ export default function Focus() {
   const updateSettings = useFlow((s) => s.updateSettings);
   const focusMode = useUI((s) => s.focusMode);
   const setFocusMode = useUI((s) => s.setFocusMode);
+  const setImmersive = useUI((s) => s.setImmersive);
   const navigate = useNavigate();
   const [promptOpen, setPromptOpen] = useState(false);
   const [rating, setRating] = useState<number | undefined>();
@@ -84,6 +85,7 @@ export default function Focus() {
             onChange={(v) => { updateSettings((s) => ({ ...s, activeProfileId: v })); startFocus({ profileId: v, subjectId: f?.subjectId, todoId: f?.todoId }); }}
             options={db.settings.timerProfiles.map((p) => ({ value: p.id, label: p.name }))}
           />
+          <Btn variant="primary" icon="Maximize" onClick={() => setImmersive(true)}>Immersive</Btn>
           <Btn variant="soft" icon={focusMode ? 'Minimize2' : 'Crosshair'} onClick={() => setFocusMode(!focusMode)}>
             {focusMode ? 'Exit focus mode' : 'Focus mode'}
           </Btn>

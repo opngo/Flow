@@ -382,8 +382,19 @@ export const SettingsSchema = z.object({
     accent: z.string().default('#7c8cff'),
     overrides: z.record(z.string()).default({}),
     density: z.number().default(1),
+    /** `sharp` zeroes every radius, including pills. `rounded` follows the slider. */
+    corners: z.enum(['rounded', 'sharp']).default('rounded'),
     radius: z.number().default(16),
     blur: z.number().default(18),
+  }).default({}),
+  /* Opt-in motion layer behind the interface. Off by default: the app ships
+     quiet and the user turns atmosphere on in Settings, Appearance. */
+  backdrop: z.object({
+    effect: z.string().default('none'),
+    intensity: z.number().default(0.55),
+    speed: z.number().default(1),
+    pixel: z.number().default(4),
+    inFullscreen: z.boolean().default(true),
   }).default({}),
   typography: z.object({
     ui: z.string().default('Inter'),
@@ -457,10 +468,12 @@ export const DBSchema = z.object({
   projects: z.array(ProjectSchema).default([]),
   timers: z.array(TimerSchema).default([]),
   focus: FocusEngineSchema.optional(),
+  /** Marker for the removable demo dataset (see lib/demo.ts). */
+  demo: z.object({ loadedAt: iso, count: z.number().default(0) }).optional(),
   settings: SettingsSchema.default({}),
 });
 export type DB = z.infer<typeof DBSchema>;
 export type CollectionKey = 'categories' | 'todos' | 'habits' | 'habitLogs' | 'goals' | 'subjects' | 'marks'
   | 'focusSessions' | 'reminders' | 'notifications' | 'notes' | 'decks' | 'events' | 'mixes' | 'activity' | 'timers' | 'projects';
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
