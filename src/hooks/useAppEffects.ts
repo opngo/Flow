@@ -21,6 +21,7 @@ export function useThemeSync() {
       blur: settings.theme.blur,
       reduceMotion: settings.behavior.reduceMotion,
       typography: settings.typography,
+      labels: settings.ui.labels,
     });
   }, [settings]);
 

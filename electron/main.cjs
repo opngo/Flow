@@ -240,6 +240,19 @@ ipcMain.on('flow:window', (_e, action) => {
 
 ipcMain.on('flow:pin', (_e, value) => mainWindow?.setAlwaysOnTop(!!value));
 
+/* Start with the system. Hidden launch keeps the app out of the way until it is
+ * wanted; the tray icon is the way back in. */
+ipcMain.handle('flow:login-item', (e, enabled) => {
+  if (e) { /* sender kept for symmetry with the renderer bridge */ }
+  const app = require('electron').app;
+  app.setLoginItemSettings({
+    openAtLogin: !!enabled,
+    openAsHidden: !!enabled,
+    path: process.execPath,
+  });
+  return app.getLoginItemSettings().openAtLogin;
+});
+
 ipcMain.on('flow:notify', (_e, payload) => {
   if (!Notification.isSupported()) return;
   const n = new Notification({ title: payload.title, body: payload.body });

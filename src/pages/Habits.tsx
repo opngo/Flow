@@ -135,6 +135,7 @@ export default function Habits() {
                                     : 'transparent',
                             }}
                             aria-label={`${h.name} on ${format(d, 'MMM d')}`}
+                            data-tip={`${h.name} · ${format(d, 'EEE d MMM')}${done ? ' · done' : log?.skipped ? ' · skipped' : ''}`}
                           >
                             {done && <Icon name="Check" size={13} className="text-white" strokeWidth={3} />}
                             {log?.skipped && <Icon name="Minus" size={12} className="text-faint" />}

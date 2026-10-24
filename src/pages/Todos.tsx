@@ -194,7 +194,7 @@ export default function Todos() {
       <aside className="hidden w-52 shrink-0 flex-col gap-3 lg:flex">
         <div>
           <div className="px-2.5 pb-2 pt-1">
-            <div className="h1">Todos</div>
+            <h1 className="h1">Todos</h1>
             <div className="mt-0.5 text-[12px] text-muted">{open.length} open · {counts.overdue} overdue</div>
           </div>
           <button onClick={() => openNew()} className="focusable mb-2 flex w-full items-center gap-2 rounded-[11px] px-2.5 py-2 text-[13px] text-accent" style={{ background: 'var(--accent-soft)' }}>

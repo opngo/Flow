@@ -14,6 +14,7 @@ export type FlowBridge = {
   exportFile: (name: string, content: string) => void;
   onAction: (cb: (action: string, payload?: unknown) => void) => void;
   windowState: () => Promise<{ maximized: boolean }>;
+  loginItem: (enabled: boolean) => Promise<boolean>;
 };
 
 declare global {
@@ -23,6 +24,16 @@ declare global {
 export const isElectron = () => typeof window !== 'undefined' && !!window.flow;
 
 export const platform = () => (isElectron() ? 'electron' : 'web');
+
+/** Only meaningful in the desktop build; the browser reports false. */
+export async function setLaunchAtStartup(enabled: boolean): Promise<boolean> {
+  if (!window.flow?.loginItem) return false;
+  try {
+    return await window.flow.loginItem(enabled);
+  } catch {
+    return false;
+  }
+}
 
 export function winAction(action: 'minimize' | 'maximize' | 'close' | 'pin', value?: boolean) {
   window.flow?.window(action, value);

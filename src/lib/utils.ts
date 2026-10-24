@@ -186,3 +186,19 @@ export function mixHex(a: string, b: string, t: number) {
 export function initials(name: string) {
   return name.split(/\s+/).map((p) => p[0]).join('').slice(0, 2).toUpperCase();
 }
+
+/* Countdown colour drift ------------------------------------------------ */
+
+/**
+ * How far a countdown has drifted toward its warning colour.
+ *
+ * Nothing happens until the clock enters the last `windowPct` percent of the
+ * block, then it eases in on a curve so the change is felt rather than watched.
+ */
+export function endDrift(remaining: number, total: number, windowPct: number): number {
+  if (total <= 0 || windowPct <= 0) return 0;
+  const threshold = (total * windowPct) / 100;
+  if (remaining >= threshold) return 0;
+  const raw = 1 - remaining / threshold;
+  return Math.pow(Math.min(1, Math.max(0, raw)), 1.6);
+}

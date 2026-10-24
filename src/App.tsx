@@ -9,6 +9,7 @@ import { Onboarding } from './components/Onboarding';
 import { LockScreen } from './components/LockScreen';
 import { MiniMode } from './components/MiniMode';
 import { AppBackdrop } from './components/Backdrop';
+import { TooltipLayer } from './components/Tooltip';
 import { TimerFullscreen } from './components/TimerFullscreen';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useFlow } from './store';
@@ -35,13 +36,42 @@ const Notifications = lazy(() => import('./pages/Notifications'));
 const Settings = lazy(() => import('./pages/Settings'));
 const CategoryPage = lazy(() => import('./pages/CategoryPage'));
 
+/* Route chunks are also reachable without rendering: the sidebar warms them on
+ * hover, so a click never waits on the network for a page the pointer was
+ * already sitting on. */
+const CHUNKS: Record<string, () => Promise<unknown>> = {
+  '/': () => import('./pages/Dashboard'),
+  '/todos': () => import('./pages/Todos'),
+  '/habits': () => import('./pages/Habits'),
+  '/goals': () => import('./pages/Goals'),
+  '/focus': () => import('./pages/Focus'),
+  '/timers': () => import('./pages/Timers'),
+  '/analytics': () => import('./pages/Analytics'),
+  '/grades': () => import('./pages/Grades'),
+  '/notes': () => import('./pages/Notes'),
+  '/flashcards': () => import('./pages/Flashcards'),
+  '/calendar': () => import('./pages/CalendarPage'),
+  '/sound': () => import('./pages/Sound'),
+  '/tools': () => import('./pages/Tools'),
+  '/notifications': () => import('./pages/Notifications'),
+  '/settings': () => import('./pages/Settings'),
+};
+const warmed = new Set<string>();
+export function prefetchRoute(path: string) {
+  if (warmed.has(path)) return;
+  const load = CHUNKS[path];
+  if (!load) return;
+  warmed.add(path);
+  void load().catch(() => warmed.delete(path));
+}
+
 function PageFrame({ children }: { children: React.ReactNode }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 6 }}
+      initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -4 }}
-      transition={{ duration: 0.18, ease: [0.22, 0.61, 0.36, 1] }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.12, ease: [0.22, 0.61, 0.36, 1] }}
       className="h-full"
     >
       {children}
@@ -66,7 +96,7 @@ function PageSkeleton() {
 function AnimatedRoutes() {
   const location = useLocation();
   return (
-    <AnimatePresence mode="wait" initial={false}>
+    <AnimatePresence initial={false}>
       <ErrorBoundary scope={location.pathname}>
       <Suspense fallback={<PageSkeleton />}>
       <Routes location={location} key={location.pathname}>
@@ -157,7 +187,7 @@ function AppBody() {
           <>
             <Titlebar />
             <div className="flex min-h-0 flex-1">
-              {!focusMode && <Sidebar />}
+              {!focusMode && <Sidebar onPrefetch={prefetchRoute} />}
               <main className="min-w-0 flex-1 overflow-y-auto px-4 pb-6 pt-1 md:px-6">
                 <AnimatedRoutes />
               </main>
@@ -167,6 +197,7 @@ function AppBody() {
         <CommandPalette />
         <QuickCapture />
         <Toasts />
+        <TooltipLayer />
         </div>
         {!settings.onboardingComplete && <Onboarding />}
         {locked && <LockScreen onUnlock={() => setLocked(false)} />}

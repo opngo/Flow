@@ -44,6 +44,9 @@ const migrations: Record<number, (db: Raw) => Raw> = {
   /* 4 adds settings.backdrop; the schema default fills it in for every
      existing database, so the step itself only records the version. */
   4: (db) => db,
+  /* 5 adds settings.ui (label density) and settings.immersive (end colour,
+     arc). Both are defaulted by the schema, so the step only records it. */
+  5: (db) => db,
 };
 
 export function migrate(raw: Raw): DB {

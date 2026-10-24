@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format, startOfWeek } from 'date-fns';
 import { useFlow } from '../store';
 import { useUI } from '../ui';
@@ -32,6 +32,7 @@ const PRESETS = [
 
 export default function Timers() {
   const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
   const tab = (params.get('tab') as Tab) ?? 'countdown';
   const setTab = (v: Tab) => { params.set('tab', v); setParams(params, { replace: true }); };
   const db = useFlow((s) => s.db);
@@ -71,6 +72,7 @@ export default function Timers() {
           <div className="mt-0.5 text-[12px] text-muted">{timers.filter((t) => t.running).length} running · owned by the clock, never drifts</div>
         </div>
         <div className="flex gap-2">
+          <Btn variant="soft" icon="AudioLines" onClick={() => navigate('/sound')} tip="Sound Studio">Sound</Btn>
           <Btn variant="soft" icon="Presentation" onClick={() => setExam((e) => ({ ...e, open: true }))}>Exam mode</Btn>
           <Btn variant="primary" icon="Plus" onClick={() => setNewOpen(true)}>New timer</Btn>
         </div>

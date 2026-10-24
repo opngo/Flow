@@ -185,6 +185,7 @@ export default function Dashboard() {
                       className="focusable flex h-6 w-6 items-center justify-center rounded-full"
                       style={{ background: doneToday ? h.color : `color-mix(in srgb, ${h.color} 15%, transparent)` }}
                       aria-label={doneToday ? `Undo ${h.name}` : `Check in ${h.name}`}
+                      data-tip={doneToday ? `Undo ${h.name}` : `Check in ${h.name}`}
                     >
                       <Icon name={doneToday ? 'Check' : h.icon} size={12} style={{ color: doneToday ? '#fff' : h.color }} />
                     </button>
