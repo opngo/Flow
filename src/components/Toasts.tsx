@@ -43,7 +43,7 @@ export function Toasts() {
                 </button>
               )}
             </div>
-            <button onClick={() => dismissToast(t.id)} aria-label="Dismiss" className="focusable -mr-1 -mt-1 flex h-6 w-6 items-center justify-center rounded-[8px] text-faint hover:bg-s2 hover:text-ink">
+            <button onClick={() => dismissToast(t.id)} aria-label="Dismiss" data-tip="Dismiss" className="focusable -mr-1 -mt-1 flex h-6 w-6 items-center justify-center rounded-[8px] text-faint hover:bg-s2 hover:text-ink">
               <Icon name="X" size={12} />
             </button>
           </motion.div>

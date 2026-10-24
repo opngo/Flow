@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { useFlow } from '../store';
 import { useUI } from '../ui';
+import { useNavigate } from 'react-router-dom';
 import { Icon, Slider } from './ui';
 import { AppBackdrop } from './Backdrop';
 import { bucketSessions } from '../lib/analytics';
-import { minsToClock, minsToHM, cn } from '../lib/utils';
+import { minsToClock, minsToHM, mixHex, endDrift, cn } from '../lib/utils';
 
 /**
  * Immersive clock — the whole screen becomes the time.
@@ -25,6 +26,10 @@ import { minsToClock, minsToHM, cn } from '../lib/utils';
  */
 
 const SEGMENTS = 48;
+const R = 168;
+const CIRC = 2 * Math.PI * R;
+/** The arc sweeps 270 degrees, open at the bottom. */
+const ARC = CIRC * 0.75;
 const HOVER_HOLD_MS = 2400;
 
 type Mode = 'pomodoro' | 'timer' | 'stopwatch';
@@ -73,6 +78,7 @@ export function TimerFullscreen() {
   const mode = useUI((s) => s.immersiveMode);
   const setMode = useUI((s) => s.setImmersiveMode);
   const toast = useUI((s) => s.toast);
+  const navigate = useNavigate();
 
   const db = useFlow((s) => s.db);
   const startFocus = useFlow((s) => s.startFocus);
@@ -168,7 +174,20 @@ export function TimerFullscreen() {
   const cycleDone = (f?.sessionsDone ?? 0) % cycle;
   const laps = liveTimer?.laps ?? [];
 
-  const accent = mode === 'pomodoro' ? (phase === 'focus' ? 'var(--accent)' : 'var(--success)') : mode === 'timer' ? 'var(--accent)' : 'var(--warm, #f0a75a)';
+  /* Colour: the arc starts on the theme accent and drifts toward the user's
+     end colour over the last stretch of the block. The stopwatch never ends, so
+     it keeps one colour. */
+  const accentHex = mode === 'pomodoro' && phase !== 'focus' ? '#4ec9a0' : db.settings.theme.accent;
+  const immersivePrefs = db.settings.immersive;
+  const totalMs = mode === 'pomodoro'
+    ? totalMin * 60000
+    : mode === 'timer'
+      ? (liveTimer?.plannedMin ?? customMin) * 60000
+      : 0;
+  const remainingForColour = mode === 'pomodoro' ? pomodoroLeft : mode === 'timer' ? timerLeft : totalMs;
+  const drift = mode === 'stopwatch' ? 0 : endDrift(remainingForColour, totalMs, immersivePrefs.endAt);
+  const accent = mixHex(accentHex, immersivePrefs.endColor, drift);
+  const arcColor = accent;
   const filled = mode === 'stopwatch' ? SEGMENTS : Math.round((pct / 100) * SEGMENTS);
 
   /* ------------------------------------------------------------- actions */
@@ -333,71 +352,75 @@ export function TimerFullscreen() {
         <div className="pointer-events-none absolute inset-x-0 top-1/2 -z-0 h-[52vh] -translate-y-1/2"
           style={{ background: `radial-gradient(60% 60% at 50% 50%, color-mix(in srgb, ${accent} 12%, transparent), transparent 72%)` }} />
 
-        <div className="relative text-center">
-          <div
-            className={cn('immersive-digits', running && 'is-running', digits.length > 5 && 'is-long', digits.length > 7 && 'is-longer')}
-            style={{ color: running ? 'var(--text)' : 'var(--text-muted)' }}
-          >
-            {digits}
-          </div>
+        <div className={cn('clock-wrap', running && 'is-running')}>
+          <svg viewBox="0 0 400 400" className="clock-arc" aria-hidden="true">
+            <circle cx="200" cy="200" r="168" className="clock-arc-track" />
+            <circle
+              cx="200" cy="200" r="168"
+              className="clock-arc-fill"
+              style={{
+                stroke: arcColor,
+                strokeDasharray: `${ARC * Math.max(0.001, Math.min(1, pct / 100))} ${CIRC}`,
+                filter: drift > 0.15 ? `drop-shadow(0 0 10px ${arcColor})` : undefined,
+              }}
+            />
+          </svg>
 
-          <div className="mt-4 flex items-center justify-center gap-2.5 text-[12px] text-muted">
-            {mode === 'pomodoro' && (
-              <>
-                <span className="flex items-center gap-1.5 uppercase tracking-[0.16em] text-[10.5px]">
-                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: running ? accent : 'var(--text-faint)' }} />
-                  {phase.replace('-', ' ')}
+          <div className="clock-face">
+            <div
+              className={cn('immersive-digits', running && 'is-running', digits.length > 5 && 'is-long', digits.length > 7 && 'is-longer')}
+              style={{ color: running ? 'var(--text)' : 'var(--text-muted)' }}
+            >
+              {digits}
+            </div>
+            <div className="immersive-chrome mt-3 flex items-center justify-center gap-2 text-[12px] text-muted">
+              {mode === 'pomodoro' && (
+                <>
+                  <span className="flex items-center gap-1.5 text-[10.5px] uppercase tracking-[0.16em]">
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: running ? arcColor : 'var(--text-faint)' }} />
+                    {phase.replace('-', ' ')}
+                  </span>
+                  <span className="text-faint">·</span>
+                  <span>{profile?.name}</span>
+                </>
+              )}
+              {mode === 'timer' && (
+                <span className="flex items-center gap-1.5">
+                  <Icon name="Hourglass" size={12} />
+                  {liveTimer ? liveTimer.label : `${customMin} minute countdown`}
                 </span>
-                <span className="text-faint">·</span>
-                <span>{profile?.name}</span>
-              </>
-            )}
-            {mode === 'timer' && (
-              <span className="flex items-center gap-1.5">
-                <Icon name="Hourglass" size={12} />
-                {liveTimer ? liveTimer.label : `${customMin} minute countdown`}
-              </span>
-            )}
-            {mode === 'stopwatch' && (
-              <span className="flex items-center gap-1.5">
-                <Icon name="Watch" size={12} />
-                {laps.length
-                  ? `${laps.length} ${laps.length === 1 ? 'lap' : 'laps'} · last ${stopwatchText(laps[laps.length - 1] - (laps[laps.length - 2] ?? 0))}`
-                  : 'Counting up'}
-              </span>
-            )}
-            {(task || subject) && <span className="text-faint">·</span>}
-            {task && <span className="flex items-center gap-1.5"><Icon name="CheckSquare" size={13} /> {task.title}</span>}
-            {subject && (
-              <span className="flex items-center gap-1.5" style={{ color: subject.color }}>
-                <Icon name={subject.icon} size={13} /> {subject.name}
-              </span>
-            )}
+              )}
+              {mode === 'stopwatch' && (
+                <span className="flex items-center gap-1.5">
+                  <Icon name="Watch" size={12} />
+                  {laps.length
+                    ? `${laps.length} ${laps.length === 1 ? 'lap' : 'laps'} · last ${stopwatchText(laps[laps.length - 1] - (laps[laps.length - 2] ?? 0))}`
+                    : 'Counting up'}
+                </span>
+              )}
+              {(task || subject) && <span className="text-faint">·</span>}
+              {task && <span className="flex max-w-[280px] items-center gap-1.5 truncate"><Icon name="CheckSquare" size={13} /> {task.title}</span>}
+              {subject && (
+                <span className="flex items-center gap-1.5" style={{ color: subject.color }}>
+                  <Icon name={subject.icon} size={13} /> {subject.name}
+                </span>
+              )}
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* progress */}
-        <div className="relative w-full max-w-[720px]">
-          <div className="flex items-center gap-[3px]" aria-hidden="true">
-            {Array.from({ length: SEGMENTS }, (_, i) => (
-              <span
-                key={i}
-                className={cn('immersive-seg', mode === 'stopwatch' && 'is-sweep')}
-                style={{
-                  background: i < filled ? accent : 'color-mix(in srgb, var(--text-faint) 22%, transparent)',
-                  opacity: mode !== 'stopwatch' && i >= filled ? 0.55 : 1,
-                }}
-              />
-            ))}
-          </div>
-          <div className="mt-3 flex items-center justify-between text-[11px] text-faint">
+      {/* readouts: hidden along with the rest of the chrome while running */}
+      <div className="immersive-chrome relative" style={{ padding: '0 var(--immersive-pad)' }}>
+        <div className="mx-auto w-full max-w-[720px]">
+          <div className="flex items-center justify-between text-[11px] text-faint">
             {mode === 'pomodoro' && (
               <>
                 <span className="num">{Math.round(pct)}% of {totalMin} min</span>
                 <span className="flex items-center gap-1.5">
                   {Array.from({ length: cycle }, (_, i) => (
                     <span key={i} className="h-1.5 w-1.5 rounded-full"
-                      style={{ background: i < cycleDone ? accent : 'color-mix(in srgb, var(--text-faint) 30%, transparent)' }} />
+                      style={{ background: i < cycleDone ? arcColor : 'color-mix(in srgb, var(--text-faint) 30%, transparent)' }} />
                   ))}
                   <span className="ml-1">{cycleDone}/{cycle} to a long break</span>
                 </span>
@@ -417,33 +440,37 @@ export function TimerFullscreen() {
             )}
           </div>
         </div>
+      </div>
 
-        {/* duration picker, only before a countdown exists */}
-        {mode === 'timer' && !liveTimer && (
-          <div className="relative w-full max-w-[420px] space-y-2 rounded-[14px] p-3"
-            style={{ background: 'color-mix(in srgb, var(--surface-1) 70%, transparent)' }}>
-            <div className="flex flex-wrap justify-center gap-1.5">
-              {[5, 10, 15, 25, 45, 60].map((m) => (
-                <button key={m} onClick={() => setCustomMin(m)}
-                  className={cn('focusable chip num', customMin === m && 'text-accent')}
-                  style={customMin === m ? { background: 'var(--accent-soft)' } : undefined}>{m}</button>
+      <div className="immersive-chrome relative" style={{ padding: '0 var(--immersive-pad)' }}>
+        <div className="mx-auto flex w-full max-w-[420px] flex-col items-center gap-2">
+          {/* duration picker, only before a countdown exists */}
+          {mode === 'timer' && !liveTimer && (
+            <div className="w-full space-y-2 rounded-[14px] p-3"
+              style={{ background: 'color-mix(in srgb, var(--surface-1) 70%, transparent)' }}>
+              <div className="flex flex-wrap justify-center gap-1.5">
+                {[5, 10, 15, 25, 45, 60].map((m) => (
+                  <button key={m} onClick={() => setCustomMin(m)}
+                    className={cn('focusable chip num', customMin === m && 'text-accent')}
+                    style={customMin === m ? { background: 'var(--accent-soft)' } : undefined}>{m}</button>
+                ))}
+              </div>
+              <Slider value={customMin} min={1} max={120} step={1} label="Countdown minutes"
+                format={(v) => `${v} min`} onChange={setCustomMin} />
+            </div>
+          )}
+
+          {mode === 'stopwatch' && laps.length > 0 && (
+            <div className="flex max-h-[92px] w-full flex-wrap justify-center gap-1.5 overflow-y-auto no-scrollbar">
+              {laps.map((lap, i) => (
+                <span key={i} className="num rounded-[8px] px-2 py-1 text-[10.5px] text-muted"
+                  style={{ background: 'color-mix(in srgb, var(--surface-1) 70%, transparent)' }}>
+                  {String(i + 1).padStart(2, '0')} · {stopwatchText(lap - (laps[i - 1] ?? 0))}
+                </span>
               ))}
             </div>
-            <Slider value={customMin} min={1} max={120} step={1} label="Countdown minutes"
-              format={(v) => `${v} min`} onChange={setCustomMin} />
-          </div>
-        )}
-
-        {mode === 'stopwatch' && laps.length > 0 && (
-          <div className="relative flex max-h-[92px] w-full max-w-[420px] flex-wrap justify-center gap-1.5 overflow-y-auto no-scrollbar">
-            {laps.map((lap, i) => (
-              <span key={i} className="num rounded-[8px] px-2 py-1 text-[10.5px] text-muted"
-                style={{ background: 'color-mix(in srgb, var(--surface-1) 70%, transparent)' }}>
-                {String(i + 1).padStart(2, '0')} · {stopwatchText(lap - (laps[i - 1] ?? 0))}
-              </span>
-            ))}
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* controls */}
@@ -469,6 +496,9 @@ export function TimerFullscreen() {
             )}
             <button onClick={resetClock} className="ghost-btn"><Icon name="RotateCcw" size={15} /> {mode === 'pomodoro' ? 'Reset' : 'Clear'}</button>
             <button onClick={logClock} className="ghost-btn"><Icon name="Check" size={15} /> Log</button>
+            <button onClick={() => { close(); navigate('/sound'); }} className="ghost-btn" data-tip="Open the sound studio">
+              <Icon name="AudioLines" size={15} /> Sound
+            </button>
           </div>
           <div className="h-4 text-[11.5px] text-faint" aria-live="polite">{hint ?? ''}</div>
         </div>

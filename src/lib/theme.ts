@@ -91,6 +91,7 @@ export function applyTheme(opts: {
   preset: string; mode: 'dark' | 'light' | 'system'; accent: string; overrides: Record<string, string>;
   density: number; radius: number; blur: number; reduceMotion: boolean;
   corners?: 'rounded' | 'sharp';
+  labels?: 'full' | 'minimal' | 'none';
   typography: { ui: string; content: string; timer: string; mono: string; baseSize: number; lineHeight: number; letterSpacing: number; weight: number; headingScale: number };
 }) {
   const root = document.documentElement;
@@ -107,6 +108,7 @@ export function applyTheme(opts: {
   set('--radius', `${radius}px`);
   set('--radius-scale', String(Math.max(0, radius) / 16));
   root.dataset.corners = opts.corners === 'sharp' ? 'sharp' : 'rounded';
+  root.dataset.labels = opts.labels ?? 'full';
   set('--blur', `${opts.blur}px`);
   set('--pad', String(opts.density));
   const y = opts.typography;

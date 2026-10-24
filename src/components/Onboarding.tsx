@@ -58,7 +58,7 @@ export function Onboarding() {
       </Field>
       <div className="flex gap-2">
         {ACCENTS.slice(0, 6).map((a) => (
-          <button key={a} onClick={() => updateSettings((s) => ({ ...s, theme: { ...s.theme, accent: a } }))} aria-label={`Accent ${a}`}
+          <button key={a} onClick={() => updateSettings((s) => ({ ...s, theme: { ...s.theme, accent: a } }))} aria-label={`Accent ${a}`} data-tip={`Accent ${a}`}
             className="focusable flex h-8 flex-1 items-center justify-center rounded-[10px]"
             style={{ background: a, boxShadow: settings.theme.accent === a ? `0 6px 20px -6px ${a}` : undefined }}>
             {settings.theme.accent === a && <Icon name="Check" size={13} className="text-white" strokeWidth={3} />}

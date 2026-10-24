@@ -9,7 +9,7 @@ import {
 } from '../components/ui';
 import { ACCENTS, FONTS, PRESETS } from '../lib/theme';
 import { DEFAULT_SIDEBAR, NAV } from '../lib/nav';
-import { download, isElectron } from '../lib/platform';
+import { download, isElectron, setLaunchAtStartup } from '../lib/platform';
 import { cn, uuid } from '../lib/utils';
 import { engine } from '../audio/engine';
 import { countDemoItems } from '../lib/demo';
@@ -57,6 +57,28 @@ export default function Settings() {
 
       {tab === 'appearance' && (
         <div className="space-y-3">
+        <Panel className="p-4">
+          <SectionHead title="Interface density" subtitle="How much text the shell shows around your work"
+            right={<span className="chip">{s.ui.labels}</span>} />
+          <div className="grid gap-2 sm:grid-cols-3">
+            {([
+              { id: 'full', label: 'Full text', icon: 'AlignLeft', body: 'Labels, metadata and hints everywhere.' },
+              { id: 'minimal', label: 'Minimal text', icon: 'Minus', body: 'Primary labels only. Metadata and hints hide; hover anything for its tooltip.' },
+              { id: 'none', label: 'No text', icon: 'Square', body: 'Icon-only shell. The sidebar collapses to glyphs and every control has a tooltip.' },
+            ] as const).map((mode) => (
+              <button key={mode.id} onClick={() => updateSettings((x) => ({ ...x, ui: { ...x.ui, labels: mode.id } }))}
+                className="focusable rounded-[12px] p-3 text-left"
+                style={{ background: s.ui.labels === mode.id ? 'var(--accent-soft)' : 'var(--surface-2)' }}>
+                <span className="flex items-center gap-1.5 text-[12.5px] text-ink">
+                  <Icon name={mode.icon} size={13} />
+                  {mode.label}
+                  {s.ui.labels === mode.id && <Icon name="Check" size={11} className="ml-auto text-accent" />}
+                </span>
+                <span className="mt-1 block text-[11px] leading-relaxed text-faint">{mode.body}</span>
+              </button>
+            ))}
+          </div>
+        </Panel>
         <div className="grid gap-3 lg:grid-cols-2">
           <Panel className="p-4">
             <SectionHead title="Theme" subtitle="Presets, mode and accent" />
@@ -84,7 +106,7 @@ export default function Settings() {
               <Field label="Accent"><ColorPicker value={s.theme.accent} onChange={(v) => updateSettings((x) => ({ ...x, theme: { ...x.theme, accent: v } }))} /></Field>
               <div className="flex flex-wrap gap-1.5">
                 {ACCENTS.map((a) => (
-                  <button key={a} onClick={() => updateSettings((x) => ({ ...x, theme: { ...x.theme, accent: a } }))} aria-label={`Accent ${a}`}
+                  <button key={a} onClick={() => updateSettings((x) => ({ ...x, theme: { ...x.theme, accent: a } }))} aria-label={`Accent ${a}`} data-tip={`Accent ${a}`}
                     className="focusable flex h-6 w-6 items-center justify-center rounded-full"
                     style={{ background: a, boxShadow: s.theme.accent === a ? `0 4px 14px -4px ${a}` : undefined }}>
                     {s.theme.accent === a && <Icon name="Check" size={11} className="text-white" strokeWidth={3} />}
@@ -168,7 +190,18 @@ export default function Settings() {
             <SectionHead title="Window and startup" />
             <Toggle label="Close to tray" description="Closing the window keeps timers and reminders alive" checked={s.behavior.closeToTray} onChange={(v) => updateSettings((x) => ({ ...x, behavior: { ...x.behavior, closeToTray: v } }))} />
             <Toggle label="Minimize to tray" checked={s.behavior.minimizeToTray} onChange={(v) => updateSettings((x) => ({ ...x, behavior: { ...x.behavior, minimizeToTray: v } }))} />
-            <Toggle label="Launch at startup (hidden)" checked={s.behavior.launchAtStartup} onChange={(v) => updateSettings((x) => ({ ...x, behavior: { ...x.behavior, launchAtStartup: v } }))} />
+            <Toggle label="Start when I sign in" description={isElectron() ? 'Opens hidden to the tray' : 'Applies in the desktop build'}
+              checked={s.behavior.launchAtStartup}
+              onChange={async (v) => {
+                updateSettings((x) => ({ ...x, behavior: { ...x.behavior, launchAtStartup: v } }));
+                if (isElectron()) {
+                  const actual = await setLaunchAtStartup(v);
+                  if (actual !== v) {
+                    updateSettings((x) => ({ ...x, behavior: { ...x.behavior, launchAtStartup: actual } }));
+                    toast({ title: 'Could not change the startup entry', tone: 'warning' });
+                  }
+                }
+              }} />
             <Toggle label="Pin window on top" checked={s.behavior.pinOnTop} onChange={(v) => updateSettings((x) => ({ ...x, behavior: { ...x.behavior, pinOnTop: v } }))} />
             <Toggle label="Reduce motion" description="Disables non-essential animation everywhere" checked={s.behavior.reduceMotion} onChange={(v) => updateSettings((x) => ({ ...x, behavior: { ...x.behavior, reduceMotion: v } }))} />
             {!isElectron() && <div className="mt-1 text-[11px] text-faint">Window controls activate in the packaged Electron build.</div>}
@@ -191,7 +224,40 @@ export default function Settings() {
         </div>
       )}
 
-      {tab === 'timers' && <TimersPanel />}
+      {tab === 'timers' && (
+        <div className="space-y-3">
+          <TimersPanel />
+          <Panel className="p-4">
+            <SectionHead title="Immersive clock" subtitle="The full-screen view used from the titlebar or Ctrl/Cmd Shift Enter" />
+            <div className="space-y-3">
+              <div>
+                <span className="mb-1.5 flex items-baseline justify-between gap-2">
+                  <span className="label">Warning colour</span>
+                  <span className="num text-[11px] text-muted">{s.immersive.endColor}</span>
+                </span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <ColorPicker value={s.immersive.endColor}
+                    onChange={(v) => updateSettings((x) => ({ ...x, immersive: { ...x.immersive, endColor: v } }))} />
+                  {['#ef4444', '#f0a75a', '#e5b567', '#ef6f6c', '#7c8cff'].map((c) => (
+                    <button key={c} onClick={() => updateSettings((x) => ({ ...x, immersive: { ...x.immersive, endColor: c } }))}
+                      aria-label={`End colour ${c}`}
+                      className="focusable h-6 w-6 rounded-full"
+                      style={{ background: c, boxShadow: s.immersive.endColor === c ? `0 4px 14px -4px ${c}` : undefined }} />
+                  ))}
+                </div>
+              </div>
+              <SliderField label="Start drifting at" value={s.immersive.endAt} min={0} max={60} step={5}
+                format={(v) => (v === 0 ? 'never' : `last ${v}%`)}
+                hint="How much of the block is left when the clock starts moving toward the warning colour."
+                onChange={(v) => updateSettings((x) => ({ ...x, immersive: { ...x.immersive, endAt: v } }))} />
+              <div className="rounded-[10px] bg-s1 px-2.5 py-1.5">
+                <Toggle label="Show the backdrop in the immersive clock" checked={s.backdrop.inFullscreen}
+                  onChange={(v) => updateSettings((x) => ({ ...x, backdrop: { ...x.backdrop, inFullscreen: v } }))} />
+              </div>
+            </div>
+          </Panel>
+        </div>
+      )}
 
       {tab === 'data' && <DataPanel />}
 

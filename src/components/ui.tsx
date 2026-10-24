@@ -25,10 +25,12 @@ type BtnProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   icon?: string;
   iconRight?: string;
   full?: boolean;
+  /** Tooltip text for the chrome layer; used when labels are hidden. */
+  tip?: string;
 };
 
 export const Btn = React.forwardRef<HTMLButtonElement, BtnProps>(function Btn(
-  { variant = 'soft', size = 'md', icon, iconRight, full, className, children, ...rest }, ref,
+  { variant = 'soft', size = 'md', icon, iconRight, full, tip, className, children, ...rest }, ref,
 ) {
   const base = 'focusable inline-flex items-center justify-center gap-2 rounded-[12px] font-medium select-none whitespace-nowrap disabled:opacity-45 disabled:pointer-events-none';
   const sizes = { sm: 'h-8 px-3 text-[12.5px]', md: 'h-9 px-3.5 text-[13px]', lg: 'h-11 px-5 text-[14px]' };
@@ -44,6 +46,7 @@ export const Btn = React.forwardRef<HTMLButtonElement, BtnProps>(function Btn(
       ref={ref}
       className={cn(base, sizes[size], variants[variant], full && 'w-full', className)}
       style={variant === 'primary' ? { background: 'var(--accent)' } : undefined}
+      data-tip={tip}
       {...rest}
     >
       {icon && <Icon name={icon} size={size === 'sm' ? 14 : 16} />}
@@ -64,7 +67,7 @@ export const IconBtn = React.forwardRef<HTMLButtonElement, {
     <button
       ref={ref}
       aria-label={label}
-      title={label}
+      data-tip={label}
       className={cn(
         'focusable inline-flex h-8 w-8 items-center justify-center rounded-[10px] text-muted hover:text-ink hover:bg-s2',
         active && 'text-accent bg-accentsoft',
@@ -358,6 +361,8 @@ export function Toggle({ checked, onChange, label, description }: { checked: boo
       <Switch
         checked={checked}
         onChange={onChange}
+        aria-label={label}
+        data-tip={checked ? `${label}: on` : `${label}: off`}
         className="focusable relative h-6 w-11 shrink-0 rounded-full transition-colors"
         style={{ background: checked ? 'var(--accent)' : 'var(--surface-3)' }}
       >
@@ -622,6 +627,7 @@ export function ColorPicker({ value, onChange }: { value: string; onChange: (v: 
           key={c}
           onClick={() => onChange(c)}
           aria-label={`Colour ${c}`}
+          data-tip={`Colour ${c}`}
           className="focusable flex h-6 w-6 items-center justify-center rounded-full transition-transform hover:scale-110"
           style={{ background: c, boxShadow: value.toLowerCase() === c.toLowerCase() ? `0 4px 14px -4px ${c}` : undefined }}
         >

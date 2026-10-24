@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { format } from 'date-fns';
 import { Popover as _P } from '@headlessui/react';
 import { motion } from 'framer-motion';
@@ -28,6 +29,27 @@ export function Heatmap({
 }: HeatmapProps) {
   const [hover, setHover] = useState<{ x: number; y: number; date: string; value: number } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const tipRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+
+  /** Measure the card after it mounts, then keep it inside the viewport:
+   *  centred on the cell, nudged left/right at the edges, flipped below when
+   *  there is no room above, and never pushed off the bottom. */
+  useLayoutEffect(() => {
+    if (!hover) { setPos(null); return; }
+    const el = tipRef.current;
+    if (!el) return;
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+    const pad = 8;
+    const left = Math.min(Math.max(pad, hover.x - w / 2), Math.max(pad, vw - w - pad));
+    let top = hover.y - h - 10;
+    if (top < pad) top = hover.y + 22;
+    if (top + h > vh - pad) top = Math.max(pad, vh - h - pad);
+    setPos({ left: Math.round(left), top: Math.round(top) });
+  }, [hover]);
 
   const level = (v: number) => {
     if (v <= 0) return 0;
@@ -61,7 +83,7 @@ export function Heatmap({
     : ['Sun', '', 'Tue', '', 'Thu', '', 'Sat'];
 
   return (
-    <div ref={wrapRef} className="relative inline-block">
+    <div ref={wrapRef} className="relative inline-block max-w-full overflow-x-auto no-scrollbar">
       {showMonthLabels && (
         <div className="relative mb-1 h-3.5" style={{ marginLeft: showWeekdayLabels ? 26 : 0 }}>
           {monthLabels.map((m) => (
@@ -87,9 +109,10 @@ export function Heatmap({
                     key={key}
                     onClick={() => onDayClick?.(key, v)}
                     onMouseEnter={(e) => {
-                      const rect = (e.target as HTMLElement).getBoundingClientRect();
-                      const wrap = wrapRef.current?.getBoundingClientRect();
-                      setHover({ x: rect.left - (wrap?.left ?? 0), y: rect.top - (wrap?.top ?? 0), date: key, value: v });
+                      // Viewport coordinates: the card is positioned fixed so it
+                      // can escape a scrolling panel instead of being clipped.
+                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                      setHover({ x: rect.left + rect.width / 2, y: rect.top, date: key, value: v });
                     }}
                     onMouseLeave={() => setHover(null)}
                     whileHover={{ scale: 1.25 }}
@@ -105,10 +128,15 @@ export function Heatmap({
         </div>
       </div>
 
-      {hover && (
+      {hover && createPortal(
         <div
-          className="panel-raised pointer-events-none absolute z-50 min-w-[150px] p-2 text-[11px]"
-          style={{ left: Math.max(0, hover.x - 60), top: hover.y - 8, transform: 'translateY(-100%)' }}
+          ref={tipRef}
+          className="panel-raised pointer-events-none fixed z-[100] min-w-[150px] max-w-[240px] p-2 text-[11px]"
+          style={{
+            left: pos ? pos.left : 0,
+            top: pos ? pos.top : 0,
+            visibility: pos ? 'visible' : 'hidden',
+          }}
         >
           {formatTooltip ? formatTooltip(hover.date, hover.value) : (
             <>
@@ -116,7 +144,8 @@ export function Heatmap({
               <div className="text-muted">{hover.value > 0 ? displayMask?.(hover.value, hover.date) ?? `${hover.value}` : emptyLabel}</div>
             </>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

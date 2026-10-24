@@ -110,6 +110,7 @@ export default function Sound() {
   }, [params]);
 
   const activeLayers = sound.active;
+  const clock = useSessionClock(activeLayers.length > 0);
 
   const randomize = () => {
     sound.stopAll();
@@ -176,50 +177,96 @@ export default function Sound() {
             </div>
           </Panel>
 
-          <Panel className="p-3">
-            <SectionHead title="Mixer" subtitle="Per-layer volume, pan and tone" right={
-              <div className="flex items-center gap-2">
-                <Icon name={sound.muted ? 'VolumeX' : 'Volume2'} size={14} className="text-muted" />
-                <div className="w-28"><Slider value={sound.master} min={0} max={1} step={0.01} label="Master volume" onChange={(v) => { sound.set({ master: v }); engine.setMaster(v); }} /></div>
-                <span className="num w-8 text-right text-[11px] text-faint">{Math.round(sound.master * 100)}</span>
+          <Panel className="overflow-hidden p-0">
+            {/* Player header: what is playing, and the transport. */}
+            <div className="flex flex-wrap items-center gap-3 p-3">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[12px]"
+                style={{ background: activeLayers.length ? 'color-mix(in srgb, var(--accent) 22%, var(--surface-2))' : 'var(--surface-2)' }}>
+                <Icon name={sound.muted ? 'VolumeX' : activeLayers.length ? 'AudioLines' : 'Disc3'} size={22}
+                  className={cn(activeLayers.length && !sound.muted ? 'text-accent' : 'text-faint')} />
               </div>
-            } />
-            {!activeLayers.length ? (
-              <EmptyState icon="AudioLines" title="No layers yet" body="Turn on a generator above, or load a preset." />
-            ) : (
-              <div className="space-y-1.5">
-                {activeLayers.map((kind) => {
-                  const meta = LAYER_META.find((l) => l.kind === kind);
-                  const vol = sound.volumes[kind] ?? 0.4;
-                  return (
-                    <div key={kind} className="flex flex-wrap items-center gap-2 rounded-[11px] bg-s1 px-2.5 py-2">
-                      <button onClick={() => sound.toggle(kind)} className="focusable flex h-7 w-7 items-center justify-center rounded-[8px]" style={{ background: 'var(--accent)', color: '#fff' }} aria-label={`Stop ${meta?.label}`}>
-                        <Icon name="Pause" size={12} />
-                      </button>
-                      <span className="w-28 truncate text-[12px]">{meta?.label}</span>
-                      <div className="w-24"><Slider value={vol} min={0} max={1} step={0.01} label={`${meta?.label} volume`} onChange={(v) => sound.setVolume(kind, v)} /></div>
-                      <span className="num w-8 text-[10.5px] text-faint">{Math.round(vol * 100)}</span>
-                      <span className="text-[10px] text-faint">pan</span>
-                      <div className="w-16"><Slider value={sound.pans[kind] ?? 0} min={-1} max={1} step={0.05} label={`${meta?.label} pan`} onChange={(v) => sound.setPan(kind, v)} /></div>
-                      <span className="text-[10px] text-faint">tone</span>
-                      <div className="w-16"><Slider value={sound.tones[kind] ?? 0.6} min={0} max={1} step={0.02} label={`${meta?.label} tone`} onChange={(v) => sound.setTone(kind, v)} /></div>
-                      <button onClick={() => { setSelected(kind); }} className="focusable chip ml-auto hover:bg-s3"><Icon name="SlidersHorizontal" size={10} />EQ</button>
-                    </div>
-                  );
-                })}
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[13.5px] font-medium" data-label="minor">
+                  {activeLayers.length
+                    ? activeLayers.map((k) => LAYER_META.find((l) => l.kind === k)?.label ?? k).join(' + ')
+                    : 'Nothing playing'}
+                </div>
+                <div className="mt-0.5 text-[11px] text-faint" data-label="meta">
+                  {activeLayers.length
+                    ? `${activeLayers.length} layers · master ${Math.round(sound.master * 100)}%${sound.muffle > 0 ? ` · muffled ${Math.round(sound.muffle * 100)}%` : ''}`
+                    : 'Pick a generator below and it fades in'}
+                </div>
               </div>
-            )}
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-faint">Muffle</span>
-                <div className="w-24"><Slider value={sound.muffle} min={0} max={1} step={0.02} label="Master muffle" onChange={(v) => { sound.set({ muffle: v }); engine.setMuffle(v); }} /></div>
+              <div className="flex items-center gap-1.5">
+                <button onClick={() => { sound.set({ muted: !sound.muted }); engine.setMuted(!sound.muted); }}
+                  className="focusable flex h-9 w-9 items-center justify-center rounded-[10px] text-muted hover:bg-s2 hover:text-ink"
+                  data-tip={sound.muted ? 'Unmute' : 'Mute'} aria-label={sound.muted ? 'Unmute' : 'Mute'}>
+                  <Icon name={sound.muted ? 'VolumeX' : 'Volume2'} size={16} />
+                </button>
+                <button onClick={() => (activeLayers.length ? sound.stopAll() : randomize())}
+                  className="focusable flex h-11 w-11 items-center justify-center rounded-full"
+                  style={{ background: 'var(--accent)', color: '#fff' }}
+                  data-tip={activeLayers.length ? 'Stop everything' : 'Random mix'} aria-label={activeLayers.length ? 'Stop everything' : 'Random mix'}>
+                  <Icon name={activeLayers.length ? 'Square' : 'Play'} size={17} />
+                </button>
               </div>
-              <button onClick={() => { sound.set({ muted: !sound.muted }); engine.setMuted(!sound.muted); }} className={cn('focusable chip', sound.muted && 'text-danger')}>
-                <Icon name={sound.muted ? 'VolumeX' : 'Volume2'} size={11} /> {sound.muted ? 'Muted' : 'Mute all'}
+            </div>
+
+            {/* Transport readout: real elapsed session time and a live output
+                meter fed by the analyser, not a fake seek bar. */}
+            <div className="flex items-center gap-3 px-3 pb-3">
+              <span className="num w-[38px] text-[10.5px] text-faint" data-label="meta">{clock}</span>
+              <OutputMeter active={activeLayers.length > 0 && !sound.muted} />
+              <span className="text-[10.5px] text-faint" data-label="meta">{activeLayers.length ? 'live' : 'idle'}</span>
+            </div>
+
+            {/* Equaliser: one strip per active layer. */}
+            <div className="border-t px-3 pb-3 pt-2" style={{ borderColor: 'color-mix(in srgb, var(--text-faint) 12%, transparent)' }}>
+              <div className="mb-2 flex items-center justify-between">
+                <span className="label" data-label="meta">Channel strips</span>
+                <span className="text-[10.5px] text-faint" data-label="meta">drag a fader · click EQ for filters</span>
+              </div>
+              {!activeLayers.length ? (
+                <div className="py-6 text-center text-[12px] text-faint">No channels. Turn on a generator above.</div>
+              ) : (
+                <div className="flex items-stretch gap-2 overflow-x-auto pb-1 no-scrollbar">
+                  {activeLayers.map((kind) => {
+                    const meta = LAYER_META.find((l) => l.kind === kind);
+                    const vol = sound.volumes[kind] ?? 0.4;
+                    return (
+                      <div key={kind} className="flex min-w-[66px] max-w-[96px] flex-1 flex-col items-center gap-1.5 rounded-[10px] px-1 py-1.5" style={{ background: 'var(--surface-1)' }}>
+                        <span className="num text-[10px] text-faint">{Math.round(vol * 100)}</span>
+                        <VerticalFader value={vol} label={`${meta?.label} volume`} onChange={(v) => sound.setVolume(kind, v)} />
+                        <span className="w-full text-center text-[10px] leading-tight text-muted" data-label="meta">{meta?.label}</span>
+                        <div className="flex gap-1">
+                          <button onClick={() => setSelected(kind)} className="focusable rounded-[6px] px-1 py-0.5 text-[9px] text-faint hover:bg-s2 hover:text-muted" data-tip={`${meta?.label} EQ`}>EQ</button>
+                          <button onClick={() => sound.toggle(kind)} className="focusable rounded-[6px] px-1 py-0.5 text-[9px] text-faint hover:bg-s2 hover:text-danger" data-tip={`Stop ${meta?.label}`}>OFF</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="flex min-w-[72px] max-w-[96px] flex-1 flex-col items-center gap-1.5 rounded-[10px] px-1 py-1.5" style={{ background: 'var(--accent-soft)' }}>
+                    <span className="num text-[10px]" style={{ color: 'var(--accent)' }}>{Math.round(sound.master * 100)}</span>
+                    <VerticalFader value={sound.master} label="Master volume" accent
+                      onChange={(v) => { sound.set({ master: v }); engine.setMaster(v); }} />
+                    <span className="w-full text-center text-[10px] leading-tight text-accent" data-label="meta">Master</span>
+                    <span className="h-[22px]" />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 border-t px-3 py-2" style={{ borderColor: 'color-mix(in srgb, var(--text-faint) 12%, transparent)' }}>
+              <div className="flex min-w-[190px] max-w-[280px] flex-1 items-center gap-2">
+                <span className="text-[11px] text-faint" data-label="meta">Muffle</span>
+                <Slider value={sound.muffle} min={0} max={1} step={0.02} label="Master muffle" className="flex-1"
+                  onChange={(v) => { sound.set({ muffle: v }); engine.setMuffle(v); }} />
+              </div>
+              <button onClick={() => engine.duck()} className="focusable chip hover:bg-s3" data-tip="Duck to 25% for a moment">
+                <Icon name="Bell" size={11} /> <span data-label="meta">Test duck</span>
               </button>
-              <button onClick={() => engine.duck()} className="focusable chip hover:bg-s3"><Icon name="Bell" size={11} />Test duck</button>
-              <div className="ml-auto flex items-center gap-1.5">
-                <span className="text-[11px] text-faint">Sleep timer</span>
+              <div className="flex items-center gap-1.5">
+                <Icon name="Moon" size={12} className="text-faint" />
                 <Select
                   value={String(sound.sleepMinutes)}
                   onChange={(v) => {
@@ -228,8 +275,8 @@ export default function Sound() {
                     if (mins > 0) { engine.fadeOut(mins, () => { useSound.getState().stopAll(); }); toast({ title: `Fading out over ${mins} minutes` }); }
                     else engine.cancelFade();
                   }}
-                  options={[{ value: '0', label: 'Off' }, { value: '5', label: '5 min' }, { value: '15', label: '15 min' }, { value: '30', label: '30 min' }, { value: '45', label: '45 min' }, { value: '60', label: '60 min' }]}
-                  className="w-24"
+                  options={[{ value: '0', label: 'No sleep timer' }, { value: '5', label: '5 min' }, { value: '15', label: '15 min' }, { value: '30', label: '30 min' }, { value: '45', label: '45 min' }, { value: '60', label: '60 min' }]}
+                  className="w-32"
                 />
               </div>
             </div>
@@ -400,4 +447,102 @@ function roundedBar(ctx: CanvasRenderingContext2D, x: number, y: number, w: numb
   ctx.lineTo(x, y + radius);
   ctx.quadraticCurveTo(x, y, x + radius, y);
   ctx.closePath();
+}
+
+
+/** A channel fader. Same keyboard contract as Slider, drawn vertically. */
+function VerticalFader({ value, onChange, label, accent }: {
+  value: number; onChange: (v: number) => void; label: string; accent?: boolean;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState(false);
+  /** One rounding point for drag and keyboard, so the readout never shows
+   *  floating-point noise like 0.30000000000000004. */
+  const set = (v: number) => onChange(Math.round(Math.min(1, Math.max(0, v)) * 100) / 100);
+  const commit = (clientY: number) => {
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.height <= 0) return;
+    set(1 - (clientY - rect.top) / rect.height);
+  };
+  return (
+    <div
+      ref={ref}
+      role="slider"
+      tabIndex={0}
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={1}
+      aria-valuenow={value}
+      aria-valuetext={`${Math.round(value * 100)} percent`}
+      data-dragging={dragging || undefined}
+      onPointerDown={(e) => { e.preventDefault(); (e.target as HTMLElement).setPointerCapture?.(e.pointerId); setDragging(true); commit(e.clientY); }}
+      onPointerMove={(e) => { if (dragging) commit(e.clientY); }}
+      onPointerUp={(e) => { setDragging(false); (e.target as HTMLElement).releasePointerCapture?.(e.pointerId); }}
+      onPointerCancel={() => setDragging(false)}
+      onKeyDown={(e) => {
+        if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { e.preventDefault(); set(value + 0.05); }
+        if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { e.preventDefault(); set(value - 0.05); }
+        if (e.key === 'Home') { e.preventDefault(); set(0); }
+        if (e.key === 'End') { e.preventDefault(); set(1); }
+      }}
+      className="flow-fader focusable relative h-[104px] w-[10px] cursor-pointer touch-none select-none rounded-full"
+      style={{ background: 'var(--surface-3)' }}
+    >
+      <div className="absolute inset-x-0 bottom-0 rounded-full"
+        style={{ height: `${value * 100}%`, background: accent ? 'var(--accent)' : 'color-mix(in srgb, var(--accent) 70%, var(--surface-2))' }} />
+      <span className="flow-fader-thumb pointer-events-none absolute left-1/2 h-[3px] w-[22px] -translate-x-1/2 rounded-full"
+        style={{ bottom: `calc(${value * 100}% - 1.5px)`, background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.5)' }} />
+    </div>
+  );
+}
+
+
+/** Elapsed time since the current mix started playing; resets between sessions. */
+function useSessionClock(running: boolean) {
+  const [seconds, setSeconds] = useState(0);
+  const since = useRef<number | null>(null);
+  useEffect(() => {
+    if (!running) { since.current = null; setSeconds(0); return; }
+    since.current = Date.now();
+    const id = window.setInterval(() => {
+      if (since.current != null) setSeconds(Math.floor((Date.now() - since.current) / 1000));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [running]);
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+/** Twenty LED segments driven by the analyser's low band. */
+function OutputMeter({ active }: { active: boolean }) {
+  const [level, setLevel] = useState(0);
+  useEffect(() => {
+    if (!active) { setLevel(0); return; }
+    let raf = 0;
+    let smooth = 0;
+    const tick = () => {
+      const spec = engine.spectrum();
+      let sum = 0;
+      const n = Math.min(24, spec.length);
+      for (let i = 0; i < n; i++) sum += spec[i];
+      const avg = n ? sum / n / 255 : 0;
+      smooth = smooth * 0.72 + avg * 0.28;
+      setLevel(smooth);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [active]);
+  const lit = Math.round(level * 20);
+  return (
+    <div className="flex flex-1 items-center gap-[3px]" aria-hidden="true">
+      {Array.from({ length: 20 }, (_, i) => (
+        <span key={i} className="h-[6px] flex-1 rounded-[1.5px] transition-colors duration-100"
+          style={{ background: i < lit ? 'var(--accent)' : 'var(--surface-3)', opacity: i < lit ? 1 - (i / 34) : 1 }} />
+      ))}
+    </div>
+  );
 }

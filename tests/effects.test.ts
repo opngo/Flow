@@ -104,7 +104,7 @@ describe('noise', () => {
 
 describe('settings migration to backdrop', () => {
   it('defaults the backdrop block and bumps the schema version', () => {
-    expect(SCHEMA_VERSION).toBe(4);
+    expect(SCHEMA_VERSION).toBe(5);
     const db = migrate({ version: 3, todos: [], decks: [], activity: [] });
     expect(db.settings.backdrop).toEqual({
       effect: 'none',
@@ -126,5 +126,28 @@ describe('settings migration to backdrop', () => {
     const parsed = DBSchema.parse({ settings: { backdrop: { effect: 'crt' } } });
     expect(parsed.settings.backdrop.effect).toBe('crt');
     expect(parsed.settings.backdrop.intensity).toBe(0.55);
+  });
+});
+
+describe('settings migration to label density and immersive clock', () => {
+  it('defaults the new blocks for a version 4 database', () => {
+    const db = migrate({ version: 4, todos: [], decks: [], activity: [] });
+    expect(db.settings.ui.labels).toBe('full');
+    expect(db.settings.immersive).toEqual({ endColor: '#ef4444', endAt: 25, arc: true });
+    expect(db.version).toBe(SCHEMA_VERSION);
+  });
+
+  it('keeps a chosen density and end colour through migration', () => {
+    const db = migrate({
+      version: 4,
+      settings: { ui: { labels: 'none' }, immersive: { endColor: '#57c9a0', endAt: 40, arc: false } },
+    });
+    expect(db.settings.ui.labels).toBe('none');
+    expect(db.settings.immersive.endColor).toBe('#57c9a0');
+    expect(db.settings.immersive.arc).toBe(false);
+  });
+
+  it('rejects a density outside the enum instead of leaking it to the DOM', () => {
+    expect(() => DBSchema.parse({ settings: { ui: { labels: 'icon' } } })).toThrow();
   });
 });

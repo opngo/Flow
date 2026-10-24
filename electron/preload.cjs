@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('flow', {
   platform: 'electron',
   load: () => ipcRenderer.invoke('flow:load'),
   save: (json) => ipcRenderer.invoke('flow:save', json),
+  loginItem: (enabled) => ipcRenderer.invoke('flow:login-item', enabled),
   window: (action, value) => {
     if (action === 'pin') ipcRenderer.send('flow:pin', value);
     else ipcRenderer.send('flow:window', action);

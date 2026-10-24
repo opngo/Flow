@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { CSS } from '@dnd-kit/utilities';
 import { useFlow } from '../store';
 import { Chip, Icon, IconBtn, MenuBtn } from './ui';
+import { RichTip } from './Tooltip';
+import { format } from 'date-fns';
 import { PriorityFlag } from './TodoDialog';
 import { dueState, dueTint, fmtTime, minsToHM, relDay, cn } from '../lib/utils';
 import type { Todo } from '../lib/types';
@@ -68,16 +70,23 @@ export function TaskRow({ todo, onEdit, selected, onSelect, compact, showMeta = 
             <span className="num shrink-0 text-[11px] text-faint">{todo.checklist.filter((c) => c.done).length}/{todo.checklist.length}</span>
           )}
         </div>
-        {showMeta && (
-          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+        {showMeta && (cat || subject || project || todo.status === 'blocked' || todo.status === 'doing' || todo.loggedMin > 0 || todo.estimateMin) && (
+          <div className="mt-1 flex flex-wrap items-center gap-1.5" data-label="meta">
             {cat && <Chip icon={cat.icon} color={cat.color}>{cat.name}</Chip>}
             {subject && <Chip icon={subject.icon} color={subject.color}>{subject.name}</Chip>}
             {project && <Chip icon={project.icon} color={project.color}>{project.name}</Chip>}
-            {todo.tags.map((t) => <span key={t} className="text-[11px] text-faint">#{t}</span>)}
             {todo.status === 'blocked' && <Chip icon="Hourglass" color="var(--warning)">Blocked</Chip>}
             {todo.status === 'doing' && <Chip icon="Play" color="var(--accent)">Doing</Chip>}
             {todo.loggedMin > 0 && <Chip icon="Clock">{minsToHM(todo.loggedMin)}</Chip>}
-            {todo.estimateMin && todo.loggedMin === 0 && <Chip icon="Hourglass">{todo.estimateMin}m</Chip>}
+            {todo.estimateMin && todo.loggedMin === 0 ? <Chip icon="Hourglass">{todo.estimateMin}m</Chip> : null}
+          </div>
+        )}
+        {showMeta && todo.tags.length > 0 && (
+          <div className="mt-1 flex flex-wrap items-center gap-1" data-label="meta">
+            {todo.tags.map((t) => (
+              <span key={t} className="rounded-[6px] px-1.5 py-0.5 text-[10.5px] text-faint"
+                style={{ background: 'color-mix(in srgb, var(--surface-3) 60%, transparent)' }}>#{t}</span>
+            ))}
           </div>
         )}
       </div>
@@ -108,14 +117,77 @@ export function TaskRow({ todo, onEdit, selected, onSelect, compact, showMeta = 
     </div>
   );
 
+  const card = (
+    <TodoHoverCard
+      todo={todo}
+      category={cat?.name}
+      categoryColor={cat?.color}
+      subject={subject?.name}
+      subjectColor={subject?.color}
+      project={project?.name}
+    />
+  );
+
+  const wrapped = <RichTip content={card}>{body}</RichTip>;
+
   if (draggable) {
     return (
       <div ref={st.setNodeRef} style={st.style} {...st.attributes} {...st.listeners} className="touch-none">
-        {body}
+        {wrapped}
       </div>
     );
   }
-  return body;
+  return wrapped;
+}
+
+/** Everything the row cannot show at rest: dates, links, estimates, notes. */
+function TodoHoverCard({
+  todo, category, categoryColor, subject, subjectColor, project,
+}: {
+  todo: Todo; category?: string; categoryColor?: string; subject?: string; subjectColor?: string; project?: string;
+}) {
+  const line = (label: string, value: React.ReactNode, color?: string) => (
+    <div className="flex items-baseline justify-between gap-3 py-[3px]">
+      <span className="shrink-0 text-[10.5px] uppercase tracking-[0.06em] text-faint">{label}</span>
+      <span className="min-w-0 truncate text-right" style={color ? { color } : undefined}>{value}</span>
+    </div>
+  );
+  const done = todo.checklist.filter((c) => c.done).length;
+  return (
+    <div>
+      <div className="mb-1.5 text-[12.5px] font-medium leading-snug text-ink">{todo.title}</div>
+      <div className="mb-2 flex flex-wrap gap-1">
+        <Chip icon={todo.status === 'done' ? 'Check' : todo.status === 'doing' ? 'Play' : 'Circle'}>{todo.status}</Chip>
+        {todo.priority > 0 && <Chip icon="Flag" color="var(--warning)">P{todo.priority}</Chip>}
+        {todo.rrule && <Chip icon="Repeat">repeats</Chip>}
+      </div>
+      <div className="divide-y" style={{ borderColor: 'color-mix(in srgb, var(--text-faint) 12%, transparent)' }}>
+        {category && line('Category', category, categoryColor)}
+        {subject && line('Subject', subject, subjectColor)}
+        {project && line('Project', project)}
+        {line('Created', format(new Date(todo.createdAt), 'd MMM yyyy'))}
+        {todo.dueAt && line('Due', format(new Date(todo.dueAt), 'EEE d MMM, HH:mm'))}
+        {todo.startAt && line('Starts', format(new Date(todo.startAt), 'EEE d MMM'))}
+        {todo.estimateMin ? line('Estimate', `${todo.estimateMin} min`) : null}
+        {todo.loggedMin ? line('Logged', minsToHM(todo.loggedMin)) : null}
+        {todo.checklist.length ? line('Checklist', `${done} of ${todo.checklist.length}`) : null}
+      </div>
+      {todo.tags.length > 0 && (
+        <div className="mt-1.5 flex flex-wrap gap-1">
+          {todo.tags.map((t) => (
+            <span key={t} className="rounded-[6px] px-1.5 py-0.5 text-[10.5px] text-faint"
+              style={{ background: 'color-mix(in srgb, var(--surface-3) 70%, transparent)' }}>#{t}</span>
+          ))}
+        </div>
+      )}
+      {todo.notes && (
+        <p className="mt-2 line-clamp-3 text-[11px] leading-relaxed text-muted">{todo.notes}</p>
+      )}
+      <div className="mt-2 text-[10px] uppercase tracking-[0.08em] text-faint">
+        {done ? 'Done' : 'Right-click the row for actions'}
+      </div>
+    </div>
+  );
 }
 
 function sortable(id: string, enabled?: boolean) {

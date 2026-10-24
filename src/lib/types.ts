@@ -387,6 +387,18 @@ export const SettingsSchema = z.object({
     radius: z.number().default(16),
     blur: z.number().default(18),
   }).default({}),
+  /** How much text the interface shows. `none` is an icon-only shell. */
+  ui: z.object({
+    labels: z.enum(['full', 'minimal', 'none']).default('full'),
+  }).default({}),
+  immersive: z.object({
+    /** Colour the clock drifts toward as it runs out. */
+    endColor: z.string().default('#ef4444'),
+    /** Percentage of the block remaining where the drift begins. */
+    endAt: z.number().default(25),
+    /** Draw the progress as an arc instead of a segmented bar. */
+    arc: z.boolean().default(true),
+  }).default({}),
   /* Opt-in motion layer behind the interface. Off by default: the app ships
      quiet and the user turns atmosphere on in Settings, Appearance. */
   backdrop: z.object({
@@ -476,4 +488,4 @@ export type DB = z.infer<typeof DBSchema>;
 export type CollectionKey = 'categories' | 'todos' | 'habits' | 'habitLogs' | 'goals' | 'subjects' | 'marks'
   | 'focusSessions' | 'reminders' | 'notifications' | 'notes' | 'decks' | 'events' | 'mixes' | 'activity' | 'timers' | 'projects';
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
