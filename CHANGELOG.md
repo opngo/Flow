@@ -15,6 +15,46 @@ so keep headings exactly as `## [x.y.z] - YYYY-MM-DD`.
 - Optional encrypted database at rest
 - Split view: two panes side by side in one window
 
+## [1.3.0] - 2026-10-24
+
+### Added
+
+- **Label density.** Settings → Appearance offers Full, Minimal and None. Minimal hides metadata
+  and minor labels; None leaves an icon-only shell with the same layout.
+- **Tooltip layer.** One delegated `[data-tip]` layer gives every chrome control a tooltip in the
+  reduced-label modes: sidebar rows, titlebar, icon buttons, toggles, swatches, habit cells, toasts.
+  Content hover cards opt out through `[data-rich-tip]`.
+- **Todo hover card.** Hovering a task shows created, start, due, estimate, logged time, checklist
+  progress, tags and notes.
+- **Immersive clock.** The fullscreen timer draws progress as a 270° arch, sizes its digits with
+  container queries and scales the ring up while running. Chrome is fully hidden while the clock
+  runs and returns translucent on hover.
+- **Colour drift.** The clock drifts toward a chosen colour over the closing share of the block
+  (Settings → Timers: end colour and threshold).
+- **Start on startup.** An Electron login item, exposed as a Settings toggle; the switch reverts if
+  the OS refuses.
+- **Sound Studio player.** Now-playing header with transport, analyser-driven LED output meter,
+  vertical channel faders with a master strip, per-channel EQ, session clock.
+- Route chunks prefetch on sidebar hover; Sound Studio is reachable from the immersive clock and
+  the Timers header.
+
+### Changed
+
+- Task rows put metadata and tags on separate rows, so tags never crowd the meta line.
+- The heatmap tooltip renders in a portal and clamps to the viewport on every edge; the grid scrolls
+  instead of clipping at narrow widths.
+- The sidebar active rail sits inside the pill; Dashboard is no longer a sidebar destination (the
+  logo is home).
+- Notifications open as a popover; breadcrumbs are clickable.
+- Page transitions no longer wait for an exit animation before the next route paints.
+- Database schema 5 adds `settings.ui.labels` and `settings.immersive`.
+
+### Fixed
+
+- Heatmap tooltip clipped at the edge of its panel.
+- Tooltip text rendering as `[object Object]` for string tips.
+- Sidebar hover state read as a function, crashing the shell on narrow widths.
+
 ## [1.2.0] - 2026-10-24
 
 ### Added
