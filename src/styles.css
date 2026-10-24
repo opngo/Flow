@@ -506,42 +506,47 @@ html[data-labels='minimal'] [data-label='minor'] { display: none !important; }
    The whole ring scales up very slightly while the clock runs, which
    reads as the timer taking a breath rather than as a UI animation.
    --------------------------------------------------------------- */
+/* The arch is a screen-scale element: it fills the clock area edge to edge and
+   the digits sit inside it, not the other way round. */
 .clock-wrap {
-  position: relative;
+  position: fixed;
+  inset: 0;
   display: grid;
   place-items: center;
-  width: min(64vh, 74vw, 620px);
-  aspect-ratio: 1;
   container-type: size;
-  transition: transform 620ms cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 700ms cubic-bezier(0.32, 0.72, 0, 1);
 }
-.clock-wrap.is-running { transform: scale(1.035); }
+.clock-wrap.is-running { transform: scale(1.012); }
 
 .clock-arc {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
-  transform: rotate(135deg);
   overflow: visible;
 }
 .clock-arc-track,
 .clock-arc-fill {
   fill: none;
-  stroke-width: 7;
+  stroke-width: 6;
   stroke-linecap: round;
-  stroke-dasharray: 0 9999;
 }
-.clock-arc-track {
-  stroke: color-mix(in srgb, var(--text-faint) 20%, transparent);
-  /* 270 of 360 degrees: three quarters of the circumference. */
-  stroke-dasharray: 791.68 1055.58;
-}
+.clock-arc-track { stroke: color-mix(in srgb, var(--text-faint) 20%, transparent); }
 .clock-arc-fill {
   /* no transition on the dash: it is recomputed every frame from the clock */
   transition: stroke 320ms linear, filter 320ms linear, stroke-width 400ms ease;
 }
-.clock-wrap.is-running .clock-arc-fill { stroke-width: 8.5; }
+.clock-wrap.is-running .clock-arc-fill { stroke-width: 7.5; }
+
+/* Divets: notches outside the track, longer every sixth. */
+.clock-divet {
+  stroke: color-mix(in srgb, var(--text-faint) 22%, transparent);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  transition: stroke 320ms linear, opacity 320ms linear;
+}
+.clock-divet.is-major {
+  stroke: color-mix(in srgb, var(--text-faint) 34%, transparent);
+  stroke-width: 2;
+}
 
 .clock-face {
   position: relative;
@@ -549,18 +554,16 @@ html[data-labels='minimal'] [data-label='minor'] { display: none !important; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* The face is inset from the arc so the ring always clears the digits. */
-  width: 74%;
+  width: min(78%, 1000px);
 }
 
-/* Digits are sized against the ring, not the window, so they can never grow
-   wider than the arc around them. */
+/* Digits are sized against the screen the arch spans. */
 .immersive-digits {
-  font-size: min(21cqw, 27cqh);
+  font-size: min(16cqw, 33cqh);
   line-height: 0.84;
 }
-.immersive-digits.is-long { font-size: min(15cqw, 20cqh); }
-.immersive-digits.is-longer { font-size: min(11.5cqw, 15cqh); }
+.immersive-digits.is-long { font-size: min(12.5cqw, 26cqh); }
+.immersive-digits.is-longer { font-size: min(10cqw, 21cqh); }
 
 /* While running, the interface leaves entirely: only the arc and digits stay. */
 .immersive[data-running] .immersive-chrome { opacity: 0; pointer-events: none; }
