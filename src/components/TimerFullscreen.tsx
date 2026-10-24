@@ -35,6 +35,9 @@ const ARC_SWEEP = 204;
 /** The band is divided into sections; the gap is the divider. */
 const SECTIONS = 26;
 const SECTION_GAP = 16;
+/** Band thickness. Half of it is the widest a section corner can round. */
+const BAND = 30;
+const HALF_BAND = BAND / 2;
 const HOVER_HOLD_MS = 2400;
 
 type Mode = 'pomodoro' | 'timer' | 'stopwatch';
@@ -51,15 +54,63 @@ function archPoint(cx: number, cy: number, rx: number, ry: number, t: number): [
   return [cx + rx * Math.cos(a), cy + ry * Math.sin(a)];
 }
 
-/** A polyline for the stretch of arch between two points of the sweep. */
-function archSpan(cx: number, cy: number, rx: number, ry: number, t0: number, t1: number) {
-  const steps = Math.max(6, Math.round(Math.abs(t1 - t0) * 900));
-  let d = '';
-  for (let i = 0; i <= steps; i++) {
-    const [x, y] = archPoint(cx, cy, rx, ry, t0 + ((t1 - t0) * i) / steps);
-    d += `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`;
-  }
-  return d;
+type Pt = [number, number];
+
+const fmtPt = (p: Pt) => `${p[0].toFixed(1)} ${p[1].toFixed(1)}`;
+const addV = (a: Pt, b: Pt): Pt => [a[0] + b[0], a[1] + b[1]];
+const subV = (a: Pt, b: Pt): Pt => [a[0] - b[0], a[1] - b[1]];
+const mulV = (a: Pt, k: number): Pt => [a[0] * k, a[1] * k];
+const unit = (a: Pt): Pt => {
+  const len = Math.hypot(a[0], a[1]) || 1;
+  return [a[0] / len, a[1] / len];
+};
+
+/**
+ * One section of the band, as a filled shape rather than a stroked line: the
+ * ends are rounded by hand so the corner radius can follow the appearance
+ * setting (0 for sharp, up to half the band for a full round cap).
+ */
+function archSection(cx: number, cy: number, rx: number, ry: number, t0: number, t1: number, corner: number) {
+  const steps = Math.max(8, Math.round(Math.abs(t1 - t0) * 900));
+  const centre: Pt[] = [];
+  for (let i = 0; i <= steps; i++) centre.push(archPoint(cx, cy, rx, ry, t0 + ((t1 - t0) * i) / steps));
+
+  // Outward normal per sample, taken from the neighbouring points.
+  const normal: Pt[] = centre.map((_, i) => {
+    const a = centre[Math.max(0, i - 1)];
+    const b = centre[Math.min(steps, i + 1)];
+    return [-unit(subV(b, a))[1], unit(subV(b, a))[0]];
+  });
+
+  const outer = centre.map((p, i) => addV(p, mulV(normal[i], HALF_BAND)));
+  const inner = centre.map((p, i) => subV(p, mulV(normal[i], HALF_BAND)));
+
+  const k = Math.max(0, Math.min(corner, HALF_BAND));
+  const tl = unit(subV(centre[steps], centre[steps - 1]));   // outward at the end
+  const tf = unit(subV(centre[0], centre[1]));               // outward at the start
+  const nEnd = normal[steps];
+  const nStart = normal[0];
+
+  const vOutEnd = outer[steps];
+  const vInEnd = inner[steps];
+  const vInStart = inner[0];
+  const vOutStart = outer[0];
+
+  let d = `M${fmtPt(outer[0])}`;
+  for (let i = 1; i < steps; i++) d += `L${fmtPt(outer[i])}`;
+  // end: outer corner, face, inner corner
+  d += `L${fmtPt(subV(vOutEnd, mulV(tl, k)))}`;
+  d += `Q${fmtPt(vOutEnd)} ${fmtPt(subV(vOutEnd, mulV(nEnd, k)))}`;
+  d += `L${fmtPt(addV(vInEnd, mulV(nEnd, k)))}`;
+  d += `Q${fmtPt(vInEnd)} ${fmtPt(subV(vInEnd, mulV(tl, k)))}`;
+  // inner edge, back to the start
+  for (let i = steps - 1; i > 0; i--) d += `L${fmtPt(inner[i])}`;
+  // start: inner corner, face, outer corner
+  d += `L${fmtPt(addV(vInStart, mulV(tl, k)))}`;
+  d += `Q${fmtPt(vInStart)} ${fmtPt(addV(vInStart, mulV(nStart, k)))}`;
+  d += `L${fmtPt(subV(vOutStart, mulV(nStart, k)))}`;
+  d += `Q${fmtPt(vOutStart)} ${fmtPt(addV(vOutStart, mulV(tf, k)))}`;
+  return `${d}Z`;
 }
 
 /** Sampled length of the whole sweep, used to keep the dividers an even width. */
@@ -234,30 +285,54 @@ export function TimerFullscreen() {
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
+  // Section corners follow the appearance setting: sharp zeroes them, rounded
+  // follows the radius slider up to a full round cap.
+  const cornerRadius = db.settings.theme.corners === 'sharp'
+    ? 0
+    : Math.min(HALF_BAND, Math.max(0, db.settings.theme.radius) / 2);
+
   const geom = useMemo(() => {
     // Wider and taller than the frame: the ends run off the sides rather than
     // turning back toward the middle.
     const cx = vp.w / 2;
-    // rx just past half the width: the ends cross the side edges instead of
-    // turning back, and a deeper ry keeps the band low on the glass.
-    const cy = vp.h * 0.63;
+    // The band sits below the time: its crown clears the digits and both ends
+    // cross the side edges low on the glass instead of turning back.
     const rx = Math.max(220, vp.w * 0.52);
-    // Never let the crown of the band slide under the top rail on short screens.
-    const ry = Math.max(160, Math.min(vp.h * 0.52, cy - 100));
+    const ry = Math.max(120, vp.h * 0.34);
+    const cy = vp.h * 0.6 + ry;
     const total = archLength(cx, cy, rx, ry);
     const gap = SECTION_GAP / total;
     const sections: string[] = [];
     for (let i = 0; i < SECTIONS; i++) {
-      sections.push(archSpan(cx, cy, rx, ry, i / SECTIONS + gap / 2, (i + 1) / SECTIONS - gap / 2));
+      sections.push(archSection(cx, cy, rx, ry, i / SECTIONS + gap / 2, (i + 1) / SECTIONS - gap / 2, cornerRadius));
     }
-    return { cx, cy, rx, ry, sections, gap };
-  }, [vp.w, vp.h]);
+    // The ends leave the frame, so the playhead is parked at the first and last
+    // on-screen point instead of vanishing with them.
+    const margin = HALF_BAND + 18;   // room for the whole playhead bead
+    let tIn = 0;
+    let tOut = 1;
+    for (let i = 0; i <= 400; i++) {
+      const t = i / 400;
+      const [x, y] = archPoint(cx, cy, rx, ry, t);
+      if (x >= margin && x <= vp.w - margin && y >= margin && y <= vp.h - margin) { tIn = t; break; }
+    }
+    for (let i = 400; i >= 0; i--) {
+      const t = i / 400;
+      const [x, y] = archPoint(cx, cy, rx, ry, t);
+      if (x >= margin && x <= vp.w - margin && y >= margin && y <= vp.h - margin) { tOut = t; break; }
+    }
+    return { cx, cy, rx, ry, sections, gap, tIn, tOut };
+  }, [vp.w, vp.h, cornerRadius]);
   const filled = mode === 'stopwatch' ? SEGMENTS : Math.round((pct / 100) * SEGMENTS);
   const arcFraction = Math.max(0, Math.min(1, pct / 100));
   const litSections = Math.floor(arcFraction * SECTIONS);
   const partialFill = arcFraction > litSections / SECTIONS && arcFraction < 1
-    ? archSpan(geom.cx, geom.cy, geom.rx, geom.ry, litSections / SECTIONS + geom.gap / 2, arcFraction)
+    ? archSection(geom.cx, geom.cy, geom.rx, geom.ry, litSections / SECTIONS + geom.gap / 2, arcFraction, cornerRadius)
     : null;
+  // A dot rides the band at the current position so progress is legible even
+  // when a single section is barely started.
+  const dotT = Math.min(geom.tOut, Math.max(geom.tIn, arcFraction));
+  const [dotX, dotY] = archPoint(geom.cx, geom.cy, geom.rx, geom.ry, dotT);
 
   /* ------------------------------------------------------------- actions */
 
@@ -433,7 +508,7 @@ export function TimerFullscreen() {
                   d={d}
                   className="clock-arc-fill"
                   style={{
-                    stroke: arcColor,
+                    fill: arcColor,
                     filter: drift > 0.15 ? `drop-shadow(0 0 18px ${arcColor})` : undefined,
                   }}
                 />
@@ -444,11 +519,16 @@ export function TimerFullscreen() {
                 d={partialFill}
                 className="clock-arc-fill"
                 style={{
-                  stroke: arcColor,
+                  fill: arcColor,
                   filter: drift > 0.15 ? `drop-shadow(0 0 18px ${arcColor})` : undefined,
                 }}
               />
             )}
+            {/* Playhead: a halo, an accent bead, and a punched centre so it
+                reads against the band instead of melting into it. */}
+            <circle cx={dotX} cy={dotY} r={HALF_BAND + 12} className="clock-dot-halo" style={{ fill: arcColor }} />
+            <circle cx={dotX} cy={dotY} r={HALF_BAND - 1} className="clock-dot" style={{ fill: arcColor }} />
+            <circle cx={dotX} cy={dotY} r={HALF_BAND - 8} className="clock-dot-core" />
           </svg>
 
           <div className="clock-face">
