@@ -26,10 +26,11 @@ so keep headings exactly as `## [x.y.z] - YYYY-MM-DD`.
   Content hover cards opt out through `[data-rich-tip]`.
 - **Todo hover card.** Hovering a task shows created, start, due, estimate, logged time, checklist
   progress, tags and notes.
-- **Immersive clock.** The fullscreen timer draws progress as one long arch — a 245° sweep of an
-  ellipse spanning the display, with 60 divets notched across the track every fifth one longer.
-  Digits are sized against the screen, the arch grows slightly on play, and chrome is fully hidden
-  while the clock runs, returning translucent on hover.
+- **Immersive clock.** The fullscreen timer draws progress as one long 30 px band across the
+  display, divided into 26 sections by fixed-width dividers, whose ends leave the screen instead of
+  curling back in. Sections light up one by one as the block elapses. Digits are sized against the
+  screen, the arch grows slightly on play, and chrome is fully hidden while the clock runs,
+  returning translucent on hover.
 - **Colour drift.** The clock drifts toward a chosen colour over the closing share of the block
   (Settings → Timers: end colour and threshold).
 - **Start on startup.** An Electron login item, exposed as a Settings toggle; the switch reverts if

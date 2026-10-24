@@ -521,31 +521,20 @@ html[data-labels='minimal'] [data-label='minor'] { display: none !important; }
 .clock-arc {
   position: absolute;
   inset: 0;
-  overflow: visible;
+  /* the ends of the band are meant to leave the frame */
+  overflow: hidden;
 }
 .clock-arc-track,
 .clock-arc-fill {
   fill: none;
-  stroke-width: 6;
-  stroke-linecap: round;
+  stroke-width: 30;
+  /* butt caps keep the dividers crisp between sections */
+  stroke-linecap: butt;
 }
-.clock-arc-track { stroke: color-mix(in srgb, var(--text-faint) 20%, transparent); }
+.clock-arc-track { stroke: color-mix(in srgb, var(--text-faint) 17%, transparent); }
 .clock-arc-fill {
-  /* no transition on the dash: it is recomputed every frame from the clock */
-  transition: stroke 320ms linear, filter 320ms linear, stroke-width 400ms ease;
-}
-.clock-wrap.is-running .clock-arc-fill { stroke-width: 7.5; }
-
-/* Divets: notches outside the track, longer every sixth. */
-.clock-divet {
-  stroke: color-mix(in srgb, var(--text-faint) 22%, transparent);
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  transition: stroke 320ms linear, opacity 320ms linear;
-}
-.clock-divet.is-major {
-  stroke: color-mix(in srgb, var(--text-faint) 34%, transparent);
-  stroke-width: 2;
+  /* no transition on the dash: the filled sections are recomputed every frame */
+  transition: stroke 320ms linear, filter 320ms linear;
 }
 
 .clock-face {

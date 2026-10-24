@@ -26,13 +26,15 @@ import { minsToClock, minsToHM, mixHex, endDrift, cn } from '../lib/utils';
  */
 
 const SEGMENTS = 48;
-/** The arch is an ellipse that fills the screen. 0deg points right, 90deg down,
- *  so starting at 147.5 and sweeping 245 leaves a 115 degree mouth at the foot:
- *  one long sweep across the whole display, never a closed ring. */
-const ARC_START = 147.5;
-const ARC_SWEEP = 245;
-/** Ticks sitting just outside the track. */
-const DIVETS = 60;
+/** The arch is a section of a wide ellipse whose ends leave the screen instead
+ *  of curling back in. 0deg points right, 90deg down: starting at 168 and
+ *  sweeping 204 carries the band off the left edge, over the top, and out the
+ *  right edge. */
+const ARC_START = 168;
+const ARC_SWEEP = 204;
+/** The band is divided into sections; the gap is the divider. */
+const SECTIONS = 26;
+const SECTION_GAP = 16;
 const HOVER_HOLD_MS = 2400;
 
 type Mode = 'pomodoro' | 'timer' | 'stopwatch';
@@ -43,33 +45,33 @@ const MODES: Array<{ id: Mode; label: string; icon: string }> = [
   { id: 'stopwatch', label: 'Stopwatch', icon: 'Watch' },
 ];
 
-/** Sample an elliptical arc into a polyline. A polyline avoids the SVG arc
- *  command's 180 degree limit, and the path carries `pathLength={1}` so progress
- *  can be expressed as a plain fraction of the whole arch. */
-function archPath(cx: number, cy: number, rx: number, ry: number, steps = 320) {
-  const pts: string[] = [];
-  for (let i = 0; i <= steps; i++) {
-    const a = ((ARC_START + (ARC_SWEEP * i) / steps) * Math.PI) / 180;
-    pts.push(`${i ? 'L' : 'M'}${(cx + rx * Math.cos(a)).toFixed(1)} ${(cy + ry * Math.sin(a)).toFixed(1)}`);
-  }
-  return pts.join(' ');
+/** A point on the arch at t in 0..1 of the sweep. */
+function archPoint(cx: number, cy: number, rx: number, ry: number, t: number): [number, number] {
+  const a = ((ARC_START + ARC_SWEEP * t) * Math.PI) / 180;
+  return [cx + rx * Math.cos(a), cy + ry * Math.sin(a)];
 }
 
-/** One divet at a fraction of the arch: a short radial notch outside the track. */
-function divetGeometry(cx: number, cy: number, rx: number, ry: number, index: number) {
-  const a = ((ARC_START + (ARC_SWEEP * index) / DIVETS) * Math.PI) / 180;
-  const major = index % 5 === 0;
-  // Notches cross the track rather than floating outside it: they read as
-  // divets in the band, not as whiskers on it.
-  const inner = major ? 6 : 4;
-  const outer = major ? 13 : 6;
-  return {
-    x1: cx + (rx - inner) * Math.cos(a),
-    y1: cy + (ry - inner) * Math.sin(a),
-    x2: cx + (rx + outer) * Math.cos(a),
-    y2: cy + (ry + outer) * Math.sin(a),
-    major,
-  };
+/** A polyline for the stretch of arch between two points of the sweep. */
+function archSpan(cx: number, cy: number, rx: number, ry: number, t0: number, t1: number) {
+  const steps = Math.max(6, Math.round(Math.abs(t1 - t0) * 900));
+  let d = '';
+  for (let i = 0; i <= steps; i++) {
+    const [x, y] = archPoint(cx, cy, rx, ry, t0 + ((t1 - t0) * i) / steps);
+    d += `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`;
+  }
+  return d;
+}
+
+/** Sampled length of the whole sweep, used to keep the dividers an even width. */
+function archLength(cx: number, cy: number, rx: number, ry: number) {
+  let len = 0;
+  let prev = archPoint(cx, cy, rx, ry, 0);
+  for (let i = 1; i <= 720; i++) {
+    const p = archPoint(cx, cy, rx, ry, i / 720);
+    len += Math.hypot(p[0] - prev[0], p[1] - prev[1]);
+    prev = p;
+  }
+  return Math.max(1, len);
 }
 
 /** Repaints the component on an interval; every value it feeds is derived
@@ -233,16 +235,29 @@ export function TimerFullscreen() {
     return () => window.removeEventListener('resize', onResize);
   }, []);
   const geom = useMemo(() => {
-    // Bigger than a ring that hugs the digits: it spans the display edge to
-    // edge and sits a touch below centre, so the mouth opens toward the floor.
+    // Wider and taller than the frame: the ends run off the sides rather than
+    // turning back toward the middle.
     const cx = vp.w / 2;
-    // Clears the top rail and stops short of the transport at the foot.
-    const cy = vp.h * 0.53;
-    const rx = Math.max(140, vp.w / 2 - 26);
-    const ry = Math.max(140, vp.h / 2 - 86);
-    return { cx, cy, rx, ry, d: archPath(cx, cy, rx, ry) };
+    // rx just past half the width: the ends cross the side edges instead of
+    // turning back, and a deeper ry keeps the band low on the glass.
+    const cy = vp.h * 0.63;
+    const rx = Math.max(220, vp.w * 0.52);
+    // Never let the crown of the band slide under the top rail on short screens.
+    const ry = Math.max(160, Math.min(vp.h * 0.52, cy - 100));
+    const total = archLength(cx, cy, rx, ry);
+    const gap = SECTION_GAP / total;
+    const sections: string[] = [];
+    for (let i = 0; i < SECTIONS; i++) {
+      sections.push(archSpan(cx, cy, rx, ry, i / SECTIONS + gap / 2, (i + 1) / SECTIONS - gap / 2));
+    }
+    return { cx, cy, rx, ry, sections, gap };
   }, [vp.w, vp.h]);
   const filled = mode === 'stopwatch' ? SEGMENTS : Math.round((pct / 100) * SEGMENTS);
+  const arcFraction = Math.max(0, Math.min(1, pct / 100));
+  const litSections = Math.floor(arcFraction * SECTIONS);
+  const partialFill = arcFraction > litSections / SECTIONS && arcFraction < 1
+    ? archSpan(geom.cx, geom.cy, geom.rx, geom.ry, litSections / SECTIONS + geom.gap / 2, arcFraction)
+    : null;
 
   /* ------------------------------------------------------------- actions */
 
@@ -408,29 +423,32 @@ export function TimerFullscreen() {
 
         <div className={cn('clock-wrap', running && 'is-running')}>
           <svg className="clock-arc" width={vp.w} height={vp.h} viewBox={`0 0 ${vp.w} ${vp.h}`} aria-hidden="true">
-              <path d={geom.d} className="clock-arc-track" pathLength={1} />
+            {geom.sections.map((d, i) => (
+              <path key={`track-${i}`} d={d} className="clock-arc-track" />
+            ))}
+            {geom.sections.map((d, i) =>
+              (i + 1) / SECTIONS <= arcFraction ? (
+                <path
+                  key={`fill-${i}`}
+                  d={d}
+                  className="clock-arc-fill"
+                  style={{
+                    stroke: arcColor,
+                    filter: drift > 0.15 ? `drop-shadow(0 0 18px ${arcColor})` : undefined,
+                  }}
+                />
+              ) : null,
+            )}
+            {partialFill && (
               <path
-                d={geom.d}
+                d={partialFill}
                 className="clock-arc-fill"
-                pathLength={1}
                 style={{
                   stroke: arcColor,
-                  strokeDasharray: `${Math.max(0.0005, Math.min(1, pct / 100))} 2`,
-                  filter: drift > 0.15 ? `drop-shadow(0 0 12px ${arcColor})` : undefined,
+                  filter: drift > 0.15 ? `drop-shadow(0 0 18px ${arcColor})` : undefined,
                 }}
               />
-              {Array.from({ length: DIVETS + 1 }, (_, i) => {
-                const g = divetGeometry(geom.cx, geom.cy, geom.rx, geom.ry, i);
-                const past = (i / DIVETS) * 100 <= pct;
-                return (
-                  <line
-                    key={i}
-                    x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2}
-                    className={cn('clock-divet', g.major && 'is-major')}
-                    style={{ stroke: past ? arcColor : undefined, opacity: past ? 0.85 : undefined }}
-                  />
-                );
-              })}
+            )}
           </svg>
 
           <div className="clock-face">
