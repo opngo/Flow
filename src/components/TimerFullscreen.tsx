@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { useFlow } from '../store';
 import { useUI } from '../ui';
@@ -26,10 +26,13 @@ import { minsToClock, minsToHM, mixHex, endDrift, cn } from '../lib/utils';
  */
 
 const SEGMENTS = 48;
-const R = 168;
-const CIRC = 2 * Math.PI * R;
-/** The arc sweeps 270 degrees, open at the bottom. */
-const ARC = CIRC * 0.75;
+/** The arch is an ellipse that fills the screen. 0deg points right, 90deg down,
+ *  so starting at 147.5 and sweeping 245 leaves a 115 degree mouth at the foot:
+ *  one long sweep across the whole display, never a closed ring. */
+const ARC_START = 147.5;
+const ARC_SWEEP = 245;
+/** Ticks sitting just outside the track. */
+const DIVETS = 60;
 const HOVER_HOLD_MS = 2400;
 
 type Mode = 'pomodoro' | 'timer' | 'stopwatch';
@@ -39,6 +42,35 @@ const MODES: Array<{ id: Mode; label: string; icon: string }> = [
   { id: 'timer', label: 'Timer', icon: 'Hourglass' },
   { id: 'stopwatch', label: 'Stopwatch', icon: 'Watch' },
 ];
+
+/** Sample an elliptical arc into a polyline. A polyline avoids the SVG arc
+ *  command's 180 degree limit, and the path carries `pathLength={1}` so progress
+ *  can be expressed as a plain fraction of the whole arch. */
+function archPath(cx: number, cy: number, rx: number, ry: number, steps = 320) {
+  const pts: string[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const a = ((ARC_START + (ARC_SWEEP * i) / steps) * Math.PI) / 180;
+    pts.push(`${i ? 'L' : 'M'}${(cx + rx * Math.cos(a)).toFixed(1)} ${(cy + ry * Math.sin(a)).toFixed(1)}`);
+  }
+  return pts.join(' ');
+}
+
+/** One divet at a fraction of the arch: a short radial notch outside the track. */
+function divetGeometry(cx: number, cy: number, rx: number, ry: number, index: number) {
+  const a = ((ARC_START + (ARC_SWEEP * index) / DIVETS) * Math.PI) / 180;
+  const major = index % 5 === 0;
+  // Notches cross the track rather than floating outside it: they read as
+  // divets in the band, not as whiskers on it.
+  const inner = major ? 6 : 4;
+  const outer = major ? 13 : 6;
+  return {
+    x1: cx + (rx - inner) * Math.cos(a),
+    y1: cy + (ry - inner) * Math.sin(a),
+    x2: cx + (rx + outer) * Math.cos(a),
+    y2: cy + (ry + outer) * Math.sin(a),
+    major,
+  };
+}
 
 /** Repaints the component on an interval; every value it feeds is derived
  *  from a timestamp, so this is only a redraw hint, never a clock. */
@@ -188,6 +220,28 @@ export function TimerFullscreen() {
   const drift = mode === 'stopwatch' ? 0 : endDrift(remainingForColour, totalMs, immersivePrefs.endAt);
   const accent = mixHex(accentHex, immersivePrefs.endColor, drift);
   const arcColor = accent;
+  // The arch is drawn in viewport pixels: a stretched viewBox would thin the
+  // stroke unevenly, so the geometry is measured against the real screen.
+  const [vp, setVp] = useState(() => ({
+    w: typeof window === 'undefined' ? 1280 : window.innerWidth,
+    h: typeof window === 'undefined' ? 800 : window.innerHeight,
+  }));
+  useEffect(() => {
+    const onResize = () => setVp({ w: window.innerWidth, h: window.innerHeight });
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const geom = useMemo(() => {
+    // Bigger than a ring that hugs the digits: it spans the display edge to
+    // edge and sits a touch below centre, so the mouth opens toward the floor.
+    const cx = vp.w / 2;
+    // Clears the top rail and stops short of the transport at the foot.
+    const cy = vp.h * 0.53;
+    const rx = Math.max(140, vp.w / 2 - 26);
+    const ry = Math.max(140, vp.h / 2 - 86);
+    return { cx, cy, rx, ry, d: archPath(cx, cy, rx, ry) };
+  }, [vp.w, vp.h]);
   const filled = mode === 'stopwatch' ? SEGMENTS : Math.round((pct / 100) * SEGMENTS);
 
   /* ------------------------------------------------------------- actions */
@@ -353,17 +407,30 @@ export function TimerFullscreen() {
           style={{ background: `radial-gradient(60% 60% at 50% 50%, color-mix(in srgb, ${accent} 12%, transparent), transparent 72%)` }} />
 
         <div className={cn('clock-wrap', running && 'is-running')}>
-          <svg viewBox="0 0 400 400" className="clock-arc" aria-hidden="true">
-            <circle cx="200" cy="200" r="168" className="clock-arc-track" />
-            <circle
-              cx="200" cy="200" r="168"
-              className="clock-arc-fill"
-              style={{
-                stroke: arcColor,
-                strokeDasharray: `${ARC * Math.max(0.001, Math.min(1, pct / 100))} ${CIRC}`,
-                filter: drift > 0.15 ? `drop-shadow(0 0 10px ${arcColor})` : undefined,
-              }}
-            />
+          <svg className="clock-arc" width={vp.w} height={vp.h} viewBox={`0 0 ${vp.w} ${vp.h}`} aria-hidden="true">
+              <path d={geom.d} className="clock-arc-track" pathLength={1} />
+              <path
+                d={geom.d}
+                className="clock-arc-fill"
+                pathLength={1}
+                style={{
+                  stroke: arcColor,
+                  strokeDasharray: `${Math.max(0.0005, Math.min(1, pct / 100))} 2`,
+                  filter: drift > 0.15 ? `drop-shadow(0 0 12px ${arcColor})` : undefined,
+                }}
+              />
+              {Array.from({ length: DIVETS + 1 }, (_, i) => {
+                const g = divetGeometry(geom.cx, geom.cy, geom.rx, geom.ry, i);
+                const past = (i / DIVETS) * 100 <= pct;
+                return (
+                  <line
+                    key={i}
+                    x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2}
+                    className={cn('clock-divet', g.major && 'is-major')}
+                    style={{ stroke: past ? arcColor : undefined, opacity: past ? 0.85 : undefined }}
+                  />
+                );
+              })}
           </svg>
 
           <div className="clock-face">
