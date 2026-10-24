@@ -526,19 +526,27 @@ html[data-labels='minimal'] [data-label='minor'] { display: none !important; }
 }
 .clock-arc-track,
 .clock-arc-fill {
-  fill: none;
-  stroke-width: 30;
-  /* butt caps keep the dividers crisp between sections */
-  stroke-linecap: butt;
+  /* Sections are filled shapes, not strokes: their end corners have to follow
+     the appearance radius, which a stroke cap cannot do. */
+  stroke: none;
 }
-.clock-arc-track { stroke: color-mix(in srgb, var(--text-faint) 17%, transparent); }
+.clock-arc-track { fill: color-mix(in srgb, var(--text-faint) 17%, transparent); }
 .clock-arc-fill {
-  /* no transition on the dash: the filled sections are recomputed every frame */
-  transition: stroke 320ms linear, filter 320ms linear;
+  transition: fill 320ms linear, filter 320ms linear;
 }
 
+/* The dot rides the band at the playhead. */
+.clock-dot-halo { opacity: 0.22; transition: fill 320ms linear; }
+.clock-dot { transition: fill 320ms linear; }
+/* The punched centre: the page surface showing through the bead. */
+.clock-dot-core { fill: var(--surface); }
+
 .clock-face {
-  position: relative;
+  /* The time sits above the band rather than inside a ring. */
+  position: absolute;
+  left: 50%;
+  top: 37%;
+  transform: translate(-50%, -50%);
   z-index: 1;
   display: flex;
   flex-direction: column;
