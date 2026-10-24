@@ -1,6 +1,6 @@
 import { useFlow } from '../store';
 import { Backdrop } from './Backdrop';
-import { Panel, SectionHead, Toggle, Icon } from './ui';
+import { Panel, SectionHead, Slider, Toggle, Icon } from './ui';
 import { EFFECTS, getEffect } from '../lib/effects';
 import { cn } from '../lib/utils';
 
@@ -27,8 +27,8 @@ export function BackdropPanel() {
         right={<span className="chip">{active.kind === 'canvas' ? 'canvas' : 'overlay'} · {active.cost}</span>}
       />
 
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-        <div className="relative h-[150px] overflow-hidden rounded-[12px]"
+      <div className="grid items-stretch gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+        <div className="relative h-full min-h-[168px] overflow-clip rounded-[12px]"
           style={{ background: 'var(--surface-2)', boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--text-faint) 10%, transparent)' }}>
           {active.id !== 'none' ? (
             <Backdrop
@@ -72,32 +72,29 @@ export function BackdropPanel() {
 
           <p className="min-h-[16px] text-[11.5px] text-faint">{active.blurb}</p>
 
-          <div className="space-y-2">
-            <label className="block">
-              <span className="mb-1 flex items-center justify-between text-[11.5px] text-muted">
-                Intensity <span className="num text-faint">{backdrop.intensity.toFixed(2)}</span>
+          <div className="space-y-2.5">
+            <div>
+              <span className="mb-1 flex items-baseline justify-between text-[11.5px] text-muted">
+                Intensity <span className="num text-faint">{Math.round(backdrop.intensity * 100)}%</span>
               </span>
-              <input type="range" min={0} max={1} step={0.01} value={backdrop.intensity}
-                onChange={(e) => patch({ intensity: Number(e.target.value) })}
-                className="w-full accent-[var(--accent)]" aria-label="Backdrop intensity" />
-            </label>
-            <label className="block">
-              <span className="mb-1 flex items-center justify-between text-[11.5px] text-muted">
+              <Slider value={backdrop.intensity} min={0} max={1} step={0.01} label="Backdrop intensity"
+                onChange={(v) => patch({ intensity: v })} />
+            </div>
+            <div>
+              <span className="mb-1 flex items-baseline justify-between text-[11.5px] text-muted">
                 Speed <span className="num text-faint">{backdrop.speed.toFixed(2)}x</span>
               </span>
-              <input type="range" min={0} max={2.5} step={0.05} value={backdrop.speed}
-                onChange={(e) => patch({ speed: Number(e.target.value) })}
-                className="w-full accent-[var(--accent)]" aria-label="Backdrop speed" />
-            </label>
+              <Slider value={backdrop.speed} min={0} max={2.5} step={0.05} label="Backdrop speed"
+                onChange={(v) => patch({ speed: v })} />
+            </div>
             {active.usesPixel && (
-              <label className="block">
-                <span className="mb-1 flex items-center justify-between text-[11.5px] text-muted">
+              <div>
+                <span className="mb-1 flex items-baseline justify-between text-[11.5px] text-muted">
                   Pixel size <span className="num text-faint">{backdrop.pixel}px</span>
                 </span>
-                <input type="range" min={2} max={12} step={1} value={backdrop.pixel}
-                  onChange={(e) => patch({ pixel: Number(e.target.value) })}
-                  className="w-full accent-[var(--accent)]" aria-label="Backdrop pixel size" />
-              </label>
+                <Slider value={backdrop.pixel} min={2} max={12} step={1} label="Backdrop pixel size"
+                  stops={[2, 4, 6, 8, 10, 12]} onChange={(v) => patch({ pixel: v })} />
+              </div>
             )}
           </div>
 

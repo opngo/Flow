@@ -3,8 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { addDays, differenceInDays, format } from 'date-fns';
 import { useFlow } from '../store';
 import {
-  Badge, Btn, ColorPicker, EmptyState, Field, Icon, IconBtn, IconPicker, Modal, Panel, ProgressRing,
-  SectionHead, Segmented, Select, Stat, TextInput, Toggle,
+  Badge, Btn, ColorPicker, EmptyState, Field, Icon, IconBtn, IconPicker, Modal, Panel, ProgressRing, SectionHead, Segmented, Select, Slider, Stat, TextInput, Toggle,
 } from '../components/ui';
 import { bucketSessions } from '../lib/analytics';
 import { computeSubjectGrade } from '../lib/grades';
@@ -283,8 +282,9 @@ function GoalDialog({ open, onClose, goal }: { open: boolean; onClose: () => voi
         </div>
 
         {form.progressMode === 'manual' && form.type !== 'milestones' && (
-          <Field label={`Manual progress — ${form.manualProgress ?? 0}%`}>
-            <input type="range" min={0} max={100} value={form.manualProgress ?? 0} onChange={(e) => set({ manualProgress: Number(e.target.value) })} className="w-full accent-[var(--accent)]" />
+          <Field label="Manual progress">
+            <Slider value={form.manualProgress ?? 0} min={0} max={100} step={1} label="Manual progress"
+              format={(v) => `${v}%`} showValue onChange={(v) => set({ manualProgress: v })} />
           </Field>
         )}
 

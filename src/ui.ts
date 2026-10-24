@@ -12,6 +12,8 @@ type UIState = {
   miniMode: boolean;
   focusMode: boolean;
   immersive: boolean;
+  /** Which clock the full-screen view is showing. Session-only. */
+  immersiveMode: 'pomodoro' | 'timer' | 'stopwatch';
   locked: boolean;
   toasts: ToastItem[];
   openPalette: (query?: string) => void;
@@ -23,6 +25,7 @@ type UIState = {
   setMiniMode: (v: boolean) => void;
   setFocusMode: (v: boolean) => void;
   setImmersive: (v: boolean) => void;
+  setImmersiveMode: (m: 'pomodoro' | 'timer' | 'stopwatch') => void;
   setLocked: (v: boolean) => void;
   toast: (t: Omit<ToastItem, 'id'>) => void;
   dismissToast: (id: string) => void;
@@ -38,6 +41,7 @@ export const useUI = create<UIState>((set, get) => ({
   miniMode: false,
   focusMode: false,
   immersive: false,
+  immersiveMode: 'pomodoro',
   locked: false,
   toasts: [],
   openPalette: (query = '') => set({ paletteOpen: true, paletteQuery: query }),
@@ -49,6 +53,7 @@ export const useUI = create<UIState>((set, get) => ({
   setMiniMode: (v) => set({ miniMode: v }),
   setFocusMode: (v) => set({ focusMode: v }),
   setImmersive: (v) => set({ immersive: v }),
+  setImmersiveMode: (m) => set({ immersiveMode: m }),
   setLocked: (v) => set({ locked: v }),
   toast: (t) => {
     const id = Math.random().toString(36).slice(2);

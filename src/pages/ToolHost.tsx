@@ -6,8 +6,7 @@ import { marked } from 'marked';
 import { useFlow } from '../store';
 import { useUI } from '../ui';
 import {
-  Badge, Btn, Chip, EmptyState, Field, Icon, IconBtn, Modal, Panel, ProgressRing, SectionHead, Segmented,
-  Select, Stat, TextArea, TextInput, Toggle,
+  Badge, Btn, Chip, EmptyState, Field, Icon, IconBtn, Modal, Panel, ProgressRing, SectionHead, Segmented, Select, Slider, Stat, TextArea, TextInput, Toggle,
 } from '../components/ui';
 import { safeStore } from '../lib/repo';
 import { TOOLS } from '../lib/nav';
@@ -1474,7 +1473,7 @@ function PasswordTool() {
           <IconBtn icon="Copy" label="Copy password" onClick={() => navigator.clipboard?.writeText(password)} />
         </div>
         <div className="mt-3 grid gap-2 md:grid-cols-3">
-          <Field label={`Length — ${length}`}><input type="range" min={8} max={40} value={length} onChange={(e) => { setLength(Number(e.target.value)); }} className="w-full accent-[var(--accent)]" /></Field>
+          <Field label="Length"><Slider value={length} min={8} max={40} step={1} label="Password length" showValue format={(v) => `${v}`} onChange={setLength} /></Field>
           <Toggle label="Symbols" checked={symbols} onChange={setSymbols} />
           <Toggle label="Numbers" checked={numbers} onChange={setNumbers} />
         </div>

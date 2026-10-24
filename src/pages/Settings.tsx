@@ -5,7 +5,7 @@ import { useFlow } from '../store';
 import { useUI } from '../ui';
 import {
   Badge, Btn, ColorPicker, ConfirmDialog, Field, Icon, IconBtn, Panel, RadioCards, SectionHead, Segmented,
-  Select, TextArea, TextInput, Toggle,
+  Select, Slider, SliderField, TextArea, TextInput, Toggle,
 } from '../components/ui';
 import { ACCENTS, FONTS, PRESETS } from '../lib/theme';
 import { DEFAULT_SIDEBAR, NAV } from '../lib/nav';
@@ -112,12 +112,12 @@ export default function Settings() {
               ))}
             </div>
             <div className="mt-3 space-y-2">
-              <Field label={`Density — ${s.theme.density.toFixed(2)}`}><input type="range" min={0.85} max={1.2} step={0.01} value={s.theme.density} onChange={(e) => updateSettings((x) => ({ ...x, theme: { ...x.theme, density: Number(e.target.value) } }))} className="w-full accent-[var(--accent)]" /></Field>
-              <div className="flex items-center justify-between rounded-[10px] bg-s1 px-2.5 py-2 text-[11.5px] text-muted">
-                <span>Corner rounding</span>
-                <span className="num text-faint">{s.theme.corners === 'sharp' ? 'sharp mode' : `${s.theme.radius}px`} · adjust below</span>
-              </div>
-              <Field label={`Blur — ${s.theme.blur}px`}><input type="range" min={0} max={40} value={s.theme.blur} onChange={(e) => updateSettings((x) => ({ ...x, theme: { ...x.theme, blur: Number(e.target.value) } }))} className="w-full accent-[var(--accent)]" /></Field>
+              <SliderField label="Density" value={s.theme.density} min={0.85} max={1.2} step={0.01}
+                format={(v) => v.toFixed(2)}
+                onChange={(v) => updateSettings((x) => ({ ...x, theme: { ...x.theme, density: v } }))} />
+              <SliderField label="Surface blur" value={s.theme.blur} min={0} max={40} step={1}
+                format={(v) => `${v}px`}
+                onChange={(v) => updateSettings((x) => ({ ...x, theme: { ...x.theme, blur: v } }))} />
             </div>
           </Panel>
         </div>
@@ -136,7 +136,9 @@ export default function Settings() {
             <Toggle label="Enable notifications" checked={s.notifications.enabled} onChange={(v) => updateSettings((x) => ({ ...x, notifications: { ...x.notifications, enabled: v } }))} />
             <Toggle label="Notification sounds" description="Plays through the Sound Studio master bus" checked={s.notifications.sound} onChange={(v) => updateSettings((x) => ({ ...x, notifications: { ...x.notifications, sound: v } }))} />
             <Field label={`Volume — ${Math.round(s.notifications.volume * 100)}`}>
-              <input type="range" min={0} max={1} step={0.05} value={s.notifications.volume} onChange={(e) => updateSettings((x) => ({ ...x, notifications: { ...x.notifications, volume: Number(e.target.value) } }))} className="w-full accent-[var(--accent)]" />
+              <Slider label="Notification volume" value={s.notifications.volume} min={0} max={1} step={0.05}
+                onChange={(v) => updateSettings((x) => ({ ...x, notifications: { ...x.notifications, volume: v } }))}
+                format={(v) => `${Math.round(v * 100)}%`} showValue full />
             </Field>
             <div className="mt-2 flex gap-2">
               <Btn size="sm" variant="soft" icon="Play" onClick={() => engine.notificationChime()}>Preview sound</Btn>
@@ -306,11 +308,16 @@ function TypographyPanel() {
           <input ref={fileRef} type="file" accept=".ttf,.otf,.woff,.woff2" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void importFont(f); }} />
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <Field label={`Base size — ${t.baseSize}px`}><input type="range" min={11} max={20} step={0.5} value={t.baseSize} onChange={(e) => patch({ baseSize: Number(e.target.value) })} className="w-full accent-[var(--accent)]" /></Field>
-          <Field label={`Line height — ${t.lineHeight}`}><input type="range" min={1.2} max={2} step={0.05} value={t.lineHeight} onChange={(e) => patch({ lineHeight: Number(e.target.value) })} className="w-full accent-[var(--accent)]" /></Field>
-          <Field label={`Letter spacing — ${t.letterSpacing}em`}><input type="range" min={-0.03} max={0.08} step={0.005} value={t.letterSpacing} onChange={(e) => patch({ letterSpacing: Number(e.target.value) })} className="w-full accent-[var(--accent)]" /></Field>
-          <Field label={`Weight — ${t.weight}`}><input type="range" min={300} max={700} step={10} value={t.weight} onChange={(e) => patch({ weight: Number(e.target.value) })} className="w-full accent-[var(--accent)]" /></Field>
-          <Field label={`Heading scale — ${t.headingScale.toFixed(2)}`}><input type="range" min={0.85} max={1.4} step={0.01} value={t.headingScale} onChange={(e) => patch({ headingScale: Number(e.target.value) })} className="w-full accent-[var(--accent)]" /></Field>
+          <SliderField label="Base size" value={t.baseSize} min={11} max={20} step={0.5} format={(v) => `${v}px`}
+            onChange={(v) => patch({ baseSize: v })} />
+          <SliderField label="Line height" value={t.lineHeight} min={1.2} max={2} step={0.05} format={(v) => v.toFixed(2)}
+            onChange={(v) => patch({ lineHeight: v })} />
+          <SliderField label="Letter spacing" value={t.letterSpacing} min={-0.03} max={0.08} step={0.005}
+            format={(v) => `${v.toFixed(3)}em`} onChange={(v) => patch({ letterSpacing: v })} />
+          <SliderField label="Weight" value={t.weight} min={300} max={700} step={10} format={(v) => String(v)}
+            onChange={(v) => patch({ weight: v })} />
+          <SliderField label="Heading scale" value={t.headingScale} min={0.85} max={1.4} step={0.01}
+            format={(v) => `${v.toFixed(2)}x`} onChange={(v) => patch({ headingScale: v })} />
         </div>
       </Panel>
 
@@ -381,8 +388,10 @@ function SidebarPanel() {
             { value: 'always', label: 'Always visible', description: 'Pinned open at all times.', icon: 'Pin' },
           ]} />
         <div className="mt-3 space-y-2">
-          <Field label={`Hide delay — ${s.sidebar.hideDelay}ms`}><input type="range" min={300} max={4000} step={100} value={s.sidebar.hideDelay} onChange={(e) => patch({ hideDelay: Number(e.target.value) })} className="w-full accent-[var(--accent)]" /></Field>
-          <Field label={`Width — ${s.sidebar.width}px`}><input type="range" min={190} max={320} step={2} value={s.sidebar.width} onChange={(e) => patch({ width: Number(e.target.value) })} className="w-full accent-[var(--accent)]" /></Field>
+          <SliderField label="Hide delay" value={s.sidebar.hideDelay} min={300} max={4000} step={100}
+            format={(v) => `${(v / 1000).toFixed(1)}s`} onChange={(v) => patch({ hideDelay: v })} />
+          <SliderField label="Width" value={s.sidebar.width} min={190} max={320} step={2}
+            format={(v) => `${v}px`} onChange={(v) => patch({ width: v })} />
           <Toggle label="Icons only" checked={s.sidebar.iconsOnly} onChange={(v) => patch({ iconsOnly: v })} />
           <Toggle label="Overlay content" description="Sidebar floats over the page instead of pushing it" checked={s.sidebar.overlay} onChange={(v) => patch({ overlay: v })} />
         </div>

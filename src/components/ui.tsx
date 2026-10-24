@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Dialog, DialogPanel, DialogTitle, Menu, MenuButton, MenuItems, MenuItem,
   Listbox, ListboxButton, ListboxOptions, ListboxOption, Switch, TabGroup, TabList, Tab, TabPanels, TabPanel,
@@ -139,6 +139,165 @@ export function Field({ label, hint, children, className }: { label?: string; hi
       {children}
       {hint && <span className="mt-1 block text-[11.5px] text-faint">{hint}</span>}
     </label>
+  );
+}
+
+/* Slider --------------------------------------------------------------- */
+
+type SliderProps = {
+  value: number;
+  min?: number;
+  max?: number;
+  step?: number;
+  onChange: (value: number) => void;
+  /** Accessible name when the slider is not inside a SliderField. */
+  label?: string;
+  /** Rendered next to the label. Defaults to the raw number. */
+  format?: (value: number) => string;
+  disabled?: boolean;
+  /** Fill the row instead of the default fixed width. */
+  full?: boolean;
+  className?: string;
+  /** Marks drawn under the track: preset stops the user can click. */
+  stops?: number[];
+  /** Show the value at the right of the track. */
+  showValue?: boolean;
+};
+
+const roundTo = (value: number, step: number) => {
+  const decimals = (String(step).split('.')[1] ?? '').length;
+  return Number((Math.round(value / step) * step).toFixed(decimals + 2));
+};
+
+/**
+ * A range control drawn from scratch.
+ *
+ * The native `input[type=range]` cannot be styled consistently across
+ * platforms, and its default rendering also brings back the boxy track the
+ * design rules forbid. This one is a plain div with pointer capture, keyboard
+ * handling and the same ARIA contract a native slider exposes.
+ */
+export function Slider({
+  value, min = 0, max = 1, step = 0.01, onChange, label, format, disabled, full, className, stops, showValue,
+}: SliderProps) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useSliderDrag();
+
+  const clamp = (v: number) => Math.min(max, Math.max(min, roundTo(v, step)));
+  const pct = max > min ? ((clamp(value) - min) / (max - min)) * 100 : 0;
+
+  const commit = (raw: number) => {
+    if (disabled) return;
+    const next = clamp(raw);
+    if (next !== value) onChange(next);
+  };
+
+  const fromPointer = (clientX: number) => {
+    const el = trackRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    const t = (clientX - rect.left) / rect.width;
+    commit(min + Math.min(1, Math.max(0, t)) * (max - min));
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (disabled) return;
+    const big = (max - min) / 10;
+    const jump = e.shiftKey ? step * 10 : step;
+    let next: number | null = null;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') next = value + jump;
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') next = value - jump;
+    else if (e.key === 'PageUp') next = value + big;
+    else if (e.key === 'PageDown') next = value - big;
+    else if (e.key === 'Home') next = min;
+    else if (e.key === 'End') next = max;
+    if (next === null) return;
+    e.preventDefault();
+    commit(next);
+  };
+
+  return (
+    <div className={cn('flex items-center gap-2.5', disabled && 'opacity-45', className)} style={full ? undefined : { minWidth: 0 }}>
+      <div
+        ref={trackRef}
+        role="slider"
+        tabIndex={disabled ? -1 : 0}
+        aria-label={label}
+        aria-valuemin={min}
+        aria-valuemax={max}
+        aria-valuenow={clamp(value)}
+        aria-valuetext={format ? format(value) : String(clamp(value))}
+        aria-disabled={disabled || undefined}
+        data-dragging={dragging || undefined}
+        onPointerDown={(e) => {
+          if (disabled) return;
+          e.preventDefault();
+          (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+          setDragging(true);
+          fromPointer(e.clientX);
+        }}
+        onPointerMove={(e) => { if (dragging) fromPointer(e.clientX); }}
+        onPointerUp={(e) => {
+          setDragging(false);
+          (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+        }}
+        onPointerCancel={() => setDragging(false)}
+        onKeyDown={onKeyDown}
+        onDoubleClick={() => commit(min + (max - min) / 2)}
+        className={cn('flow-slider focusable group relative flex h-7 flex-1 cursor-pointer touch-none select-none items-center', disabled && 'cursor-not-allowed')}
+      >
+        <div className="flow-slider-track relative h-[5px] w-full overflow-hidden rounded-full" style={{ background: 'var(--surface-3)' }}>
+          <div className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-75"
+            style={{ width: `${pct}%`, background: disabled ? 'var(--text-faint)' : 'var(--accent)' }} />
+        </div>
+        {stops?.length ? (
+          <div className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2">
+            {stops.map((stop) => (
+              <span key={stop}
+                className="absolute h-[5px] w-[5px] -translate-x-1/2 rounded-full"
+                style={{
+                  left: `${((stop - min) / (max - min)) * 100}%`,
+                  background: stop <= clamp(value) ? 'color-mix(in srgb, var(--surface) 70%, transparent)' : 'color-mix(in srgb, var(--text-faint) 55%, transparent)',
+                }} />
+            ))}
+          </div>
+        ) : null}
+        <span
+          aria-hidden="true"
+          className="flow-slider-thumb pointer-events-none absolute top-1/2 h-[14px] w-[14px] -translate-y-1/2 rounded-full transition-transform duration-150"
+          style={{
+            left: `calc(${pct}% - 7px)`,
+            background: disabled ? 'var(--text-faint)' : 'var(--accent)',
+            boxShadow: disabled ? 'none' : '0 2px 10px -2px color-mix(in srgb, var(--accent) 70%, transparent)',
+          }}
+        />
+      </div>
+      {showValue && (
+        <span className="num w-11 shrink-0 text-right text-[11px] text-faint">{format ? format(value) : clamp(value)}</span>
+      )}
+    </div>
+  );
+}
+
+/** Local drag state; kept out of Slider so the component stays a single hook call. */
+function useSliderDrag(): [boolean, (v: boolean) => void] {
+  const [dragging, setDragging] = React.useState(false);
+  return [dragging, setDragging];
+}
+
+export function SliderField({
+  label, value, min, max, step, onChange, format, disabled, hint, stops, className,
+}: Omit<SliderProps, 'showValue'> & { hint?: string }) {
+  return (
+    <div className={cn('block', className)}>
+      <span className="mb-1.5 flex items-baseline justify-between gap-2">
+        <span className="label">{label}</span>
+        <span className="num text-[11px] text-muted">{format ? format(value) : value}</span>
+      </span>
+      <Slider value={value} min={min} max={max} step={step} onChange={onChange} label={label} disabled={disabled} stops={stops} />
+      {hint && <span className="mt-1 block text-[11.5px] text-faint">{hint}</span>}
+    </div>
   );
 }
 

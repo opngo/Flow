@@ -4,8 +4,7 @@ import { create } from 'zustand';
 import { useFlow } from '../store';
 import { useUI } from '../ui';
 import {
-  Badge, Btn, Chip, EmptyState, Field, Icon, IconBtn, MenuBtn, Modal, Panel, SectionHead, Segmented,
-  Select, Stat, TextInput, Toggle,
+  Badge, Btn, Chip, EmptyState, Field, Icon, IconBtn, MenuBtn, Modal, Panel, SectionHead, Segmented, Select, Slider, Stat, TextInput, Toggle,
 } from '../components/ui';
 import { engine, LAYER_META, type LayerKind } from '../audio/engine';
 import { cn, uuid } from '../lib/utils';
@@ -92,6 +91,9 @@ export default function Sound() {
   const [mixName, setMixName] = useState('');
   const [saveOpen, setSaveOpen] = useState(false);
   const [selected, setSelected] = useState<LayerKind | null>(null);
+  // EQ values are view state: they are re-applied to the graph on change and
+  // reset when the EQ dialog is reopened, which keeps the engine stateless.
+  const [filters, setFilters] = useState<{ lowpass?: number; highpass?: number }>({});
   const [morphTarget, setMorphTarget] = useState(db.mixes[0]?.id ?? '');
 
   const groups = ['All', ...Array.from(new Set(LAYER_META.map((l) => l.group)))];
@@ -178,7 +180,7 @@ export default function Sound() {
             <SectionHead title="Mixer" subtitle="Per-layer volume, pan and tone" right={
               <div className="flex items-center gap-2">
                 <Icon name={sound.muted ? 'VolumeX' : 'Volume2'} size={14} className="text-muted" />
-                <input type="range" min={0} max={1} step={0.01} value={sound.master} onChange={(e) => { const v = Number(e.target.value); sound.set({ master: v }); engine.setMaster(v); }} className="w-28 accent-[var(--accent)]" aria-label="Master volume" />
+                <div className="w-28"><Slider value={sound.master} min={0} max={1} step={0.01} label="Master volume" onChange={(v) => { sound.set({ master: v }); engine.setMaster(v); }} /></div>
                 <span className="num w-8 text-right text-[11px] text-faint">{Math.round(sound.master * 100)}</span>
               </div>
             } />
@@ -195,12 +197,12 @@ export default function Sound() {
                         <Icon name="Pause" size={12} />
                       </button>
                       <span className="w-28 truncate text-[12px]">{meta?.label}</span>
-                      <input type="range" min={0} max={1} step={0.01} value={vol} onChange={(e) => sound.setVolume(kind, Number(e.target.value))} className="w-24 accent-[var(--accent)]" aria-label={`${meta?.label} volume`} />
+                      <div className="w-24"><Slider value={vol} min={0} max={1} step={0.01} label={`${meta?.label} volume`} onChange={(v) => sound.setVolume(kind, v)} /></div>
                       <span className="num w-8 text-[10.5px] text-faint">{Math.round(vol * 100)}</span>
                       <span className="text-[10px] text-faint">pan</span>
-                      <input type="range" min={-1} max={1} step={0.05} value={sound.pans[kind] ?? 0} onChange={(e) => sound.setPan(kind, Number(e.target.value))} className="w-16 accent-[var(--accent)]" aria-label={`${meta?.label} pan`} />
+                      <div className="w-16"><Slider value={sound.pans[kind] ?? 0} min={-1} max={1} step={0.05} label={`${meta?.label} pan`} onChange={(v) => sound.setPan(kind, v)} /></div>
                       <span className="text-[10px] text-faint">tone</span>
-                      <input type="range" min={0} max={1} step={0.02} value={sound.tones[kind] ?? 0.6} onChange={(e) => sound.setTone(kind, Number(e.target.value))} className="w-16 accent-[var(--accent)]" aria-label={`${meta?.label} tone`} />
+                      <div className="w-16"><Slider value={sound.tones[kind] ?? 0.6} min={0} max={1} step={0.02} label={`${meta?.label} tone`} onChange={(v) => sound.setTone(kind, v)} /></div>
                       <button onClick={() => { setSelected(kind); }} className="focusable chip ml-auto hover:bg-s3"><Icon name="SlidersHorizontal" size={10} />EQ</button>
                     </div>
                   );
@@ -210,7 +212,7 @@ export default function Sound() {
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] text-faint">Muffle</span>
-                <input type="range" min={0} max={1} step={0.02} value={sound.muffle} onChange={(e) => { const v = Number(e.target.value); sound.set({ muffle: v }); engine.setMuffle(v); }} className="w-24 accent-[var(--accent)]" aria-label="Master muffle" />
+                <div className="w-24"><Slider value={sound.muffle} min={0} max={1} step={0.02} label="Master muffle" onChange={(v) => { sound.set({ muffle: v }); engine.setMuffle(v); }} /></div>
               </div>
               <button onClick={() => { sound.set({ muted: !sound.muted }); engine.setMuted(!sound.muted); }} className={cn('focusable chip', sound.muted && 'text-danger')}>
                 <Icon name={sound.muted ? 'VolumeX' : 'Volume2'} size={11} /> {sound.muted ? 'Muted' : 'Mute all'}
@@ -290,10 +292,11 @@ export default function Sound() {
           <div className="space-y-3">
             {(['lowpass', 'highpass'] as const).map((band) => (
               <Field key={band} label={`${band === 'lowpass' ? 'Low-pass' : 'High-pass'} frequency`}>
-                <input type="range" min={band === 'lowpass' ? 300 : 20} max={band === 'lowpass' ? 18000 : 4000} step={20}
-                  defaultValue={band === 'lowpass' ? 12000 : 20}
-                  onChange={(e) => engine.setFilter(selected, band, Number(e.target.value))}
-                  className="w-full accent-[var(--accent)]" />
+                <Slider value={filters[band] ?? (band === 'lowpass' ? 12000 : 20)}
+                  min={band === 'lowpass' ? 300 : 20} max={band === 'lowpass' ? 18000 : 4000} step={20}
+                  label={`${band === 'lowpass' ? 'Low-pass' : 'High-pass'} frequency`}
+                  format={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)} kHz` : `${v} Hz`)} showValue
+                  onChange={(v) => { setFilters((f) => ({ ...f, [band]: v })); engine.setFilter(selected, band, v); }} />
               </Field>
             ))}
             <div className="rounded-[12px] bg-s1 p-3 text-[11.5px] text-muted">

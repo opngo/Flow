@@ -149,12 +149,18 @@ Appearance is a first-class feature, and every part of it is opt-in.
   renderer, so what you see is what you get. Effects pause when the window is
   hidden, cap themselves at 24,000 buffer cells and 30 frames per second, and
   render a single still frame when reduced motion is on.
-- **Immersive timer** — the titlebar button, the Focus page, the palette, or
-  `Ctrl/Cmd+Shift+Enter`. Digits, segmented progress, today's minutes, and its own
-  keys: `Space` start or pause, `S` skip, `N` distraction, `F` log, `↑`/`↓` five
-  minutes, `Esc` out.
+- **Immersive clock** — the titlebar button, the Focus page, the palette, or
+  `Ctrl/Cmd+Shift+Enter`. Three clocks share one surface: Pomodoro, a plain
+  countdown with a duration picker, and a stopwatch with hundredths and laps.
+  `1` `2` `3` switch between them, `Space` starts or pauses, `L` laps, `R` resets,
+  `F` logs, `Esc` exits. While one runs, the buttons and footer fade out and leave
+  the digits and the progress line on their own; move the pointer to bring them
+  back.
 - **Corner rounding** — one slider from 0 to 28 px that every surface follows, plus
   a sharp mode that flattens everything, pills included.
+- **Custom controls** — every slider in the app is drawn from scratch with
+  keyboard support and tick marks, because the native range control cannot be
+  themed to match a surface it insists on outlining.
 - **Demo data** — Settings → Data. The example records are tagged and merged
   additively, so loading them beside your own work leaves your theme, backdrop,
   corners, sidebar, tools, shortcuts, running timer and tutorial state exactly as
@@ -173,7 +179,7 @@ Appearance is a first-class feature, and every part of it is opt-in.
 | `?` | Shortcut sheet |
 | `Esc` | Close overlay, leave focus mode |
 | Todos list | `j` `k` move · `Space` complete · `e` edit · `d` delete · `t` today · `p` priority · `/` search |
-| Immersive timer | `Space` start or pause · `S` skip · `N` distraction · `F` log · `↑` `↓` five minutes · `Esc` exit |
+| Immersive clock | `Space` start or pause · `1` `2` `3` pomodoro / timer / stopwatch · `L` lap · `R` reset · `F` log · `↑` `↓` five minutes · `Esc` exit |
 
 ## The landing page
 

@@ -15,6 +15,45 @@ so keep headings exactly as `## [x.y.z] - YYYY-MM-DD`.
 - Optional encrypted database at rest
 - Split view: two panes side by side in one window
 
+## [1.2.0] - 2026-10-24
+
+### Added
+
+- **Three clocks in the immersive view.** Pomodoro, a plain countdown with a
+  duration picker, and a stopwatch with hundredths and laps. Switch with the
+  segmented control or keys `1`, `2`, `3`. The countdown and stopwatch are
+  ordinary timer rows, so they also appear on the Timers page and log to study
+  time when you finish them (`Space` start or pause, `L` lap, `R` reset, `F` log).
+- **A clock that gets out of its own way.** While a timer runs the mode switch,
+  buttons and footer fade out entirely, leaving the digits, the phase line and the
+  progress segments alone. Moving the pointer or touching a key brings the chrome
+  back at partial opacity; it fades again after a couple of seconds.
+- **Custom sliders.** Every range control in the app is now drawn from scratch:
+  a hairline track, a fill, a floating thumb, keyboard support (arrows, page keys,
+  home and end, `Shift` for coarse steps), double-click to reset to the middle,
+  and optional tick marks. The native input, which cannot be themed, is gone from
+  the codebase.
+
+### Changed
+
+- **Glows are painted, not stroked.** Focus and hover highlights no longer use
+  inset shadows, which were clipped by the border radius and ended on a visible
+  hard edge, and no longer scale the element, which pushed it past its parent's
+  clip box. Inputs now get a radial wash that fades out before the edge, buttons
+  get a two-layer bloom with no spread, and panels can use a `.glow-wash` overlay
+  that inherits their radius.
+- The immersive digits carry a stepped glow instead of a blurred halo, and scale
+  down when the clock needs more than five or seven characters.
+- Settings, Appearance is regrouped: corner rounding has a single home in the
+  Corners panel instead of a read-only duplicate in the theme panel.
+
+### Fixed
+
+- The corner swatch preview and the backdrop preview were clipped mid-glow; the
+  preview surfaces now clip their own content and fill their row.
+- The sound studio EQ sliders were uncontrolled, so their displayed position did
+  not follow the engine after reopening.
+
 ## [1.1.0] - 2026-10-24
 
 ### Added

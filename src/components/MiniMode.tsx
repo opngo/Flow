@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useFlow } from '../store';
 import { useUI } from '../ui';
-import { Btn, Icon, IconBtn, ProgressRing } from './ui';
+import { Btn, Icon, IconBtn, ProgressRing, Slider } from './ui';
 import { minsToClock } from '../lib/utils';
 
 /** Always-on-top mini widget: timer, current task, sound + restore. */
@@ -73,7 +73,7 @@ export function MiniMode() {
         )}
         <div className="mt-3 flex items-center gap-2">
           <Icon name="Contrast" size={12} className="text-faint" />
-          <input type="range" min={40} max={100} value={opacity} onChange={(e) => setOpacity(Number(e.target.value))} className="h-1 flex-1 accent-[var(--accent)]" aria-label="Opacity" />
+          <Slider value={opacity} min={40} max={100} step={1} onChange={setOpacity} label="Window opacity" format={(v) => `${v}%`} showValue />
         </div>
       </div>
     </div>

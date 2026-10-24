@@ -1,5 +1,5 @@
 import { useFlow } from '../store';
-import { Panel, SectionHead, Icon } from './ui';
+import { Panel, SectionHead, Icon, Slider } from './ui';
 import { cn } from '../lib/utils';
 
 const PRESETS = [0, 6, 10, 12, 16, 20, 28];
@@ -46,15 +46,15 @@ export function CornersPanel() {
             ))}
           </div>
 
-          <label className={cn('block', sharp && 'opacity-45')}>
-            <span className="mb-1 flex items-center justify-between text-[11.5px] text-muted">
-              Radius
-              <span className="num text-faint">{sharp ? 'overridden by sharp mode' : `${theme.radius}px`}</span>
+          <div className={cn('block', sharp && 'opacity-45')}>
+            <span className="mb-1.5 flex items-baseline justify-between gap-2">
+              <span className="label">Radius</span>
+              <span className="num text-[11px] text-muted">{sharp ? 'sharp mode' : `${theme.radius}px`}</span>
             </span>
-            <input type="range" min={0} max={28} step={1} value={theme.radius} disabled={sharp}
-              onChange={(e) => patch({ radius: Number(e.target.value) })}
-              className="w-full accent-[var(--accent)]" aria-label="Corner radius" />
-          </label>
+            <Slider value={theme.radius} min={0} max={28} step={1} disabled={sharp}
+              label="Corner radius" format={(v) => `${v}px`}
+              onChange={(v) => patch({ radius: v, corners: 'rounded' })} />
+          </div>
 
           <div className="flex flex-wrap gap-1.5">
             {PRESETS.map((r) => (
@@ -67,7 +67,7 @@ export function CornersPanel() {
           </div>
         </div>
 
-        <div className="rounded-[12px] p-3" style={{ background: 'var(--surface-2)' }}>
+        <div className="min-w-0 rounded-[12px] p-3" style={{ background: 'var(--surface-2)' }}>
           <div className="label mb-2">Preview</div>
           <div className="flex items-center gap-2">
             <div className="flex-1 p-2" style={{ background: 'var(--surface-1)', borderRadius: 'var(--radius)' }}>

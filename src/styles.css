@@ -77,12 +77,15 @@ textarea {
     color 180ms ease, opacity 180ms ease;
 }
 .focusable:focus-visible {
-  /* Tint plus a soft outer glow — never a ring, never an outline. */
-  background-color: color-mix(in srgb, var(--accent) 15%, var(--surface-2));
+  /* Tint plus a soft bloom — never a ring, never an outline, and never a
+     scale, which used to push the element past its parent's clip box and cut
+     the glow off at the edges. */
+  background-color: color-mix(in srgb, var(--accent) 16%, var(--surface-2));
   color: var(--text);
-  box-shadow: 0 2px 16px -4px color-mix(in srgb, var(--accent) 55%, transparent),
-    0 0 26px color-mix(in srgb, var(--accent) 20%, transparent);
-  transform: scale(1.012);
+  box-shadow:
+    0 0 0 0 transparent,
+    0 3px 16px -8px color-mix(in srgb, var(--accent) 70%, transparent),
+    0 0 22px -12px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
 ::-webkit-scrollbar {
@@ -155,10 +158,7 @@ textarea {
   .input::placeholder {
     color: var(--text-faint);
   }
-  .input:focus-visible {
-    background: color-mix(in srgb, var(--accent) 9%, var(--surface-2));
-    box-shadow: inset 0 0 18px -6px color-mix(in srgb, var(--accent) 70%, transparent);
-  }
+
   .divider {
     height: 1px;
     background: color-mix(in srgb, var(--text-faint) 12%, transparent);
@@ -288,6 +288,8 @@ html[data-reduce-motion='true'] * {
 .immersive {
   --immersive-pad: clamp(20px, 4vw, 56px);
 }
+.immersive-digits.is-long { font-size: clamp(64px, 14vw, 220px); }
+.immersive-digits.is-longer { font-size: clamp(46px, 10.5vw, 168px); letter-spacing: -0.03em; }
 .immersive-digits {
   font-family: var(--font-timer);
   font-size: clamp(84px, 19vw, 300px);
@@ -333,4 +335,164 @@ html[data-corners='sharp'] *,
 html[data-corners='sharp'] *::before,
 html[data-corners='sharp'] *::after {
   border-radius: 0 !important;
+}
+
+/* ---------------------------------------------------------------
+   Sliders.
+   Drawn from scratch: a hairline track, a fill and a floating thumb.
+   The native range control renders differently on every platform and
+   cannot be themed to match the rest of the interface.
+   --------------------------------------------------------------- */
+.flow-slider { outline: none; }
+.flow-slider .flow-slider-track {
+  transition: background-color 180ms ease;
+}
+.flow-slider:hover .flow-slider-thumb { transform: translateY(-50%) scale(1.12); }
+.flow-slider[data-dragging] .flow-slider-thumb { transform: translateY(-50%) scale(1.2); }
+.flow-slider:focus-visible .flow-slider-thumb {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent),
+    0 2px 14px -2px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.flow-slider:focus-visible .flow-slider-track {
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface-3));
+}
+
+/* ---------------------------------------------------------------
+   Glow.
+   Every highlight is a layered, low-alpha shadow with a wide falloff
+   and no spread, so it never ends on a hard edge. Inset glows are
+   replaced by gradients painted on a pseudo-element that inherits the
+   border radius, which is what keeps them from being cut off at the
+   corners of a rounded surface.
+   --------------------------------------------------------------- */
+
+/* Soft focus halo, applied to anything focusable that wants one. */
+.glow-soft:focus-visible {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 26%, transparent),
+    0 6px 26px -10px color-mix(in srgb, var(--accent) 65%, transparent),
+    0 0 40px -12px color-mix(in srgb, var(--accent) 40%, transparent) !important;
+  transform: none !important;
+}
+
+/* Inputs: the previous inset shadow clipped against the radius and read as a
+   hard band. This paints a radial wash that fades out well before the edge. */
+.input {
+  position: relative;
+  box-shadow: 0 1px 0 0 color-mix(in srgb, var(--text) 4%, transparent);
+}
+.input:focus-visible {
+  /* A wash painted on the field itself: it follows the border radius and fades
+     to nothing before the edge, so there is no clipped band to look at. */
+  background-color: color-mix(in srgb, var(--accent) 6%, var(--surface-2));
+  background-image: radial-gradient(
+    150% 200% at 50% -50%,
+    color-mix(in srgb, var(--accent) 34%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 13%, transparent) 42%,
+    transparent 80%
+  );
+  box-shadow:
+    0 6px 22px -14px color-mix(in srgb, var(--accent) 80%, transparent),
+    0 0 32px -22px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+/* Panels and cards that carry an accent edge get the wash instead. */
+.glow-wash {
+  position: relative;
+  isolation: isolate;
+}
+.glow-wash::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%),
+    radial-gradient(100% 100% at 50% 100%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 72%);
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+.glow-wash:hover::after,
+.glow-wash:focus-within::after { opacity: 1; }
+
+/* ---------------------------------------------------------------
+   Immersive clock.
+   While a clock runs the chrome gets out of the way completely; a
+   pointer move or a key press brings it back at low opacity so the
+   digits stay the only thing with full contrast.
+   --------------------------------------------------------------- */
+.immersive-chrome {
+  transition: opacity 420ms cubic-bezier(0.32, 0.72, 0, 1), filter 420ms linear;
+}
+.immersive[data-running][data-chrome='off'] .immersive-chrome {
+  opacity: 0;
+  pointer-events: none;
+}
+.immersive[data-running][data-chrome='on'] .immersive-chrome {
+  opacity: 0.46;
+}
+.immersive[data-running][data-chrome='on'] .immersive-chrome:hover,
+.immersive[data-running][data-chrome='on'] .immersive-chrome:focus-within {
+  opacity: 0.9;
+}
+
+/* The digits sit on a stepped glow rather than a blurred one: it echoes the
+   pixel work in the interface and reads as light falling off, not a halo. */
+.immersive-digits.is-running {
+  text-shadow:
+    0 0 1px color-mix(in srgb, var(--text) 30%, transparent),
+    0 0 26px color-mix(in srgb, var(--accent) 16%, transparent),
+    0 0 64px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--surface-1) 70%, transparent);
+  transition: color 180ms ease, background-color 180ms ease;
+}
+.ghost-btn:hover { color: var(--text); background: var(--surface-2); }
+
+.mode-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-1) 70%, transparent);
+}
+.mode-switch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 11px;
+  border-radius: 9px;
+  font-size: 12px;
+  color: var(--text-faint);
+  transition: color 180ms ease, background-color 180ms ease;
+}
+.mode-switch-btn:hover { color: var(--text-muted); }
+.mode-switch-btn.is-active {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 20%, var(--surface-2));
+}
+.mode-key {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--text-faint);
+  opacity: 0.7;
+}
+.mode-switch-btn.is-active .mode-key { color: var(--accent); opacity: 1; }
+
+/* Stopwatch has no end, so the segments travel instead of filling. */
+.immersive-seg.is-sweep {
+  transition: background-color 90ms linear, opacity 90ms linear;
 }
