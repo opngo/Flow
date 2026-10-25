@@ -94,8 +94,12 @@ const migrations: Record<number, (db: Raw) => Raw> = {
         : rows;
     return {
       ...db,
-      todos: fix(db.todos as Raw[] | undefined, 'title', 'New task'),
-      notes: fix(db.notes as Raw[] | undefined, 'title', 'Untitled note'),
+      todos: fix(db.todos, 'title', 'New task'),
+      notes: fix(db.notes, 'title', 'Untitled note'),
+      /* A delivered reminder copied the title at the moment it fired, so those
+         already sitting in the list need the same wash. */
+      reminders: fix(db.reminders, 'title', 'Reminder'),
+      notifications: fix(db.notifications, 'title', 'Notification'),
     };
   },
 };
