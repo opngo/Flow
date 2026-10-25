@@ -97,8 +97,10 @@ export default function Focus() {
           <div className="flex flex-col items-center gap-4">
             <div className="flex items-center gap-2">
               {(['focus', 'short-break', 'long-break'] as const).map((p) => (
-                <button key={p} onClick={() => skipPhase()} className={cn('focusable chip capitalize', phase === p && 'text-accent')}
+                <button key={p} onClick={() => skipPhase()} data-tip={`Switch to a ${p.replace('-', ' ')}`}
+                  className={cn('focusable chip capitalize', phase === p && 'text-accent')}
                   style={phase === p ? { background: 'var(--accent-soft)' } : undefined}>
+                  <Icon name={p === 'focus' ? 'Timer' : p === 'short-break' ? 'Coffee' : 'Moon'} size={11} />
                   {p.replace('-', ' ')}
                 </button>
               ))}
@@ -247,7 +249,12 @@ export default function Focus() {
                 </div>
               );
             })}
-            {!todaySessions.length && <div className="py-6 text-center text-[12px] text-faint">No sessions logged yet today.</div>}
+            {!todaySessions.length && (
+              <div className="flex flex-col items-center gap-1.5 py-6 text-center text-[12px] text-faint" data-tip="No sessions logged yet today">
+                <Icon name="History" size={16} />
+                <span data-label="meta">No sessions logged yet today.</span>
+              </div>
+            )}
           </div>
         </Panel>
 

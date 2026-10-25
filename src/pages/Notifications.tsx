@@ -11,6 +11,11 @@ import { quietHoursActive } from '../lib/scheduler';
 import { cn } from '../lib/utils';
 
 const TYPES = ['all', 'todo', 'habit', 'timer', 'mark', 'wellness', 'system'] as const;
+/** One glyph per filter, so the row still reads with the labels off. */
+const TYPE_ICON: Record<typeof TYPES[number], string> = {
+  all: 'Inbox', todo: 'CheckSquare', habit: 'Flame', timer: 'Timer',
+  mark: 'Percent', wellness: 'HeartPulse', system: 'Settings',
+};
 
 export default function Notifications() {
   const db = useFlow((s) => s.db);
@@ -67,8 +72,10 @@ export default function Notifications() {
         <Panel className="p-3">
           <div className="mb-2 flex flex-wrap items-center gap-1.5">
             {TYPES.map((t) => (
-              <button key={t} onClick={() => setFilter(t)} className={cn('focusable chip capitalize', filter === t && 'text-accent')}
+              <button key={t} onClick={() => setFilter(t)} data-tip={`${t} notifications`}
+                className={cn('focusable chip capitalize', filter === t && 'text-accent')}
                 style={filter === t ? { background: 'var(--accent-soft)' } : undefined}>
+                <Icon name={TYPE_ICON[t]} size={11} />
                 {t}
                 {t !== 'all' && <span className="num text-[10px] text-faint">{db.notifications.filter((n) => n.kind === t).length}</span>}
               </button>
@@ -112,9 +119,15 @@ export default function Notifications() {
                     <span className="num text-[10.5px] text-faint">{format(new Date(r.snoozedUntil ?? r.fireAt), 'MMM d, h:mm')}</span>
                   </div>
                   <div className="mt-1 flex gap-1">
-                    <button className="focusable chip text-[10px] hover:bg-s3" onClick={() => flow.snoozeReminder(r.id, 10)}>Snooze 10</button>
-                    <button className="focusable chip text-[10px] hover:bg-s3" onClick={() => flow.deliverReminder(r.id)}>Fire now</button>
-                    <button className="focusable chip text-[10px] hover:bg-s3" onClick={() => flow.deleteReminder(r.id)}>Cancel</button>
+                    <button className="focusable chip text-[10px] hover:bg-s3" data-tip="Snooze this reminder for 10 minutes" onClick={() => flow.snoozeReminder(r.id, 10)}>
+                      <Icon name="AlarmClock" size={10} /> Snooze 10
+                    </button>
+                    <button className="focusable chip text-[10px] hover:bg-s3" data-tip="Fire this reminder now" onClick={() => flow.deliverReminder(r.id)}>
+                      <Icon name="BellRing" size={10} /> Fire now
+                    </button>
+                    <button className="focusable chip text-[10px] hover:bg-s3" data-tip="Cancel this reminder" onClick={() => flow.deleteReminder(r.id)}>
+                      <Icon name="X" size={10} /> Cancel
+                    </button>
                   </div>
                 </div>
               ))}

@@ -55,6 +55,7 @@ export function BackdropPanel() {
                 key={e.id}
                 onClick={() => patch({ effect: e.id })}
                 title={e.blurb}
+                data-tip={`${e.name} — ${e.blurb}`}
                 className={cn(
                   'focusable flex flex-col items-start gap-0.5 rounded-[10px] px-2.5 py-2 text-left text-[11.5px]',
                   backdrop.effect === e.id ? 'text-ink' : 'text-muted hover:text-ink',
@@ -62,7 +63,9 @@ export function BackdropPanel() {
                 style={{ background: backdrop.effect === e.id ? 'var(--accent-soft)' : 'var(--surface-2)' }}
               >
                 <span className="flex w-full items-center gap-1">
-                  {e.name}
+                  {/* The glyph carries the option in no-text mode. */}
+                  <Icon name={e.icon} size={12} className="shrink-0" />
+                  <span data-label="minor">{e.name}</span>
                   {backdrop.effect === e.id && <Icon name="Check" size={10} className="ml-auto text-accent" />}
                 </span>
                 <span className="text-[10px] text-faint">{e.kind === 'css' ? 'overlay' : e.pixelated ? 'pixel' : 'smooth'}</span>

@@ -152,8 +152,10 @@ export default function Sound() {
           <Panel className="p-3">
             <div className="flex flex-wrap items-center gap-1.5">
               {groups.map((g) => (
-                <button key={g} onClick={() => setGroup(g)} className={cn('focusable chip', group === g && 'text-accent')}
-                  style={group === g ? { background: 'var(--accent-soft)' } : undefined}>{g}</button>
+                <button key={g} onClick={() => setGroup(g)} data-tip={`${g} generators`} className={cn('focusable chip', group === g && 'text-accent')}
+                  style={group === g ? { background: 'var(--accent-soft)' } : undefined}>
+                  <Icon name={g === 'All' ? 'Grid2x2' : 'AudioLines'} size={11} />{g}
+                </button>
               ))}
               <span className="ml-auto text-[11px] text-faint">{LAYER_META.length} generators</span>
             </div>

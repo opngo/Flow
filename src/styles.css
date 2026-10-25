@@ -595,27 +595,55 @@ html[data-corners='sharp'] *::after {
    chrome text, minimal keeps primary labels and drops the metadata,
    none is an icon-only shell. Anything marked up in a component follows.
    --------------------------------------------------------------- */
-html[data-labels='none'] [data-label] { display: none !important; }
-/* No-text mode means no text: page titles, section heads, stat labels,
-   chips, field labels and table headers all go, not just the pieces that
-   carried a data-label. Values, times and numerals stay — they are the
-   interface. Prose the user wrote is never touched. */
-html[data-labels='none'] h1,
-html[data-labels='none'] h2,
-html[data-labels='none'] h3,
-html[data-labels='none'] .h1,
-html[data-labels='none'] .h2,
-html[data-labels='none'] .label,
-html[data-labels='none'] .chip,
-html[data-labels='none'] th,
-html[data-labels='none'] [data-label='chrome'],
-html[data-labels='none'] p:not(.prose p):not(.prose *),
-html[data-labels='none'] small,
-/* Secondary and tertiary text is text: hints, subtitles, streak captions,
-   row metadata. Numerals and clocks opt out with `.num`, because those are
-   the values the mode is meant to leave standing. */
-html[data-labels='none'] .text-muted:not(.num):not(:has(.num)),
-html[data-labels='none'] .text-faint:not(.num):not(:has(.num)) { display: none !important; }
+/* No-text mode has one absolute rule: an icon is never removed. Everything
+   else works in two tiers — words that are pure chrome go, and words that
+   share a box with a glyph are collapsed to that glyph (font-size: 0 removes
+   the text, the svg keeps its own pixel size).
+
+   The bug this replaces: the previous pass hid anything carrying a colour
+   class, and rows, buttons and chips carry `text-muted` / `text-faint` — so
+   whole components vanished, icons included. Colour classes are therefore
+   only ever applied to leaves, and never to a container holding an svg. */
+html[data-labels='none'] svg { display: inline-block !important; }
+
+/* Tier one: chrome that is only words. */
+html[data-labels='none'] :is([data-label], .label, .h1, .h2, h1, h2, h3, th, small):not(:has(svg)) {
+  display: none !important;
+}
+/* …and the same chrome when it carries an icon: keep the glyph, drop the
+   words and the leading they needed. */
+html[data-labels='none'] :is([data-label], .label, .h1, .h2, h1, h2, h3, th, small):has(svg) {
+  font-size: 0 !important;
+  line-height: 0 !important;
+  letter-spacing: 0 !important;
+}
+/* Inside such a box, only plain word shells go. A chip, a button, an icon or
+   a numeral sitting beside the glyph is an affordance or a value, and stays. */
+html[data-labels='none'] :is([data-label], .label, .h1, .h2, h1, h2, h3, th, small):has(svg) > :is(span, div, b, strong, em, i):not(:has(svg)):not(:has(button)):not(:has(a)):not(.chip):not(.num) {
+  display: none !important;
+}
+/* Paragraphs are chrome unless they are something the user wrote. */
+html[data-labels='none'] p:not(.markdown *):not(.notebook *):not([contenteditable] *) { display: none !important; }
+
+/* Chips: a chip with an icon survives as that icon. A word-only chip is
+   decoration and goes — unless it is a control, because a button with neither
+   icon nor word cannot be found or pressed. Those keep their word. */
+html[data-labels='none'] .chip:not(:has(svg)):not(button):not(a):not(label) { display: none !important; }
+html[data-labels='none'] .chip:has(svg) {
+  font-size: 0 !important;
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+  gap: 0 !important;
+}
+html[data-labels='none'] .chip:has(svg) > :not(svg) { display: none !important; }
+
+/* Tier two: secondary and tertiary text — hints, subtitles, streak captions,
+   row metadata. Only leaves: never an svg, never a container that holds one,
+   and never a wrapper around a control, because that is a component and not
+   a caption. Numerals and clocks opt out with `.num`. */
+html[data-labels='none'] :is(.text-muted, .text-faint):not(svg):not(.num):not(:has(.num)):not(:has(svg)):not(button):not(a):not(input):not(textarea):not(select):not(:has(button)):not(:has(a)):not(:has(input)):not(:has(textarea)) {
+  display: none !important;
+}
 html[data-labels='minimal'] [data-label='meta'] { display: none !important; }
 html[data-labels='minimal'] [data-label='minor'] { display: none !important; }
 

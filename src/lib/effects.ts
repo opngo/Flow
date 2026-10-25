@@ -17,6 +17,8 @@ export type EffectMeta = {
   name: string;
   /** One line, shown under the effect name in Settings. */
   blurb: string;
+  /** Icon name, so the option survives no-text mode as a glyph. */
+  icon: string;
   /** `css` effects are pure overlays; `canvas` effects run a draw loop. */
   kind: 'css' | 'canvas';
   /** True when the effect renders through a low-resolution pixel buffer. */
@@ -30,6 +32,7 @@ export type EffectMeta = {
 export const EFFECTS: EffectMeta[] = [
   {
     id: 'none',
+    icon: 'Square',
     name: 'None',
     blurb: 'Flat surfaces, no motion behind the interface.',
     kind: 'css',
@@ -39,6 +42,7 @@ export const EFFECTS: EffectMeta[] = [
   },
   {
     id: 'crt',
+    icon: 'Tv',
     name: 'CRT wrap',
     blurb: 'Scanlines, aperture grille, curved vignette and a slow rolling band.',
     kind: 'css',
@@ -48,6 +52,7 @@ export const EFFECTS: EffectMeta[] = [
   },
   {
     id: 'dither',
+    icon: 'Grid2x2',
     name: 'Dither',
     blurb: 'Ordered-dither noise field rendered on a coarse pixel grid.',
     kind: 'canvas',
@@ -57,6 +62,7 @@ export const EFFECTS: EffectMeta[] = [
   },
   {
     id: 'grid',
+    icon: 'Grip',
     name: 'Dot grid',
     blurb: 'Parallax dot lattice with a slow travelling highlight.',
     kind: 'canvas',
@@ -66,6 +72,7 @@ export const EFFECTS: EffectMeta[] = [
   },
   {
     id: 'aurora',
+    icon: 'Waves',
     name: 'Aurora',
     blurb: 'Three drifting light fields, heavily softened.',
     kind: 'canvas',
@@ -75,6 +82,7 @@ export const EFFECTS: EffectMeta[] = [
   },
   {
     id: 'hyperspeed',
+    icon: 'Rocket',
     name: 'Hyperspeed',
     blurb: 'Stars streaming out of the centre on a perspective grid.',
     kind: 'canvas',
@@ -84,6 +92,7 @@ export const EFFECTS: EffectMeta[] = [
   },
   {
     id: 'silk',
+    icon: 'Wind',
     name: 'Silk',
     blurb: 'Layered sine bands that fold past each other.',
     kind: 'canvas',
@@ -93,6 +102,7 @@ export const EFFECTS: EffectMeta[] = [
   },
   {
     id: 'grain',
+    icon: 'Sparkles',
     name: 'Film grain',
     blurb: 'Static noise at low opacity, for paper rather than glass.',
     kind: 'canvas',

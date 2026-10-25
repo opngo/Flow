@@ -26,7 +26,7 @@ import {
   Layers, Inbox, Grid2x2, Radar, Cake, Regex, FileCode2, Columns3, CaseSensitive, CalendarClock,
   ChartGantt, NotebookTabs, BrainCog, CloudSun, DoorOpen, SunMoon, CircleDashed, Command, Slash,
   SquareChartGantt, Code, MicVocal, Settings2, ChevronUp, Shirt, Dices, Redo2, CheckCheck,
-  BellOff, ChartNoAxesColumn,
+  BellOff, ChartNoAxesColumn, CalendarCheck,
 } from 'lucide-react';
 
 /** Curated Lucide icon catalog. Every icon in the app resolves through here so
@@ -58,7 +58,7 @@ export const ICONS = {
   Minimize2, AppWindow, PanelRight, LayoutGrid, Layers, Inbox, Grid2x2, GanttChartSquare: SquareChartGantt,
   Radar, Cake, Regex, FileCode2, Columns3, CaseSensitive, CalendarClock, ChartGantt, NotebookTabs,
   BrainCog, CloudSun, DoorOpen, SunMoon, CircleDashed, Command, Slash, Code,
-  Settings2, ChevronUp, Shirt, Dices, Redo2, GalleryVerticalEnd, CheckCheck, BellOff, ChartNoAxesColumn,
+  Settings2, ChevronUp, Shirt, Dices, Redo2, GalleryVerticalEnd, CheckCheck, BellOff, ChartNoAxesColumn, CalendarCheck,
 };
 
 export type IconName = keyof typeof ICONS;
