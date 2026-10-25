@@ -763,6 +763,26 @@ html[data-reduce-motion='true'] .rail-glow { animation: none; }
   transition: fill 320ms linear, filter 320ms linear;
 }
 
+/* A running timer breathes: the dot is the only thing on the card that moves on
+   its own, which is what separates "counting" from "paused" at a glance. */
+.live-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 5px;
+  border-radius: 999px;
+  background: currentColor;
+  animation: flow-live 2.1s ease-in-out infinite;
+}
+@keyframes flow-live {
+  0%, 100% { opacity: 0.35; box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 45%, transparent); }
+  50% { opacity: 1; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 0%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-dot { animation: none; opacity: 1; }
+}
+html[data-reduce-motion='true'] .live-dot { animation: none; opacity: 1; }
+
 /* The command bar is a text surface: its list keeps its words even when the
    rest of the interface has gone quiet, because finding a row *is* reading. */
 html[data-labels='none'] .command-list .command-group { display: block !important; }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { format, isSameDay, startOfDay, subDays } from 'date-fns';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useFlow } from '../store';
+import { useClock } from '../hooks/useClock';
 import { useUI } from '../ui';
 import { TaskRow } from '../components/TaskRow';
 import { TodoDialog } from '../components/TodoDialog';
@@ -79,6 +80,8 @@ export default function Dashboard() {
   const widgets = settings.dashboardWidgets.length ? (settings.dashboardWidgets as WidgetId[]) : WIDGETS.map((w) => w.id);
 
   const now = new Date();
+  /* The focus card's clock is live too: one tick per second while a block runs. */
+  const tick = useClock(!!db.focus?.running);
   const hour = now.getHours();
   const greeting = hour < 5 ? 'Still up' : hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
@@ -96,7 +99,7 @@ export default function Dashboard() {
   const focus = db.focus!;
   const profile = settings.timerProfiles.find((p) => p.id === focus?.profileId);
   const total = (focus?.phase === 'focus' ? profile?.focus ?? 25 : focus?.phase === 'short-break' ? profile?.shortBreak ?? 5 : profile?.longBreak ?? 15) ?? 25;
-  const remainingMs = focus?.running && focus.endsAt ? new Date(focus.endsAt).getTime() - Date.now() : focus?.remainingMs ?? total * 60000;
+  const remainingMs = focus?.running && focus.endsAt ? new Date(focus.endsAt).getTime() - tick : focus?.remainingMs ?? total * 60000;
   const focusPct = 100 - (remainingMs / (total * 60000)) * 100;
 
   /** Last seven days, oldest first: the strip at the bottom of the focus card. */
@@ -234,7 +237,8 @@ export default function Dashboard() {
             />
             <div className="flex flex-1 flex-col gap-3 md:flex-row md:items-stretch">
               <div className="flex items-center gap-3.5 md:flex-col md:items-start md:justify-between">
-                <ProgressRing value={focusPct} size={104} stroke={7} color="var(--accent)">
+                <ProgressRing value={focusPct} size={104} stroke={7} color="var(--accent)"
+                  pace={focus?.running ? 1.05 : 0.45} easing={focus?.running ? 'linear' : 'easeOut'}>
                   <div className="text-center">
                     <div className="num text-[17px] font-semibold leading-none">{minsToClock(remainingMs / 60000)}</div>
                     <div className="mt-1 text-[9px] uppercase tracking-[0.08em] text-faint">{focus?.phase?.replace('-', ' ') ?? 'focus'}</div>

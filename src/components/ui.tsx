@@ -106,9 +106,29 @@ export const PlusBtn = React.forwardRef<HTMLButtonElement, {
 });
 
 /* Surfaces ------------------------------------------------------------- */
-export function Panel({ className, children, raised, ...rest }: React.HTMLAttributes<HTMLDivElement> & { raised?: boolean }) {
+export function Panel({ className, children, raised, reveal, ...rest }: React.HTMLAttributes<HTMLDivElement> & {
+  raised?: boolean;
+  /** Seconds of delay before the card arrives. Any number turns the card into a
+   *  motion panel, so a grid can assemble itself in order instead of appearing
+   *  all at once. */
+  reveal?: number;
+}) {
+  const shell = cn(raised ? 'panel-raised' : 'panel', className);
+  if (reveal !== undefined) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.24, delay: reveal, ease: [0.22, 0.61, 0.36, 1] }}
+        className={shell}
+        {...(rest as unknown as React.ComponentProps<typeof motion.div>)}
+      >
+        {children}
+      </motion.div>
+    );
+  }
   return (
-    <div className={cn(raised ? 'panel-raised' : 'panel', className)} {...rest}>
+    <div className={shell} {...rest}>
       {children}
     </div>
   );
@@ -892,8 +912,12 @@ export function ColorPicker({ value, onChange, label = 'Colour' }: {
 }
 
 /* Data viz ------------------------------------------------------------- */
-export function ProgressRing({ value, size = 44, stroke = 5, color, label, children }: {
+export function ProgressRing({ value, size = 44, stroke = 5, color, label, children, pace = 0.5, easing = 'easeOut' }: {
   value: number; size?: number; stroke?: number; color?: string; label?: string; children?: React.ReactNode;
+  /** Seconds the arc takes to reach a new value. A ring driven by a live clock
+   *  wants a linear pace as long as its tick, so it sweeps instead of stepping. */
+  pace?: number;
+  easing?: 'easeOut' | 'linear';
 }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
@@ -906,7 +930,7 @@ export function ProgressRing({ value, size = 44, stroke = 5, color, label, child
           cx={size / 2} cy={size / 2} r={r} fill="none"
           stroke={color ?? 'var(--accent)'} strokeWidth={stroke} strokeLinecap="round"
           strokeDasharray={c} initial={{ strokeDashoffset: c }} animate={{ strokeDashoffset: c - (v / 100) * c }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
+          transition={{ duration: pace, ease: easing }}
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { useFlow } from '../src/store';
+import { resetBoot, useFlow } from '../src/store';
 import { addDays, format } from 'date-fns';
 
 const reset = () => {
@@ -9,6 +9,7 @@ const reset = () => {
 
 describe('store', () => {
   beforeEach(async () => {
+    resetBoot();
     await useFlow.getState().init();
     useFlow.getState().resetAll();
   });

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Dialog, DialogPanel } from '@headlessui/react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Dialog, DialogPanel, Transition } from '@headlessui/react';
 import { addDays, format } from 'date-fns';
 import { useFlow } from '../store';
 import { useUI } from '../ui';
@@ -202,9 +202,19 @@ export function QuickCapture() {
   const copy = TARGET_COPY[target];
 
   return (
-    <Dialog open={quickAddOpen} onClose={() => setQuickAdd(false)} className="relative z-[95]">
-      <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px]" />
+    <Transition show={quickAddOpen} as={Fragment}>
+    <Dialog onClose={() => setQuickAdd(false)} className="relative z-[95]">
+      <Transition.Child
+        enter="duration-200 ease-out" enterFrom="opacity-0" enterTo="opacity-100"
+        leave="duration-150 ease-in" leaveFrom="opacity-100" leaveTo="opacity-0"
+      >
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px]" />
+      </Transition.Child>
       <div className="fixed inset-x-0 top-[14vh] mx-auto w-full max-w-2xl px-4">
+        <Transition.Child
+          enter="duration-200 ease-out" enterFrom="opacity-0 -translate-y-2 scale-[0.985]" enterTo="opacity-100 translate-y-0 scale-100"
+          leave="duration-150 ease-in" leaveFrom="opacity-100 translate-y-0 scale-100" leaveTo="opacity-0 -translate-y-1 scale-[0.99]"
+        >
         <DialogPanel className="panel-raised overflow-hidden">
           <div className="flex items-start gap-2.5 p-3">
             <span className="mt-2 flex h-6 w-6 items-center justify-center rounded-[8px]" style={{ background: 'var(--accent-soft)' }}>
@@ -325,8 +335,10 @@ export function QuickCapture() {
             </button>
           </div>
         </DialogPanel>
+        </Transition.Child>
       </div>
     </Dialog>
+    </Transition>
   );
 }
 

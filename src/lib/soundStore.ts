@@ -1,5 +1,20 @@
 import { create } from 'zustand';
-import { engine, type LayerKind } from '../audio/engine';
+import type { LayerKind } from '../audio/engine';
+
+/**
+ * The audio graph is imported the first time a sound action actually runs.
+ *
+ * `useSound` is reached from the shell (the mute action on the tray menu and the
+ * global shortcut), so a static import here dragged the whole engine into the
+ * entry chunk — a module nothing on the first screen needs. Every call below is
+ * already the result of a click or a keypress, which is also when an audio
+ * context is allowed to start, so the load has nowhere better to go.
+ */
+let audio: Promise<typeof import('../audio/engine')> | null = null;
+const withEngine = (run: (e: import('../audio/engine').SoundEngine) => void) => {
+  audio ??= import('../audio/engine');
+  void audio.then(({ engine }) => { try { run(engine); } catch { /* audio is optional */ } }).catch(() => undefined);
+};
 import type { SoundMix } from '../lib/types';
 
 /**
@@ -41,41 +56,41 @@ export const useSound = create<SoundState>((set, get) => ({
   toggle: (kind) => {
     const { active, volumes } = get();
     if (active.includes(kind)) {
-      engine.stop(kind);
+      withEngine((e) => e.stop(kind));
       set({ active: active.filter((k) => k !== kind) });
     } else {
       const volume = volumes[kind] ?? 0.4;
-      engine.start(kind, { volume, pan: get().pans[kind] ?? 0, tone: get().tones[kind] ?? 0.5 });
+      withEngine((e) => e.start(kind, { volume, pan: get().pans[kind] ?? 0, tone: get().tones[kind] ?? 0.5 }));
       set({ active: [...active, kind] });
     }
   },
   setVolume: (kind, v) => {
-    engine.setVolume(kind, v);
+    withEngine((e) => e.setVolume(kind, v));
     set({ volumes: { ...get().volumes, [kind]: v } });
   },
   setPan: (kind, v) => {
-    engine.setPan(kind, v);
+    withEngine((e) => e.setPan(kind, v));
     set({ pans: { ...get().pans, [kind]: v } });
   },
   setTone: (kind, v) => {
-    engine.setFilter(kind, 'lowpass', 400 + v * 18000);
+    withEngine((e) => e.setFilter(kind, 'lowpass', 400 + v * 18000));
     set({ tones: { ...get().tones, [kind]: v } });
   },
   loadMix: (mix) => {
-    engine.stopAll();
+    withEngine((e) => e.stopAll());
     const volumes: Record<string, number> = {};
     const pans: Record<string, number> = {};
     mix.layers.forEach((l) => {
       volumes[l.type] = l.volume;
       pans[l.type] = l.pan;
-      engine.start(l.type as LayerKind, { volume: l.volume, pan: l.pan });
+      withEngine((e) => e.start(l.type as LayerKind, { volume: l.volume, pan: l.pan }));
     });
-    engine.setMaster(mix.masterVolume);
-    engine.setMuffle(mix.masterMuffle);
+    withEngine((e) => e.setMaster(mix.masterVolume));
+    withEngine((e) => e.setMuffle(mix.masterMuffle));
     set({ active: mix.layers.map((l) => l.type as LayerKind), volumes, pans, master: mix.masterVolume, muffle: mix.masterMuffle });
   },
   stopAll: () => {
-    engine.stopAll();
+    withEngine((e) => e.stopAll());
     set({ active: [] });
   },
 }));
