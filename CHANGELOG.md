@@ -138,6 +138,53 @@ config names.
 | every collection deleted | boots, 0 page errors |
 | unparseable JSON | seeds, 0 page errors |
 
+## [1.9.0] - 2026-10-25
+
+The timers tab counts, the app has a launch, and the packaged build actually starts.
+
+### Added
+
+- **A launch animation you can see from the first frame.** The paper plane and the wordmark live
+  in `index.html`, not in the bundle, so the window paints a plane already in flight instead of a
+  blank surface while the module graph parses. It crosses on a bezier path with the trail drawing
+  behind it, the word `Flow` writes itself in behind the flight, and the whole thing hands the
+  window over once the database is in memory (`__flowBootDone`), with a hard stop at 3.6 s so
+  nothing can be left covered. It reads the stored theme first, so a light-theme window gets a
+  light splash rather than a dark flash, and `prefers-reduced-motion` (or the app's own reduce
+  motion setting) shows the still frame and gets out of the way in 380 ms.
+- **A one-second clock, shared by every timer on screen** (`hooks/useClock`). The digits, the rings
+  and the tracker all read the same instant, and the tick is aligned to the next whole second.
+- **Cards assemble.** Timer cards arrive in order (`Panel` grew a `reveal` prop), the timers tab
+  cross-fades between Countdown, Stopwatch, Interval, Routines, Tracker and Timesheet, and the
+  command bar and capture box now rise into place and fall away instead of appearing/disappearing.
+- **A running timer breathes.** The accent dot in the `running` badge pulses (off under reduced
+  motion), the ring under it fills at exactly the clock's pace, and each new second of the readout
+  slides in rather than swapping under the eye.
+
+### Changed
+
+- **Faster launch.** The database read now starts before React mounts (`init()` is guarded, so the
+  shell's effect joins that same promise — under StrictMode it used to load, migrate and repair
+  twice), the audio engine left the entry chunk (it is imported on the first gesture, and the
+  sound store imports it on first use: `engine-*.js` is now its own 11.6 kB chunk), and the entry
+  chunk dropped from 233 kB to 222 kB. Measured on the production build: first paint 104–136 ms,
+  app ready at 281–318 ms, window handed over at 1.16–1.24 s.
+- **`MotionConfig` wraps the app**, so framer-motion animations everywhere honour the reduce-motion
+  setting instead of each component deciding for itself.
+
+### Fixed
+
+- **The packaged build did not start.** `@headlessui/react` matched the `/react/` chunk rule and was
+  put in the framework chunk while the framer-motion it depends on sat in the UI chunk — a cycle
+  between two chunks that produced `TypeError: Cannot read properties of undefined (reading
+  'createContext')` before React had initialised. The UI dependencies are now assigned before the
+  framework ones and the React rule is anchored to `node_modules/react/`, which leaves the chunk
+  graph a DAG (`react` → `ui`/`vendor` → `index`). The production bundle was verified across all
+  eighteen routes with zero console errors.
+- **Timers sat still between updates.** The timers tab read `Date.now()` at render and only
+  re-rendered when the store changed, so a running countdown jumped (`02:00` for two seconds, then
+  `01:57`, then frozen). The focus page and the dashboard's focus card had the same fault.
+
 ## [1.8.1] - 2026-10-25
 
 Four corrections from using the app: one piece of the timer that should not have been there, one

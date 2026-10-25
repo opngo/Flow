@@ -4,7 +4,6 @@ import { useUI } from '../ui';
 import { applyTheme } from '../lib/theme';
 import { dueReminders } from '../lib/scheduler';
 import { systemNotify } from '../lib/platform';
-import { engine } from '../audio/engine';
 import { useSound } from '../lib/soundStore';
 import { useNavigate } from 'react-router-dom';
 
@@ -177,7 +176,9 @@ export function useNativeActions() {
           /* Mute is the mixer's own switch, not a notification preference. */
           const sound = useSound.getState();
           sound.set({ muted: !sound.muted });
-          engine.setMuted(!sound.muted);
+          /* Loaded on demand: the audio graph is a large module and this is the
+             only place the shell touches it. */
+          void import('../audio/engine').then(({ engine }) => engine.setMuted(!sound.muted)).catch(() => undefined);
           break;
         }
         case 'reminder-delivered':

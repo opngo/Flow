@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Combobox, ComboboxInput, ComboboxOptions, ComboboxOption, Dialog, DialogPanel } from '@headlessui/react';
+import {
+  Combobox, ComboboxInput, ComboboxOptions, ComboboxOption, Dialog, DialogPanel, Transition,
+} from '@headlessui/react';
 import { useFlow } from '../store';
 import { useUI } from '../ui';
 import { NAV, TOOLS } from '../lib/nav';
@@ -187,15 +189,26 @@ export function CommandPalette() {
   const groups = Array.from(new Set(results.map((i) => i.group)));
 
   return (
+    <Transition show={paletteOpen} as={React.Fragment}>
     <Dialog
-      open={paletteOpen}
       onClose={() => { closePalette(); setQuery(''); }}
       className="relative z-[90]"
       initialFocus={inputRef}
     >
-      <div className="fixed inset-0 bg-black/35 backdrop-blur-[2px]" />
+      <Transition.Child
+        enter="duration-200 ease-out" enterFrom="opacity-0" enterTo="opacity-100"
+        leave="duration-150 ease-in" leaveFrom="opacity-100" leaveTo="opacity-0"
+      >
+        <div className="fixed inset-0 bg-black/35 backdrop-blur-[2px]" />
+      </Transition.Child>
       {/* Anchored low on the glass so the panel has room to grow upward. */}
       <div className="fixed inset-x-0 bottom-[14vh] mx-auto flex w-full max-w-xl flex-col justify-end px-4">
+        {/* It rises out of the bottom edge: the bar arrives from the direction
+            the panel grows in, so the movement matches the layout. */}
+        <Transition.Child
+          enter="duration-200 ease-out" enterFrom="opacity-0 translate-y-4 scale-[0.985]" enterTo="opacity-100 translate-y-0 scale-100"
+          leave="duration-150 ease-in" leaveFrom="opacity-100 translate-y-0 scale-100" leaveTo="opacity-0 translate-y-2 scale-[0.99]"
+        >
         <DialogPanel className="panel-raised overflow-hidden">
           <Combobox
             value={null}
@@ -248,8 +261,10 @@ export function CommandPalette() {
             </div>
           </Combobox>
         </DialogPanel>
+        </Transition.Child>
       </div>
     </Dialog>
+    </Transition>
   );
 }
 

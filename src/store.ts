@@ -151,6 +151,15 @@ export type FlowState = {
 
 const emptyDB: DB = DBSchema.parse({ version: SCHEMA_VERSION });
 
+/* The single in-flight boot (see `init`). */
+let bootPromise: Promise<void> | null = null;
+
+/** Test seam: forget the in-flight boot so one suite can boot several
+ *  databases in the same process. Nothing in the app calls this. */
+export function resetBoot() {
+  bootPromise = null;
+}
+
 export const useFlow = create<FlowState>((set, get) => ({
   db: emptyDB,
   ready: false,
@@ -158,25 +167,33 @@ export const useFlow = create<FlowState>((set, get) => ({
   future: [],
 
   async init() {
-    let loaded: LoadResult | null = null;
-    try {
-      loaded = await repo.load();
-    } catch (err) {
-      /* A database that cannot be read must not leave the app on the splash
-         screen: fall back to a fresh seed and keep the failure audible. */
-      console.error('Flow: database load failed, starting from a seed', err);
-    }
-    const db = withDefaults(loaded ? loaded.db : seedDB());
-    set({ db, ready: true });
-    if (!loaded) {
-      void repo.save(db);
-    } else if (loaded.repaired) {
-      /* Loading had to migrate or repair something, so write the healthy
-         version back. Without this the file stays broken on disk and every
-         launch pays the same recovery. */
-      console.warn('Flow: database was upgraded or repaired on load; writing it back');
-      void repo.save(db);
-    }
+    /* One boot, however many callers ask for it. The entry point starts the
+       load before React mounts and the shell asks for it again on its first
+       effect; without this guard the database would be read and migrated
+       twice, and whichever finished last would win. */
+    if (bootPromise) return bootPromise;
+    bootPromise = (async () => {
+      let loaded: LoadResult | null = null;
+      try {
+        loaded = await repo.load();
+      } catch (err) {
+        /* A database that cannot be read must not leave the app on the splash
+           screen: fall back to a fresh seed and keep the failure audible. */
+        console.error('Flow: database load failed, starting from a seed', err);
+      }
+      const db = withDefaults(loaded ? loaded.db : seedDB());
+      set({ db, ready: true });
+      if (!loaded) {
+        void repo.save(db);
+      } else if (loaded.repaired) {
+        /* Loading had to migrate or repair something, so write the healthy
+           version back. Without this the file stays broken on disk and every
+           launch pays the same recovery. */
+        console.warn('Flow: database was upgraded or repaired on load; writing it back');
+        void repo.save(db);
+      }
+    })();
+    return bootPromise;
   },
 
   mutate(fn, opts = {}) {

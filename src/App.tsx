@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect, useState } from 'react';
 import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 import { Sidebar, Titlebar } from './components/Shell';
 import { CommandPalette } from './components/CommandPalette';
 import { QuickCapture } from './components/QuickCapture';
@@ -175,6 +175,13 @@ function AppBody() {
 
   useEffect(() => { void init(); }, [init]);
 
+  /* Tell the launch animation in index.html that the database is in memory, so
+     it can hand the window over instead of guessing. */
+  useEffect(() => {
+    if (!ready) return;
+    (window as unknown as { __flowBootDone?: () => void }).__flowBootDone?.();
+  }, [ready]);
+
   useEffect(() => {
     if (!ready) return;
     if (!settings.sidebar.items.length) {
@@ -189,23 +196,19 @@ function AppBody() {
     if (settings.behavior.appLock.enabled && settings.behavior.appLock.pin) setLocked(true);
   }, [ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /* Boot is covered by the launch animation in index.html (it sits above the
+     document and leaves when `__flowBootDone` fires), so the shell renders
+     nothing louder than its own background here — no second spinner fighting
+     the paper plane. */
   if (!ready) {
-    return (
-      <div className="flex h-full items-center justify-center bg-surface">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-col items-center gap-3 text-muted"
-        >
-          <span className="flex h-10 w-10 items-center justify-center rounded-[14px]" style={{ background: 'var(--accent)' }}>
-            <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.4, repeat: Infinity }} className="text-white text-sm font-semibold">F</motion.span>
-          </span>
-          <span className="text-[12.5px]">Opening your local database</span>
-        </motion.div>
-      </div>
-    );
+    return <div className="h-full" style={{ background: 'var(--surface)' }} />;
   }
 
   return (
+    /* One switch for the whole app: every framer-motion animation below honours
+       the reduce-motion setting, so "less movement" is not a per-component
+       decision that some panel forgets. */
+    <MotionConfig reducedMotion={settings.behavior.reduceMotion ? 'always' : 'never'}>
     <div className="relative flex h-full flex-col overflow-hidden" style={{ background: 'var(--surface)' }}>
         {/* Opt-in atmosphere layer. It sits under a scrim so text keeps its
             contrast no matter which effect is running. */}
@@ -235,6 +238,7 @@ function AppBody() {
         {locked && <LockScreen onUnlock={() => setLocked(false)} />}
         {!miniMode && <TimerFullscreen />}
     </div>
+    </MotionConfig>
   );
 }
 

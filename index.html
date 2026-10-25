@@ -12,9 +12,177 @@
          and inside a sandboxed preview. -->
     <link rel="preload" href="/fonts/satoshi-500.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/sentient-400.woff2" as="font" type="font/woff2" crossorigin />
+    <style>
+      /* The launch animation lives in the document, not in the bundle.
+         A React overlay can only appear once React has parsed, which is exactly
+         the blank moment this is meant to cover — so the first thing the window
+         paints is a paper plane already moving, and the app fades up behind it
+         when the database says it is ready. */
+      @font-face {
+        font-family: 'Flow Boot';
+        src: url('/fonts/satoshi-500.woff2') format('woff2');
+        font-weight: 500;
+        font-display: block;
+      }
+      #boot {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        background: var(--boot-bg, #0b0d12);
+        transition: opacity 220ms ease;
+      }
+      #boot.is-done { opacity: 0; pointer-events: none; }
+      #boot-stage {
+        position: relative;
+        width: 620px;
+        height: 240px;
+        transform: scale(var(--boot-scale, 1));
+      }
+      #boot-trail {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+      }
+      #boot-trail path {
+        fill: none;
+        stroke: var(--boot-accent, #7c8cff);
+        stroke-width: 2;
+        stroke-linecap: round;
+        /* drawn: the dash runs out exactly as the plane reaches the end */
+        stroke-dasharray: 660;
+        stroke-dashoffset: 660;
+        animation: boot-draw 620ms cubic-bezier(0.42, 0, 0.28, 1) 30ms forwards;
+        opacity: 0.9;
+      }
+      .boot-plane {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 30px;
+        height: 30px;
+        margin: -15px 0 0 -15px;
+        color: var(--boot-accent, #7c8cff);
+        offset-path: path('M -20 150 C 150 34, 360 22, 650 84');
+        offset-rotate: auto;
+        offset-distance: 0%;
+        animation: boot-fly 620ms cubic-bezier(0.42, 0, 0.3, 1) 30ms forwards;
+        filter: drop-shadow(0 0 16px color-mix(in srgb, var(--boot-accent, #7c8cff) 45%, transparent));
+      }
+      /* The dip after the flight: the plane banks away once the word is written. */
+      .boot-plane svg { width: 100%; height: 100%; display: block; }
+
+      #boot-word {
+        position: absolute;
+        left: 50%;
+        top: 63%;
+        transform: translate(-50%, -50%);
+        display: flex;
+        font-family: 'Flow Boot', 'Satoshi', system-ui, sans-serif;
+        font-size: 92px;
+        font-weight: 500;
+        letter-spacing: -0.045em;
+        line-height: 1;
+        color: var(--boot-text, #eef1f8);
+      }
+      #boot-word span {
+        display: block;
+        opacity: 0;
+        transform: translateY(12px);
+        animation: boot-letter 260ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+      }
+      /* Each letter lands where the plane has just been, so the word reads as
+         something the flight left behind. */
+      #boot-word span:nth-child(1) { animation-delay: 380ms; }
+      #boot-word span:nth-child(2) { animation-delay: 420ms; }
+      #boot-word span:nth-child(3) { animation-delay: 460ms; }
+      #boot-word span:nth-child(4) { animation-delay: 500ms; }
+
+      @keyframes boot-draw { to { stroke-dashoffset: 0; } }
+      @keyframes boot-fly { to { offset-distance: 100%; opacity: 0.92; } }
+      @keyframes boot-letter {
+        0% { opacity: 0; transform: translateY(8px); filter: blur(4px); }
+        100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+      }
+
+      @media (max-width: 700px) { #boot-stage { --boot-scale: 0.62; } }
+      @media (max-height: 520px) { #boot-stage { --boot-scale: 0.55; } }
+
+      /* Less motion means the word is simply there: no flight, no reveal. */
+      #boot.is-still #boot-trail path { animation: none; stroke-dashoffset: 260; }
+      #boot.is-still .boot-plane { animation: none; offset-distance: 62%; }
+      #boot.is-still #boot-word span { animation: none; opacity: 1; transform: none; filter: none; }
+      @media (prefers-reduced-motion: reduce) {
+        #boot-trail path { animation: none; stroke-dashoffset: 260; }
+        .boot-plane { animation: none; offset-distance: 62%; }
+        #boot-word span { animation: none; opacity: 1; transform: none; filter: none; }
+      }
+    </style>
   </head>
   <body>
+    <!-- Launch: a paper plane crosses the window and leaves the wordmark behind. -->
+    <div id="boot" aria-hidden="true">
+      <div id="boot-stage">
+        <svg id="boot-trail" viewBox="0 0 620 240" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M -20 150 C 150 34, 360 22, 650 84" />
+        </svg>
+        <div class="boot-plane">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M21.9 2.4a.75.75 0 0 1 .16.8l-6.1 18.2a.75.75 0 0 1-1.38.13l-3.2-6.2-6.3-3.3a.75.75 0 0 1 .05-1.36L21.2 2.25a.75.75 0 0 1 .7.15Z" />
+            <path d="M21.9 2.4 11.4 15.3l.35 1.55L21.9 2.4Z" fill="#fff" opacity="0.25" />
+          </svg>
+        </div>
+        <div id="boot-word"><span>F</span><span>l</span><span>o</span><span>w</span></div>
+      </div>
+    </div>
     <div id="root"></div>
+    <script>
+      /* Paint the splash in the theme the app is about to use: reading two
+         fields out of the stored database costs nothing and avoids a dark flash
+         for a light-theme window. */
+      (function () {
+        var boot = document.getElementById('boot');
+        var started = performance.now();
+        var MIN = 800;
+        var still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var ready = false;
+        try {
+          var raw = localStorage.getItem('flow.db.v3');
+          if (raw) {
+            var db = JSON.parse(raw);
+            var theme = (db && db.settings && db.settings.theme) || {};
+            var dark = theme.mode !== 'light';
+            boot.style.setProperty('--boot-bg', dark ? '#0b0d12' : '#f4f5f9');
+            boot.style.setProperty('--boot-text', dark ? '#eef1f8' : '#14161d');
+            if (theme.accent) boot.style.setProperty('--boot-accent', theme.accent);
+            if (db && db.settings && db.settings.behavior && db.settings.behavior.reduceMotion) still = true;
+          }
+        } catch (e) { /* a broken database is the app's problem, not the splash's */ }
+
+        if (still) { boot.classList.add('is-still'); MIN = 380; }
+
+        function hide() {
+          if (boot.classList.contains('is-done')) return;
+          boot.classList.add('is-done');
+          setTimeout(function () { if (boot.parentNode) boot.parentNode.removeChild(boot); }, 280);
+        }
+        /* The app calls this once the database is in memory. The splash stays
+           for its full sentence either way — it is short enough not to matter
+           when boot is slow and it is the whole point when boot is fast. */
+        window.__flowBootDone = function () {
+          ready = true;
+          var wait = Math.max(0, MIN - (performance.now() - started));
+          setTimeout(hide, wait);
+        };
+        /* Nothing may leave the window covered: if the bundle never reports,
+           the splash leaves on its own. */
+        setTimeout(hide, 3600);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

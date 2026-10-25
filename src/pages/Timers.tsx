@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format, startOfWeek } from 'date-fns';
 import { useFlow } from '../store';
@@ -9,6 +10,7 @@ import {
   Segmented, Select, Stat, TextInput,
   PlusBtn,
  } from '../components/ui';
+import { useClock } from '../hooks/useClock';
 import { bucketSessions } from '../lib/analytics';
 import { download } from '../lib/platform';
 import { minsToClock, minsToHM, toCSV, cn } from '../lib/utils';
@@ -49,6 +51,9 @@ export default function Timers() {
   const [rest, setRest] = useState(30);
   const [attach, setAttach] = useState('');
   const [exam, setExam] = useState({ open: false, minutes: 90, sections: 3, subjectId: '' });
+  /* One second-hand for the whole tab: the digits, the rings and the tracker
+     all read the same instant, so they can never disagree by a tick. */
+  const now = useClock();
 
   /* `?new=1` opens the same New timer dialog the plus does. */
   useEffect(() => {
@@ -132,15 +137,23 @@ export default function Timers() {
         <Segmented value={tab} onChange={setTab} options={TABS.map((t) => ({ value: t.id, label: t.label, icon: t.icon }))} />
       </div>
 
+      <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={tab}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -4 }}
+        transition={{ duration: 0.18, ease: [0.22, 0.61, 0.36, 1] }}
+      >
       {tab === 'timesheet' ? <Timesheet /> : tab === 'tracker' ? <Tracker /> : tab === 'routines' ? <Routines /> : (
         <div className="grid gap-3 xl:grid-cols-[1fr_320px]">
         <div className="grid content-start gap-3 md:grid-cols-2">
           {timers.filter((t) => (tab === 'stopwatch' ? t.kind === 'stopwatch' : tab === 'interval' ? t.kind === 'interval' : t.kind === 'countdown' || t.kind === 'exam'))
-            .map((t) => {
-              const elapsed = t.accumulatedMs + (t.startedAt ? Date.now() - new Date(t.startedAt).getTime() : 0);
+            .map((t, index) => {
+              const elapsed = t.accumulatedMs + (t.startedAt && t.running ? now - new Date(t.startedAt).getTime() : 0);
               const remaining = t.kind === 'stopwatch'
                 ? Math.max(0, elapsed / 60000)
-                : Math.max(0, ((t.endsAt ? new Date(t.endsAt).getTime() : Date.now()) - Date.now()) / 60000);
+                : Math.max(0, ((t.endsAt ? new Date(t.endsAt).getTime() : now) - now) / 60000);
               const totalMin = t.kind === 'stopwatch' ? Math.max(elapsed / 60000, 1) : t.plannedMin || 1;
               // A stopwatch has no end, so the ring shows progress through the
               // current minute rather than pretending there is a fixed total.
@@ -149,6 +162,7 @@ export default function Timers() {
                 : Math.min(100, Math.max(0, (1 - remaining / totalMin) * 100));
               return (
                 <Panel key={t.id} className="flex flex-col p-3.5"
+                  reveal={index * 0.04}
                   onContextMenu={(e) => openContextMenu(e, [
                     { label: t.running ? 'Pause' : 'Resume', icon: t.running ? 'Pause' : 'Play', onClick: () => (t.running ? flow.pauseTimer(t.id) : flow.resumeTimer(t.id)) },
                     { label: 'Log and stop', icon: 'Check', onClick: () => flow.finishTimer(t.id) },
@@ -160,7 +174,9 @@ export default function Timers() {
                       <Icon name={t.kind === 'stopwatch' ? 'Watch' : t.kind === 'interval' ? 'Repeat' : t.kind === 'exam' ? 'Presentation' : 'Hourglass'} size={14} className="text-accent" />
                     </span>
                     <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{t.label}</span>
-                    {t.finished ? <Badge tone="success">done</Badge> : t.running ? <Badge tone="accent">running</Badge> : <Badge>paused</Badge>}
+                    {t.finished ? <Badge tone="success">done</Badge>
+                      : t.running ? <Badge tone="accent"><span className="live-dot" />running</Badge>
+                        : <Badge>paused</Badge>}
                     <MenuBtn trigger={<IconBtn icon="MoreHorizontal" label="Timer actions" />} items={[
                       { label: 'Attach next task', icon: 'CheckSquare', onClick: () => { const next = db.todos.find((x) => x.status !== 'done'); if (next) flow.patch('timers', t.id, { todoId: next.id }); } },
                       { label: 'Log and stop', icon: 'Check', onClick: () => flow.finishTimer(t.id) },
@@ -168,13 +184,26 @@ export default function Timers() {
                     ]} />
                   </div>
                   <div className="mt-3 flex items-center gap-3">
-                    <ProgressRing value={pct} size={54} stroke={5} color={t.kind === 'stopwatch' ? 'var(--success)' : 'var(--accent)'}>
-                      <Icon name={t.running ? 'Activity' : 'Pause'} size={13} className="text-muted" />
+                    <ProgressRing value={pct} size={54} stroke={5} pace={t.running ? 1.05 : 0.4}
+                      easing={t.running ? 'linear' : 'easeOut'}
+                      color={t.kind === 'stopwatch' ? 'var(--success)' : 'var(--accent)'}>
+                      <Icon name={t.running ? 'Activity' : 'Pause'} size={13} className={t.running ? 'text-accent' : 'text-muted'} />
                     </ProgressRing>
-                    <div>
-                      <div className="num text-[24px] font-semibold leading-none">
-                        {t.kind === 'stopwatch' ? minsToClock(elapsed / 60000) : minsToClock(remaining)}
-                      </div>
+                    <div className="relative">
+                      {/* Keyed on the value, so each new second slides in rather
+                          than the number being swapped under the eye. */}
+                      <AnimatePresence mode="popLayout" initial={false}>
+                        <motion.div
+                          key={t.kind === 'stopwatch' ? minsToClock(elapsed / 60000) : minsToClock(remaining)}
+                          initial={{ opacity: 0, y: -5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 5, position: 'absolute' }}
+                          transition={{ duration: 0.18, ease: 'easeOut' }}
+                          className="num text-[24px] font-semibold leading-none tabular-nums"
+                        >
+                          {t.kind === 'stopwatch' ? minsToClock(elapsed / 60000) : minsToClock(remaining)}
+                        </motion.div>
+                      </AnimatePresence>
                       <div className="mt-1 text-[10.5px] text-faint">
                         {t.kind === 'interval' ? `${t.rounds} rounds · ${t.restSec}s rest` : t.kind === 'stopwatch' ? `${t.laps.length} laps` : `of ${t.plannedMin} min`}
                       </div>
@@ -304,6 +333,8 @@ export default function Timers() {
         </div>
         </div>
       )}
+      </motion.div>
+      </AnimatePresence>
 
       <Panel className="p-3.5">
         <SectionHead title="Presets" subtitle="One click to start" />
@@ -370,6 +401,7 @@ export default function Timers() {
 function Tracker() {
   const db = useFlow((s) => s.db);
   const flow = useFlow.getState();
+  const now = useClock();
   const [label, setLabel] = useState('');
   const [tag, setTag] = useState('');
   const running = db.timers.find((t) => t.kind === 'stopwatch' && t.running);
@@ -392,7 +424,7 @@ function Tracker() {
             <div>
               <div className="text-[13px]">{running.label}</div>
               <div className="num text-[11.5px] text-muted">
-                {minsToClock((running.accumulatedMs + (running.startedAt ? Date.now() - new Date(running.startedAt).getTime() : 0)) / 60000)}
+                {minsToClock((running.accumulatedMs + (running.startedAt && running.running ? now - new Date(running.startedAt).getTime() : 0)) / 60000)}
               </div>
             </div>
             <Btn size="sm" variant="soft" icon="Flag" className="ml-auto" onClick={() => flow.addLap(running.id)}>Lap</Btn>

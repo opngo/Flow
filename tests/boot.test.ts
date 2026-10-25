@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DBSchema, SCHEMA_VERSION } from '../src/lib/types';
 import { seedDB } from '../src/lib/seed';
-import { useFlow } from '../src/store';
+import { resetBoot, useFlow } from '../src/store';
 
 const KEY = 'flow.db.v3';
 
@@ -13,6 +13,8 @@ const KEY = 'flow.db.v3';
 describe('boot with a damaged database', () => {
   beforeEach(() => {
     localStorage.clear();
+    /* `init()` is once-per-process by design; each case here is a launch. */
+    resetBoot();
     vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
   afterEach(() => {
@@ -58,5 +60,22 @@ describe('boot with a damaged database', () => {
     await useFlow.getState().init();
     expect(useFlow.getState().ready).toBe(true);
     expect(useFlow.getState().db.settings.backdrop).toBeDefined();
+  });
+
+  it('boots once however many callers ask for it', async () => {
+    localStorage.clear();
+    resetBoot();
+    /* The entry point starts the load before React mounts and the shell asks
+       again on its first effect (twice, under StrictMode). */
+    await Promise.all([
+      useFlow.getState().init(),
+      useFlow.getState().init(),
+      useFlow.getState().init(),
+    ]);
+    expect(useFlow.getState().ready).toBe(true);
+    const first = useFlow.getState().db;
+    await useFlow.getState().init();
+    // The same object: nothing was re-read and nothing was replaced.
+    expect(useFlow.getState().db).toBe(first);
   });
 });

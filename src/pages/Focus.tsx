@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useClock } from '../hooks/useClock';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import { useFlow } from '../store';
@@ -43,11 +44,15 @@ export default function Focus() {
   const [note, setNote] = useState('');
   const [attachTask, setAttachTask] = useState<string>('');
 
+  /* The block counts down against the wall clock; this makes React look at it
+     every second instead of whenever something else happens to change. */
+  const now = useClock(!!db.focus?.running);
+
   const f = db.focus;
   const profile = db.settings.timerProfiles.find((p) => p.id === (f?.profileId ?? db.settings.activeProfileId)) ?? db.settings.timerProfiles[0];
   const phase = f?.phase ?? 'focus';
   const total = phase === 'focus' ? profile?.focus ?? 25 : phase === 'short-break' ? profile?.shortBreak ?? 5 : profile?.longBreak ?? 15;
-  const remainingMs = f?.running && f.endsAt ? new Date(f.endsAt).getTime() - Date.now() : f?.remainingMs ?? total * 60000;
+  const remainingMs = f?.running && f.endsAt ? new Date(f.endsAt).getTime() - now : f?.remainingMs ?? total * 60000;
   const pct = Math.min(100, Math.max(0, 100 - (remainingMs / (total * 60000)) * 100));
   const running = !!f?.running;
 
@@ -62,7 +67,7 @@ export default function Focus() {
   /* The clock column used to end in empty glass under the buttons. These give
      it something true to say: when this block lands, the week around today, and
      the last blocks actually logged. */
-  const endAt = running && f?.endsAt ? new Date(f.endsAt) : new Date(Date.now() + remainingMs);
+  const endAt = running && f?.endsAt ? new Date(f.endsAt) : new Date(now + remainingMs);
   const week = useMemo(() => {
     const days = Array.from({ length: 7 }, (_, i) => {
       const d = new Date();
@@ -141,7 +146,9 @@ export default function Focus() {
                   cx={124} cy={124} r={112} fill="none" stroke={phaseColor} strokeWidth={10} strokeLinecap="round"
                   strokeDasharray={2 * Math.PI * 112}
                   animate={{ strokeDashoffset: 2 * Math.PI * 112 * (1 - pct / 100) }}
-                  transition={{ duration: 0.6, ease: 'easeOut' }}
+                  /* Running: the ring creeps with the second instead of
+                     snapping a notch each tick. */
+                  transition={{ duration: running ? 1.05 : 0.6, ease: running ? 'linear' : 'easeOut' }}
                 />
               </svg>
               {/* liquid fill */}
@@ -149,7 +156,7 @@ export default function Focus() {
                 <motion.div
                   className="absolute inset-x-0 bottom-0"
                   animate={{ height: `${pct}%` }}
-                  transition={{ duration: 0.6, ease: 'easeOut' }}
+                  transition={{ duration: running ? 1.05 : 0.6, ease: running ? 'linear' : 'easeOut' }}
                   style={{ background: `linear-gradient(180deg, color-mix(in srgb, ${phaseColor} 35%, transparent), color-mix(in srgb, ${phaseColor} 12%, transparent))` }}
                 />
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
