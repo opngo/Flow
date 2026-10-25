@@ -7,7 +7,7 @@
 **All-in-one, local-first productivity for the desktop.**
 Todos · habits · goals · focus timers · grades · notes · flashcards · sound studio · 124 tools
 
-[![CI](https://github.com/opngo/flow/actions/workflows/ci.yml/badge.svg)](https://github.com/opngo/flow/actions/workflows/ci.yml)
+
 [![Release](https://github.com/opngo/flow/actions/workflows/release.yml/badge.svg)](https://github.com/opngo/flow/actions/workflows/release.yml)
 [![Pages](https://github.com/opngo/flow/actions/workflows/pages.yml/badge.svg)](https://github.com/opngo/flow/actions/workflows/pages.yml)
 [![CodeQL](https://github.com/opngo/flow/actions/workflows/codeql.yml/badge.svg)](https://github.com/opngo/flow/actions/workflows/codeql.yml)
@@ -26,7 +26,7 @@ telemetry, no network requests at runtime.
 
 | | |
 |---|---|
-| **Local-first** | One JSON database in your user-data folder, versioned migrations, rolling backups. Export and import it any time. |
+| **Local** | One JSON database in your user-data folder, versioned migrations, rolling backups. Export and import it any time. |
 | **Offline forever** | The app makes zero network calls. The landing page does too. |
 | **Clock-derived timers** | Timers store start and end timestamps and recompute the remainder, so sleep, throttling and restarts cannot make them drift. |
 | **Type-safe** | Zod schemas for every entity, strict TypeScript, 41 tests in CI, CodeQL and dependency review on every pull request. |
@@ -34,8 +34,7 @@ telemetry, no network requests at runtime.
 
 ## Download
 
-Installers are attached to every [release](https://github.com/opngo/flow/releases/latest) and built by the
-[`release.yml`](.github/workflows/release.yml) workflow on Windows, macOS and Linux runners.
+
 
 | Platform | File |
 |---|---|
@@ -44,11 +43,6 @@ Installers are attached to every [release](https://github.com/opngo/flow/release
 | macOS (Apple silicon, Intel) | `Flow-<version>-mac-<arch>.dmg` |
 | Linux | `Flow-<version>-linux-x86_64.AppImage`, `.deb`, `.tar.gz` |
 
-Verify a download against `SHA256SUMS.txt` from the same release:
-
-```sh
-sha256sum -c SHA256SUMS.txt --ignore-missing
-```
 
 Builds are unsigned unless a release says otherwise, so Windows SmartScreen shows
 "Windows protected your PC" once (More info, Run anyway) and macOS needs a
