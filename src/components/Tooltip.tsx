@@ -192,7 +192,7 @@ export function RichTip({
           role="tooltip"
           onPointerEnter={show}
           onPointerLeave={hide}
-          className="pointer-events-auto fixed left-0 top-0 z-[110] w-[268px] max-h-[70vh] overflow-y-auto rounded-[14px] p-3 text-[11.5px] no-scrollbar"
+          className="pointer-events-auto fixed left-0 top-0 z-[110] w-[276px] max-h-[70vh] overflow-y-auto rounded-[14px] px-3.5 py-3.5 text-[11.5px] no-scrollbar"
           style={{
             // Opaque enough that the row underneath never shows through the card.
             background: 'color-mix(in srgb, var(--surface-2) 97%, transparent)',

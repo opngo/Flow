@@ -147,33 +147,47 @@ function TodoHoverCard({
   todo: Todo; category?: string; categoryColor?: string; subject?: string; subjectColor?: string; project?: string;
 }) {
   const line = (label: string, value: React.ReactNode, color?: string) => (
-    <div className="flex items-baseline justify-between gap-3 py-[3px]">
+    <div className="flex items-baseline justify-between gap-3 py-[5px]">
       <span className="shrink-0 text-[10.5px] uppercase tracking-[0.06em] text-faint">{label}</span>
       <span className="min-w-0 truncate text-right" style={color ? { color } : undefined}>{value}</span>
     </div>
   );
   const done = todo.checklist.filter((c) => c.done).length;
+  const rows = [
+    category && line('Category', category, categoryColor),
+    subject && line('Subject', subject, subjectColor),
+    project && line('Project', project),
+    line('Created', format(new Date(todo.createdAt), 'd MMM yyyy')),
+    todo.dueAt && line('Due', format(new Date(todo.dueAt), 'EEE d MMM, HH:mm')),
+    todo.startAt && line('Starts', format(new Date(todo.startAt), 'EEE d MMM')),
+    todo.estimateMin ? line('Estimate', `${todo.estimateMin} min`) : null,
+    todo.loggedMin ? line('Logged', minsToHM(todo.loggedMin)) : null,
+    todo.checklist.length ? line('Checklist', `${done} of ${todo.checklist.length}`) : null,
+  ].filter(Boolean) as React.ReactNode[];
+
   return (
-    <div>
-      <div className="mb-1.5 text-[12.5px] font-medium leading-snug text-ink">{todo.title}</div>
-      <div className="mb-2 flex flex-wrap gap-1">
+    <div className="px-0.5">
+      <div className="text-[12.5px] font-medium leading-snug text-ink">{todo.title}</div>
+      <div className="mt-2 flex flex-wrap gap-1">
         <Chip icon={todo.status === 'done' ? 'Check' : todo.status === 'doing' ? 'Play' : 'Circle'}>{todo.status}</Chip>
         {todo.priority > 0 && <Chip icon="Flag" color="var(--warning)">P{todo.priority}</Chip>}
         {todo.rrule && <Chip icon="Repeat">repeats</Chip>}
       </div>
-      <div className="divide-y" style={{ borderColor: 'color-mix(in srgb, var(--text-faint) 12%, transparent)' }}>
-        {category && line('Category', category, categoryColor)}
-        {subject && line('Subject', subject, subjectColor)}
-        {project && line('Project', project)}
-        {line('Created', format(new Date(todo.createdAt), 'd MMM yyyy'))}
-        {todo.dueAt && line('Due', format(new Date(todo.dueAt), 'EEE d MMM, HH:mm'))}
-        {todo.startAt && line('Starts', format(new Date(todo.startAt), 'EEE d MMM'))}
-        {todo.estimateMin ? line('Estimate', `${todo.estimateMin} min`) : null}
-        {todo.loggedMin ? line('Logged', minsToHM(todo.loggedMin)) : null}
-        {todo.checklist.length ? line('Checklist', `${done} of ${todo.checklist.length}`) : null}
+      <div className="mt-2">
+        {rows.map((row, i) => (
+          <div key={i}>
+            {/* Hairlines are shorter than the card and barely there: they hint at
+                the split without drawing a box around the text. */}
+            {i > 0 && (
+              <div className="mx-auto h-px w-[92%]"
+                style={{ background: 'color-mix(in srgb, var(--text-faint) 8%, transparent)' }} />
+            )}
+            {row}
+          </div>
+        ))}
       </div>
       {todo.tags.length > 0 && (
-        <div className="mt-1.5 flex flex-wrap gap-1">
+        <div className="mt-2.5 flex flex-wrap gap-1">
           {todo.tags.map((t) => (
             <span key={t} className="rounded-[6px] px-1.5 py-0.5 text-[10.5px] text-faint"
               style={{ background: 'color-mix(in srgb, var(--surface-3) 70%, transparent)' }}>#{t}</span>
@@ -181,9 +195,9 @@ function TodoHoverCard({
         </div>
       )}
       {todo.notes && (
-        <p className="mt-2 line-clamp-3 text-[11px] leading-relaxed text-muted">{todo.notes}</p>
+        <p className="mt-2.5 line-clamp-3 text-[11px] leading-relaxed text-muted">{todo.notes}</p>
       )}
-      <div className="mt-2 text-[10px] uppercase tracking-[0.08em] text-faint">
+      <div className="mt-3 text-[10px] uppercase tracking-[0.08em] text-faint">
         {done ? 'Done' : 'Right-click the row for actions'}
       </div>
     </div>

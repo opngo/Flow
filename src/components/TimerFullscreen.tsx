@@ -66,50 +66,57 @@ const unit = (a: Pt): Pt => {
 };
 
 /**
- * One section of the band, as a filled shape rather than a stroked line: the
- * ends are rounded by hand so the corner radius can follow the appearance
- * setting (0 for sharp, up to half the band for a full round cap).
+ * One section of the band, as a filled shape rather than a stroked line: its
+ * end corners are rounded by hand so the radius can follow the appearance
+ * setting (0 for sharp, up to half the band for a full cap).
+ *
+ * The path walks the first edge forward, rounds the far cap, walks the second
+ * edge back and rounds the near cap, so the start point and the closing point
+ * are the same point — no sliver where `Z` closes the shape.
  */
 function archSection(cx: number, cy: number, rx: number, ry: number, t0: number, t1: number, corner: number) {
   const steps = Math.max(8, Math.round(Math.abs(t1 - t0) * 900));
   const centre: Pt[] = [];
   for (let i = 0; i <= steps; i++) centre.push(archPoint(cx, cy, rx, ry, t0 + ((t1 - t0) * i) / steps));
 
-  // Outward normal per sample, taken from the neighbouring points.
+  // Side normal per sample, taken from the neighbouring points.
   const normal: Pt[] = centre.map((_, i) => {
     const a = centre[Math.max(0, i - 1)];
     const b = centre[Math.min(steps, i + 1)];
     return [-unit(subV(b, a))[1], unit(subV(b, a))[0]];
   });
 
-  const outer = centre.map((p, i) => addV(p, mulV(normal[i], HALF_BAND)));
-  const inner = centre.map((p, i) => subV(p, mulV(normal[i], HALF_BAND)));
+  const a0 = centre.map((p, i) => addV(p, mulV(normal[i], HALF_BAND)));  // first edge
+  const a1 = centre.map((p, i) => subV(p, mulV(normal[i], HALF_BAND)));  // second edge
 
-  const k = Math.max(0, Math.min(corner, HALF_BAND));
-  const tl = unit(subV(centre[steps], centre[steps - 1]));   // outward at the end
-  const tf = unit(subV(centre[0], centre[1]));               // outward at the start
+  // A stretch shorter than the corner radius would fold its own caps into a
+  // point, so the corners shrink with the section. That is what the trailing
+  // partial section needs on the very first frame of a block.
+  let span = 0;
+  for (let i = 1; i <= steps; i++) span += Math.hypot(centre[i][0] - centre[i - 1][0], centre[i][1] - centre[i - 1][1]);
+  const k = Math.max(0, Math.min(corner, HALF_BAND, span / 2 - 0.25));
+  const n0 = normal[0];
   const nEnd = normal[steps];
-  const nStart = normal[0];
+  const tStart = unit(subV(centre[1], centre[0]));        // forward at the start
+  const tEnd = unit(subV(centre[steps], centre[steps - 1])); // forward at the end
 
-  const vOutEnd = outer[steps];
-  const vInEnd = inner[steps];
-  const vInStart = inner[0];
-  const vOutStart = outer[0];
+  // Corner offsets, all measured from the sharp vertex.
+  const A = a0[0];
+  const B = a1[0];
+  const C = a1[steps];
+  const D = a0[steps];
 
-  let d = `M${fmtPt(outer[0])}`;
-  for (let i = 1; i < steps; i++) d += `L${fmtPt(outer[i])}`;
-  // end: outer corner, face, inner corner
-  d += `L${fmtPt(subV(vOutEnd, mulV(tl, k)))}`;
-  d += `Q${fmtPt(vOutEnd)} ${fmtPt(subV(vOutEnd, mulV(nEnd, k)))}`;
-  d += `L${fmtPt(addV(vInEnd, mulV(nEnd, k)))}`;
-  d += `Q${fmtPt(vInEnd)} ${fmtPt(subV(vInEnd, mulV(tl, k)))}`;
-  // inner edge, back to the start
-  for (let i = steps - 1; i > 0; i--) d += `L${fmtPt(inner[i])}`;
-  // start: inner corner, face, outer corner
-  d += `L${fmtPt(addV(vInStart, mulV(tl, k)))}`;
-  d += `Q${fmtPt(vInStart)} ${fmtPt(addV(vInStart, mulV(nStart, k)))}`;
-  d += `L${fmtPt(subV(vOutStart, mulV(nStart, k)))}`;
-  d += `Q${fmtPt(vOutStart)} ${fmtPt(addV(vOutStart, mulV(tf, k)))}`;
+  let d = `M${fmtPt(addV(A, mulV(tStart, k)))}`;
+  for (let i = 1; i < steps; i++) d += `L${fmtPt(a0[i])}`;
+  d += `L${fmtPt(subV(D, mulV(tEnd, k)))}`;
+  d += `Q${fmtPt(D)} ${fmtPt(subV(D, mulV(nEnd, k)))}`;
+  d += `L${fmtPt(addV(C, mulV(nEnd, k)))}`;
+  d += `Q${fmtPt(C)} ${fmtPt(subV(C, mulV(tEnd, k)))}`;
+  for (let i = steps - 1; i > 0; i--) d += `L${fmtPt(a1[i])}`;
+  d += `L${fmtPt(addV(B, mulV(tStart, k)))}`;
+  d += `Q${fmtPt(B)} ${fmtPt(addV(B, mulV(n0, k)))}`;
+  d += `L${fmtPt(subV(A, mulV(n0, k)))}`;
+  d += `Q${fmtPt(A)} ${fmtPt(addV(A, mulV(tStart, k)))}`;
   return `${d}Z`;
 }
 
@@ -308,7 +315,10 @@ export function TimerFullscreen() {
     }
     // The ends leave the frame, so the playhead is parked at the first and last
     // on-screen point instead of vanishing with them.
-    const margin = HALF_BAND + 18;   // room for the whole playhead bead
+    // The band fades out over the outer 7% of the width (see .clock-arc), so the
+    // ends dissolve instead of being cut off by the frame edge. The playhead is
+    // parked where the band is solid again.
+    const margin = vp.w * 0.075 + HALF_BAND + 14;
     let tIn = 0;
     let tOut = 1;
     for (let i = 0; i <= 400; i++) {
@@ -321,12 +331,15 @@ export function TimerFullscreen() {
       const [x, y] = archPoint(cx, cy, rx, ry, t);
       if (x >= margin && x <= vp.w - margin && y >= margin && y <= vp.h - margin) { tOut = t; break; }
     }
-    return { cx, cy, rx, ry, sections, gap, tIn, tOut };
+    return { cx, cy, rx, ry, sections, gap, tIn, tOut, total };
   }, [vp.w, vp.h, cornerRadius]);
   const filled = mode === 'stopwatch' ? SEGMENTS : Math.round((pct / 100) * SEGMENTS);
   const arcFraction = Math.max(0, Math.min(1, pct / 100));
   const litSections = Math.floor(arcFraction * SECTIONS);
-  const partialFill = arcFraction > litSections / SECTIONS && arcFraction < 1
+  // A trailing section shorter than the band is thick reads as a loose blob, so
+  // the dot carries the position alone until there is a real sliver to draw.
+  const sliver = (arcFraction - litSections / SECTIONS) * geom.total;
+  const partialFill = arcFraction > litSections / SECTIONS && arcFraction < 1 && sliver > BAND + 6
     ? archSection(geom.cx, geom.cy, geom.rx, geom.ry, litSections / SECTIONS + geom.gap / 2, arcFraction, cornerRadius)
     : null;
   // A dot rides the band at the current position so progress is legible even
