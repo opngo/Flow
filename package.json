@@ -6,7 +6,7 @@
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
-  "author": "Flow",
+  "author": "opngo <3487139@gmail.com>",
   "license": "MIT",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5173",
