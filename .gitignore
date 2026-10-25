@@ -50,6 +50,7 @@ desktop.ini
 out/
 .electron-builder-cache/
 *.asar
+evidence
 
 # Landing page build artefacts
 landing/**/*.stamped.html
