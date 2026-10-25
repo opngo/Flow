@@ -71,6 +71,25 @@ export function Titlebar() {
   const [maximized, setMaximized] = useState(false);
   const compact = labels !== 'full';
 
+  /* The window can be maximized by a titlebar double-click or a window manager
+     gesture, neither of which goes through this component. Ask the main
+     process, then follow its reports. */
+  useEffect(() => {
+    const bridge = window.flow;
+    if (!bridge?.windowState) return;
+    let alive = true;
+    void bridge.windowState().then((state) => { if (alive) setMaximized(state.maximized); });
+    const off = bridge.onAction((action, payload) => {
+      if (action === 'window-state' && payload && typeof payload === 'object') {
+        setMaximized(Boolean((payload as { maximized?: boolean }).maximized));
+      }
+    });
+    return () => {
+      alive = false;
+      if (typeof off === 'function') off();
+    };
+  }, []);
+
   const pinned = settings.behavior.pinOnTop;
 
   return (

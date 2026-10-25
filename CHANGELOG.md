@@ -53,6 +53,91 @@ single 772 px column at 820 px · entrance stagger sampled frame by frame (card 
 1.00 by ~600 ms, card 9 still rising at ~990 ms) and confirmed to be zero-length under reduced
 motion.
 
+## [1.7.1] - 2026-10-24
+
+The desktop window crashed on launch with
+`Uncaught TypeError: Cannot read properties of undefined (reading 'effect')` at `App.tsx:135`.
+It was not a rendering bug: a database whose `settings` had lost the `backdrop` group took the whole
+shell down, because the shell read `settings.backdrop.effect` on the first render and nothing
+guaranteed that group existed. Fixing it properly meant repairing the data path, and while tracing
+that path a number of other faults in the desktop layer turned up. All of them are fixed here.
+
+### Fixed
+
+- **A missing settings group can no longer blank the app.** `repairSettings()` validates every group
+  in `settings` on its own and merges it over the schema defaults, so one missing, null, wrongly
+  typed or half-written group costs the user that group's preferences and nothing else. It runs on
+  load, on every store write, and on JSON import. The shell also reads `settings.backdrop?.effect`
+  defensively, and a top-level error boundary now wraps the whole shell rather than only the routes,
+  so a fault in the frame itself lands on the recovery panel instead of a white window.
+- **The repaired database is written back.** `repo.load()` reports whether loading had to change
+  anything (migration or repair); the store then saves. Previously the damage stayed on disk and
+  every launch paid the same recovery.
+- **A database that cannot be read at all seeds instead of hanging.** `init()` catches a failed
+  load, logs it, and starts from a seed; before, the app sat on "Opening your local database"
+  forever.
+- **Upgrading from schema 0 no longer erases the activity history.** Migration 1 replaced `activity`
+  with an empty array instead of filling it only when it was missing.
+- **Nothing was listening to the main process.** The tray menu's "Start focus", all five global
+  shortcuts, reminder notification clicks, resume-from-sleep and window-state events were sent over
+  `flow:action` and dropped on the floor. A renderer-side `useNativeActions()` hook now handles them,
+  and `onAction` returns a disposer so a remount cannot stack duplicate listeners.
+- **The tray icon crashed the app on Windows and Linux.** It was built from an SVG data URL, which
+  `nativeImage` cannot decode, leaving an empty image that makes `new Tray()` throw before the window
+  exists — the app died at startup with no visible reason. Real PNGs now ship in
+  `electron/assets/`, with a generated fallback and a `try`/`catch` that keeps Flow running (just
+  without a tray) if the desktop has none.
+- **"Close to tray" and "Minimize to tray" did nothing.** Both switches wrote a stored boolean that
+  the main process never received; behaviour (`closeToTray`, `minimizeToTray`, `pinOnTop`) and the
+  user's hotkey map are now pushed over a `flow:behavior` channel, and shortcuts are registered from
+  the settings rather than from a hard-coded list. A shortcut that is already taken is now logged
+  instead of failing silently.
+- **The titlebar's maximize icon told the truth only when you clicked it.** A titlebar double-click or
+  a window-manager gesture left it stale. Main now reports real window state, and the preload's
+  `windowState()` — previously a hard-coded `{ maximized: false }` stub — asks the main process.
+- **`electron:dev` opened a window before the dev server existed.** It slept a fixed 2.5 s, used
+  `npx` for both processes (which may decide to download instead of run the local binary), and bound
+  Vite to `127.0.0.1` while pointing Electron at `localhost` — a different address on machines where
+  `localhost` resolves to `::1` first. It now waits for the server to answer, resolves local
+  binaries, uses one address for both, refuses to start on an occupied port with a clear message,
+  and explains an immediate Electron exit (no desktop session, missing GTK) instead of vanishing.
+- **A blank window is now visible and explained.** Main retries the dev URL for ~20 s, then shows a
+  page naming the address it could not reach and how to fix it; `did-fail-load` and
+  `render-process-gone` no longer leave an invisible window behind.
+- **`/favicon.ico` 404'd on every page.** The document had no icon at all. It now carries an inline
+  SVG mark, so there is no request and no missing file when the bundle runs from disk.
+- **`npm run dist` could not run.** `package.json` pointed at `build/icon.ico`, `build/icon.png` and
+  `build/icon.icns`, none of which existed, and `npm run icon` called a `build/make-icon.py` that was
+  also missing. The script exists now (`scripts/make-icon.py`), draws the mark once and emits PNG,
+  multi-size ICO, ICNS and the tray sizes into `electron/assets/`, and is checked in as generated
+  output so packaging works without Pillow installed.
+
+### Changed
+
+- The Sound Studio store moved from `pages/Sound.tsx` to `lib/soundStore.ts`. It is a lazy route
+  chunk, so the tray/shortcut mute action could not reach it without pulling the whole page — audio
+  engine and visualiser included — into the boot bundle. The page still re-exports `useSound`, and
+  `Sound-*.js` remains its own chunk.
+
+### Verification
+
+`tsc` clean · `vitest` **112/112** (12 files, 3 new files: `repair`, `boot`, plus two app-shell
+cases) · `vite build` clean · 18-route sweep `{"bad":[],"errorCount":0}` · the corrupted-database
+matrix below · no-text mode unchanged (102/102 icons, 296/296 controls on the dashboard) ·
+`node --check` on both Electron entry points · `npm run icon` produces every icon the packaging
+config names.
+
+| database handed to the app | result |
+|---|---|
+| `settings` without `backdrop` (the reported crash) | boots, 0 page errors |
+| `settings: {}` | boots, 0 page errors |
+| `settings: null` | boots, 0 page errors |
+| `backdrop: null` | boots, 0 page errors |
+| `backdrop` missing `effect` | boots, 0 page errors |
+| junk types (`theme: 'dark'`, `ui: 7`, `backdrop: 'aurora'`) | boots, 0 page errors |
+| every collection deleted | boots, 0 page errors |
+| unparseable JSON | seeds, 0 page errors |
+
 ## [Unreleased]
 
 ### Planned

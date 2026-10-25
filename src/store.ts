@@ -6,6 +6,7 @@ import type {
   CalendarEvent, GradeCategory,
 } from './lib/types';
 import { DBSchema, FocusEngineSchema, SCHEMA_VERSION, FocusSessionSchema, NotificationRecordSchema } from './lib/types';
+import { repairSettings, withDefaults, type LoadResult } from './lib/repo';
 import type { z } from 'zod';
 
 /** Input shapes: fields with schema defaults stay optional at construction. */
@@ -156,17 +157,32 @@ export const useFlow = create<FlowState>((set, get) => ({
   future: [],
 
   async init() {
-    const loaded = await repo.load();
-    const db = loaded ?? seedDB();
+    let loaded: LoadResult | null = null;
+    try {
+      loaded = await repo.load();
+    } catch (err) {
+      /* A database that cannot be read must not leave the app on the splash
+         screen: fall back to a fresh seed and keep the failure audible. */
+      console.error('Flow: database load failed, starting from a seed', err);
+    }
+    const db = withDefaults(loaded ? loaded.db : seedDB());
     set({ db, ready: true });
-    if (!loaded) void repo.save(db);
+    if (!loaded) {
+      void repo.save(db);
+    } else if (loaded.repaired) {
+      /* Loading had to migrate or repair something, so write the healthy
+         version back. Without this the file stays broken on disk and every
+         launch pays the same recovery. */
+      console.warn('Flow: database was upgraded or repaired on load; writing it back');
+      void repo.save(db);
+    }
   },
 
   mutate(fn, opts = {}) {
     const { db, past } = get();
     const next = fn(db);
     if (next === db) return;
-    next.settings = next.settings ?? db.settings;
+    next.settings = repairSettings(next.settings ?? db.settings);
     set({
       db: next,
       past: opts.snapshot ? [...past.slice(-24), db] : past,
@@ -855,7 +871,7 @@ export const useFlow = create<FlowState>((set, get) => ({
   },
   importJSON(json) {
     try {
-      const parsed = DBSchema.parse(JSON.parse(json));
+      const parsed = withDefaults(DBSchema.parse(JSON.parse(json)));
       set({ db: parsed, past: [], future: [] });
       persist(parsed);
       return true;

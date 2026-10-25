@@ -49,6 +49,39 @@ describe('app shell', () => {
     expect(fatal).toEqual([]);
   }, 30000);
 
+  it('renders through a settings object that lost a group', async () => {
+    /* The desktop crash: a database whose settings were missing `backdrop`
+       blanked the whole window with "Cannot read properties of undefined
+       (reading 'effect')". The shell must render regardless of what a loaded
+       or half-written database hands it. */
+    const db = useFlow.getState().db;
+    try {
+      const { backdrop, ...withoutBackdrop } = db.settings as unknown as Record<string, unknown>;
+      expect(backdrop).toBeDefined();
+      useFlow.setState({ db: { ...db, settings: withoutBackdrop as never }, ready: true });
+
+      window.location.hash = '#/';
+      render(<App />);
+      await new Promise((r) => setTimeout(r, 120));
+      expect(document.body.textContent?.length ?? 0).toBeGreaterThan(20);
+    } finally {
+      useFlow.setState({ db }); // later tests read the seeded database
+    }
+  });
+
+  it('repairs settings on write so no action can leave them partial', () => {
+    const db = useFlow.getState().db;
+    try {
+      useFlow.setState({ db: { ...db, settings: { theme: { mode: 'light' } } as never }, ready: true });
+      useFlow.getState().updateSettings((s) => s);
+      const settings = useFlow.getState().db.settings as unknown as Record<string, unknown>;
+      expect(settings.backdrop).toBeDefined();
+      expect((settings.theme as { mode: string }).mode).toBe('light');
+    } finally {
+      useFlow.setState({ db });
+    }
+  });
+
   it('seeds a non-empty database', () => {
     const db = useFlow.getState().db;
     expect(db.todos.length).toBeGreaterThan(0);

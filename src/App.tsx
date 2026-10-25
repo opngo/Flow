@@ -15,7 +15,7 @@ import { TimerFullscreen } from './components/TimerFullscreen';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useFlow } from './store';
 import { useUI } from './ui';
-import { useGlobalKeys, useScheduler, useThemeSync, useTimerTick, useTraySync } from './hooks/useAppEffects';
+import { useGlobalKeys, useNativeActions, useNativeBehaviorSync, useScheduler, useThemeSync, useTimerTick, useTraySync } from './hooks/useAppEffects';
 /* Routes are split per page: the shell, the store and the palette ship in the
  * entry chunk, and each page (plus its chart/canvas/audio dependencies) loads on
  * first visit. Recharts and the Web Audio engine stay out of the boot path. */
@@ -132,7 +132,7 @@ function AppBody() {
   const ready = useFlow((s) => s.ready);
   const settings = useFlow((s) => s.db.settings);
   const focusMode = useUI((s) => s.focusMode);
-  const backdrop = settings.backdrop.effect;
+  const backdrop = settings.backdrop?.effect ?? 'none';
   const miniMode = useUI((s) => s.miniMode);
   const locked = useUI((s) => s.locked);
   const setLocked = useUI((s) => s.setLocked);
@@ -142,6 +142,8 @@ function AppBody() {
   useScheduler();
   useGlobalKeys();
   useTraySync();
+  useNativeBehaviorSync();
+  useNativeActions();
 
   useEffect(() => { void init(); }, [init]);
 
@@ -213,7 +215,13 @@ function AppBody() {
 export default function App() {
   return (
     <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <AppBody />
+      {/* The outermost net. A fault in the shell itself (a bad database, a
+          missing setting) used to leave a blank window and nothing else; now
+          it lands on the same panel the routes use, with the data still on
+          disk and a report the user can copy. */}
+      <ErrorBoundary scope="app shell">
+        <AppBody />
+      </ErrorBoundary>
     </HashRouter>
   );
 }
