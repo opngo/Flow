@@ -5,7 +5,7 @@ import { useFlow } from '../store';
 import { TaskRow } from '../components/TaskRow';
 import { TodoDialog } from '../components/TodoDialog';
 import { Heatmap } from '../components/Heatmap';
-import { Btn, EmptyState, Icon, Panel, SectionHead, Stat } from '../components/ui';
+import { Btn, EmptyState, Icon, Panel, SectionHead, Stat, PlusBtn } from '../components/ui';
 import { bucketSessions, buildRollingGrid, thresholds } from '../lib/analytics';
 import { minsToHM } from '../lib/utils';
 import type { Todo } from '../lib/types';
@@ -48,7 +48,7 @@ export default function CategoryPage() {
           <div className="text-[12px] text-muted">{openTodos.length} open · {doneTodos.length} completed</div>
         </div>
         <div className="ml-auto flex gap-2">
-          <Btn variant="soft" icon="Plus" onClick={() => { setEditing(null); setOpen(true); }}>New task</Btn>
+          <PlusBtn label="New task" onClick={() => { setEditing(null); setOpen(true); }} />
         </div>
       </div>
 

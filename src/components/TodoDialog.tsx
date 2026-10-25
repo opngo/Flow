@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useFlow } from '../store';
-import { Btn, Chip, Field, Icon, IconBtn, Modal, Select, TextArea, TextInput } from './ui';
+import { Btn, Chip, DateTimeField, Field, Icon, IconBtn, Modal, Select, TextArea, TextInput } from './ui';
 import type { Todo } from '../lib/types';
-import { fmtDateTime, toLocalInput, parseLocalInput, uuid, minsToHM } from '../lib/utils';
+import { fmtDateTime, uuid, minsToHM } from '../lib/utils';
 import { describeRRule } from '../lib/habits';
 import { RepeatBuilder } from './RepeatBuilder';
 
@@ -133,10 +133,10 @@ export function TodoDialog({ open, onClose, todo, defaults }: {
 
         <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
           <Field label="Start">
-            <TextInput type="datetime-local" value={toLocalInput(form.startAt)} onChange={(e) => set({ startAt: parseLocalInput(e.target.value) })} />
+            <DateTimeField label="Start" value={form.startAt} onChange={(v) => set({ startAt: v })} />
           </Field>
           <Field label="Do by">
-            <TextInput type="datetime-local" value={toLocalInput(form.dueAt)} onChange={(e) => set({ dueAt: parseLocalInput(e.target.value) })} />
+            <DateTimeField label="Do by" value={form.dueAt} onChange={(v) => set({ dueAt: v })} />
           </Field>
           <Field label="Estimate (minutes)">
             <TextInput type="number" min={0} step={5} value={form.estimateMin ?? ''} onChange={(e) => set({ estimateMin: e.target.value ? Number(e.target.value) : undefined })} placeholder="45" />

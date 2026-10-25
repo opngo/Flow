@@ -3,10 +3,12 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format, startOfWeek } from 'date-fns';
 import { useFlow } from '../store';
 import { useUI } from '../ui';
+import { openContextMenu } from '../components/ContextMenu';
 import {
   Badge, Btn, Chip, EmptyState, Field, Icon, IconBtn, MenuBtn, Modal, Panel, ProgressRing, SectionHead,
   Segmented, Select, Stat, TextInput,
-} from '../components/ui';
+  PlusBtn,
+ } from '../components/ui';
 import { bucketSessions } from '../lib/analytics';
 import { download } from '../lib/platform';
 import { minsToClock, minsToHM, toCSV, cn } from '../lib/utils';
@@ -74,7 +76,7 @@ export default function Timers() {
         <div className="flex gap-2">
           <Btn variant="soft" icon="AudioLines" onClick={() => navigate('/sound')} tip="Sound Studio">Sound</Btn>
           <Btn variant="soft" icon="Presentation" onClick={() => setExam((e) => ({ ...e, open: true }))}>Exam mode</Btn>
-          <Btn variant="primary" icon="Plus" onClick={() => setNewOpen(true)}>New timer</Btn>
+          <PlusBtn label="New timer" onClick={() => setNewOpen(true)} />
         </div>
       </div>
 
@@ -104,7 +106,13 @@ export default function Timers() {
                 ? ((elapsed / 1000) % 60) / 60 * 100
                 : Math.min(100, Math.max(0, (1 - remaining / totalMin) * 100));
               return (
-                <Panel key={t.id} className="flex flex-col p-3.5">
+                <Panel key={t.id} className="flex flex-col p-3.5"
+                  onContextMenu={(e) => openContextMenu(e, [
+                    { label: t.running ? 'Pause' : 'Resume', icon: t.running ? 'Pause' : 'Play', onClick: () => (t.running ? flow.pauseTimer(t.id) : flow.resumeTimer(t.id)) },
+                    { label: 'Log and stop', icon: 'Check', onClick: () => flow.finishTimer(t.id) },
+                    { label: 'Attach next task', icon: 'CheckSquare', onClick: () => { const next = db.todos.find((x) => x.status !== 'done'); if (next) flow.patch('timers', t.id, { todoId: next.id }); } },
+                    { label: 'Remove', icon: 'Trash2', danger: true, separator: true, onClick: () => flow.removeTimer(t.id) },
+                  ], t.label)}>
                   <div className="flex items-center gap-2">
                     <span className="flex h-7 w-7 items-center justify-center rounded-[9px] bg-s2">
                       <Icon name={t.kind === 'stopwatch' ? 'Watch' : t.kind === 'interval' ? 'Repeat' : t.kind === 'exam' ? 'Presentation' : 'Hourglass'} size={14} className="text-accent" />

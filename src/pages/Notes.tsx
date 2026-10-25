@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { marked } from 'marked';
+import { motion } from 'framer-motion';
+import { openContextMenu } from '../components/ContextMenu';
 import { useFlow } from '../store';
 import {
   Badge, Btn, Chip, EmptyState, Field, Icon, IconBtn, MenuBtn, Modal, Panel, SectionHead, Select,
@@ -28,6 +30,13 @@ export default function Notes() {
   const [folder, setFolder] = useState('all');
   const [preview, setPreview] = useState(true);
   const [zen, setZen] = useState(false);
+  // The note list lives on the right and folds away; the choice sticks.
+  const [listOpen, setListOpen] = useState(() => {
+    try { return localStorage.getItem('flow:notes:list') !== 'closed'; } catch { return true; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('flow:notes:list', listOpen ? 'open' : 'closed'); } catch { /* private mode */ }
+  }, [listOpen]);
   const [tagInput, setTagInput] = useState('');
   const [linkOpen, setLinkOpen] = useState(false);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
@@ -78,42 +87,6 @@ export default function Notes() {
 
   return (
     <div className={cn('flex h-full min-h-0 gap-3', zen && 'fixed inset-0 z-[60] bg-surface p-6')}>
-      {!zen && (
-        <aside className="flex w-64 shrink-0 flex-col gap-2">
-          <div className="flex items-center gap-2 pt-1">
-            <div className="h1 flex-1">Notes</div>
-            <IconBtn icon="Plus" label="New note" onClick={() => { const n = addNote({ title: 'Untitled', folder: folder === 'all' ? 'Inbox' : folder }); setParams({ open: n.id }, { replace: true }); }} />
-          </div>
-          <div className="flex items-center gap-1.5 rounded-[10px] bg-s1 px-2.5">
-            <Icon name="Search" size={13} className="text-faint" />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search notes" className="h-9 flex-1 bg-transparent text-[12.5px] placeholder:text-faint" />
-          </div>
-          <div className="flex flex-wrap gap-1">
-            <button onClick={() => setFolder('all')} className={cn('focusable chip', folder === 'all' && 'text-accent')} style={folder === 'all' ? { background: 'var(--accent-soft)' } : undefined}>All</button>
-            {folders.map((f) => (
-              <button key={f} onClick={() => setFolder(f)} className={cn('focusable chip', folder === f && 'text-accent')} style={folder === f ? { background: 'var(--accent-soft)' } : undefined}>{f}</button>
-            ))}
-          </div>
-          <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
-            {list.map((n) => (
-              <button key={n.id} onClick={() => setParams({ open: n.id }, { replace: true })}
-                className={cn('focusable w-full rounded-[11px] px-2.5 py-2 text-left transition-colors', n.id === selectedId ? 'bg-s2' : 'hover:bg-s1')}>
-                <div className="flex items-center gap-1.5">
-                  {n.pinned && <Icon name="Pin" size={10} className="text-accent" />}
-                  {n.journal && <Icon name="Sun" size={10} className="text-warning" />}
-                  <span className="flex-1 truncate text-[12.5px]">{n.title}</span>
-                </div>
-                <div className="mt-0.5 truncate text-[10.5px] text-faint">{n.body.replace(/[#*`>\-]/g, '').slice(0, 60) || 'Empty note'}</div>
-                <div className="mt-0.5 flex items-center gap-1 text-[10px] text-faint">
-                  <span>{n.folder}</span><span>·</span><span>{timeAgo(n.updatedAt)}</span>
-                </div>
-              </button>
-            ))}
-            {!list.length && <div className="py-8 text-center text-[12px] text-faint">No notes match.</div>}
-          </div>
-        </aside>
-      )}
-
       {note ? (
         <section className="flex min-w-0 flex-1 flex-col">
           <div className="mb-2 flex items-center gap-2">
@@ -205,6 +178,60 @@ export default function Notes() {
         </section>
       ) : (
         <EmptyState icon="NotebookPen" title="No note selected" body="Create a note to start writing." action={<Btn variant="primary" icon="Plus" onClick={() => addNote({})}>New note</Btn>} />
+      )}
+
+      {/* The list is a right rail: it can be folded to nothing and brought back
+          from the button in the note header. */}
+      {!zen && !listOpen && (
+        <IconBtn icon="PanelRightOpen" label="Show the list" onClick={() => setListOpen(true)} className="order-2 shrink-0" />
+      )}
+      {!zen && listOpen && (
+        <motion.aside
+          initial={false}
+          animate={{ width: listOpen ? 256 : 0, opacity: listOpen ? 1 : 0 }}
+          transition={{ duration: 0.2, ease: [0.22, 0.61, 0.36, 1] }}
+          className="order-2 flex shrink-0 flex-col gap-2 overflow-hidden"
+          aria-label="Notes list"
+        >
+          <div className="flex w-64 items-center gap-2 pt-1">
+            <div className="h1 flex-1">Notes</div>
+            <IconBtn icon="Plus" label="New note" onClick={() => { const n = addNote({ title: 'Untitled', folder: folder === 'all' ? 'Inbox' : folder }); setParams({ open: n.id }, { replace: true }); }} />
+            <IconBtn icon="PanelRightClose" label="Hide the list" onClick={() => setListOpen(false)} />
+          </div>
+          <div className="flex w-64 items-center gap-1.5 rounded-[10px] bg-s1 px-2.5">
+            <Icon name="Search" size={13} className="text-faint" />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search notes" className="h-9 flex-1 bg-transparent text-[12.5px] placeholder:text-faint" />
+          </div>
+          <div className="flex w-64 flex-wrap gap-1">
+            <button onClick={() => setFolder('all')} className={cn('focusable chip', folder === 'all' && 'text-accent')} style={folder === 'all' ? { background: 'var(--accent-soft)' } : undefined}>All</button>
+            {folders.map((f) => (
+              <button key={f} onClick={() => setFolder(f)} className={cn('focusable chip', folder === f && 'text-accent')} style={folder === f ? { background: 'var(--accent-soft)' } : undefined}>{f}</button>
+            ))}
+          </div>
+          <div className="flex w-64 min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1">
+            {list.map((n) => (
+              <button key={n.id} onClick={() => setParams({ open: n.id }, { replace: true })}
+                onContextMenu={(e) => openContextMenu(e, [
+                  { label: 'Open', icon: 'Notebook', onClick: () => setParams({ open: n.id }, { replace: true }) },
+                  { label: n.pinned ? 'Unpin' : 'Pin to the top', icon: 'Pin', onClick: () => updateNote(n.id, { pinned: !n.pinned }) },
+                  { label: 'Duplicate', icon: 'Copy', onClick: () => { const copy = addNote({ ...n, title: `${n.title} copy` }); setParams({ open: copy.id }, { replace: true }); } },
+                  { label: 'Delete', icon: 'Trash2', danger: true, separator: true, onClick: () => deleteNote(n.id) },
+                ], n.title)}
+                className={cn('focusable w-full rounded-[11px] px-2.5 py-2 text-left transition-colors', n.id === selectedId ? 'bg-s2' : 'hover:bg-s1')}>
+                <div className="flex items-center gap-1.5">
+                  {n.pinned && <Icon name="Pin" size={10} className="text-accent" />}
+                  {n.journal && <Icon name="Sun" size={10} className="text-warning" />}
+                  <span className="flex-1 truncate text-[12.5px]">{n.title}</span>
+                </div>
+                <div className="mt-0.5 truncate text-[10.5px] text-faint">{n.body.replace(/[#*`>\-]/g, '').slice(0, 60) || 'Empty note'}</div>
+                <div className="mt-0.5 flex items-center gap-1 text-[10px] text-faint">
+                  <span>{n.folder}</span><span>·</span><span>{timeAgo(n.updatedAt)}</span>
+                </div>
+              </button>
+            ))}
+            {!list.length && <div className="py-8 text-center text-[12px] text-faint">No notes match.</div>}
+          </div>
+        </motion.aside>
       )}
       <Modal open={linkOpen} onClose={() => setLinkOpen(false)} title="Link to a note" subtitle="Inserts a [[wikilink]] at the cursor position">
         <div className="max-h-[320px] space-y-1 overflow-y-auto">

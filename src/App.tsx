@@ -10,6 +10,7 @@ import { LockScreen } from './components/LockScreen';
 import { MiniMode } from './components/MiniMode';
 import { AppBackdrop } from './components/Backdrop';
 import { TooltipLayer } from './components/Tooltip';
+import { ContextMenuLayer } from './components/ContextMenu';
 import { TimerFullscreen } from './components/TimerFullscreen';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useFlow } from './store';
@@ -198,6 +199,7 @@ function AppBody() {
         <QuickCapture />
         <Toasts />
         <TooltipLayer />
+      <ContextMenuLayer />
         </div>
         {!settings.onboardingComplete && <Onboarding />}
         {locked && <LockScreen onUnlock={() => setLocked(false)} />}

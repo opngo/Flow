@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { format, setHours, setMinutes } from 'date-fns';
-import { Field, Icon, Select } from './ui';
+import { Field, Icon, Select, TimeField } from './ui';
 import { describeRecurrence } from '../lib/recur';
 import { describeRRule } from '../lib/habits';
 import { cn } from '../lib/utils';
@@ -108,16 +108,7 @@ export function RepeatBuilder({ rrule, dueAt, onChange }: {
       <div className="label mb-1.5">Repeat</div>
       <div className="grid gap-2 sm:grid-cols-2">
         <Select value={parsed.cadence} onChange={setCadence} options={CADENCES} />
-        <div className="flex items-center gap-1.5">
-          <Icon name="Clock" size={13} className="text-faint" />
-          <input
-            type="time"
-            aria-label="Time of day"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-            className="num focusable h-9 w-full rounded-[10px] bg-s2 px-2.5 text-[13px] text-ink"
-          />
-        </div>
+        <TimeField value={time} onChange={setTime} label="Time of day" />
       </div>
 
       {weeklyish && (

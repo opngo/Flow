@@ -6,7 +6,7 @@ import { marked } from 'marked';
 import { useFlow } from '../store';
 import { useUI } from '../ui';
 import {
-  Badge, Btn, Chip, ColorPicker, EmptyState, Field, Icon, IconBtn, Modal, Panel, ProgressRing, SectionHead, Segmented, Select, Slider, Stat, TextArea, TextInput, Toggle,
+  Badge, Btn, Chip, ColorPicker, DateTimeField, EmptyState, Field, Icon, IconBtn, Modal, Panel, ProgressRing, SectionHead, Segmented, Select, Slider, Stat, TextArea, TextInput, TimeField, Toggle,
 } from '../components/ui';
 import { safeStore } from '../lib/repo';
 import { TOOLS } from '../lib/nav';
@@ -336,14 +336,15 @@ function Achievements() {
 function VacationMode() {
   const db = useFlow((s) => s.db);
   const updateHabit = useFlow((s) => s.updateHabit);
-  const [until, setUntil] = useState(toLocalInput(addDays(new Date(), 7).toISOString()));
+  // Held as ISO so it can go straight into a habit's `pausedUntil`.
+  const [until, setUntil] = useState(addDays(new Date(), 7).toISOString());
   return (
     <ToolShell title="Vacation / pause mode" subtitle="Pausing protects streaks — no missed days while you are away">
       <Panel className="p-3">
         <Field label="Pause all habits until">
-          <TextInput type="datetime-local" value={until} onChange={(e) => setUntil(e.target.value)} />
+          <DateTimeField label="Until" value={until} onChange={(v) => setUntil(v ?? '')} />
         </Field>
-        <Btn variant="primary" icon="Plane" className="mt-2" onClick={() => db.habits.forEach((h) => updateHabit(h.id, { pausedUntil: parseLocalInput(until) }))}>Pause every habit</Btn>
+        <Btn variant="primary" icon="Plane" className="mt-2" onClick={() => db.habits.forEach((h) => updateHabit(h.id, { pausedUntil: until || undefined }))}>Pause every habit</Btn>
         <div className="mt-3 space-y-1">
           {db.habits.map((h) => (
             <div key={h.id} className="flex items-center gap-2 rounded-[10px] bg-s1 px-2.5 py-1.5 text-[12px]">
@@ -351,7 +352,7 @@ function VacationMode() {
               <span className="flex-1 truncate">{h.name}</span>
               {h.pausedUntil && new Date(h.pausedUntil) > new Date()
                 ? <Badge tone="warning">paused until {format(new Date(h.pausedUntil), 'MMM d')}</Badge>
-                : <Btn size="sm" variant="ghost" onClick={() => updateHabit(h.id, { pausedUntil: parseLocalInput(until) })}>Pause</Btn>}
+                : <Btn size="sm" variant="ghost" onClick={() => updateHabit(h.id, { pausedUntil: until || undefined })}>Pause</Btn>}
               {h.pausedUntil && <Btn size="sm" variant="ghost" onClick={() => updateHabit(h.id, { pausedUntil: undefined })}>Resume</Btn>}
             </div>
           ))}
@@ -694,7 +695,7 @@ function Timetable() {
         <div className="flex flex-wrap gap-1.5">
           <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="Class" className="flex-1" />
           <Select value={day} onChange={setDay} options={days.map((d) => ({ value: d, label: d }))} className="w-24" />
-          <TextInput type="time" value={time} onChange={(e) => setTime(e.target.value)} className="w-28" />
+          <TimeField value={time} onChange={setTime} label="Class time" className="w-28" />
           <TextInput value={room} onChange={(e) => setRoom(e.target.value)} placeholder="Room" className="w-24" />
           <Btn variant="soft" icon="Plus" onClick={() => { if (name) { setClasses([...classes, { id: uuid(), day, time, name, room }]); setName(''); } }}>Add</Btn>
         </div>
@@ -1630,7 +1631,7 @@ function TimezoneTool() {
       <Panel className="p-3">
         <div className="grid gap-2 md:grid-cols-2">
           <Field label="Your zone"><Select value={base} onChange={setBase} options={zones.map((z) => ({ value: z, label: z }))} /></Field>
-          <Field label="Your time"><TextInput type="time" value={hour} onChange={(e) => setHour(e.target.value)} /></Field>
+          <Field label="Your time"><TimeField value={hour} onChange={setHour} label="Your time" /></Field>
         </div>
         <div className="mt-3 space-y-1">
           {zones.map((z) => {

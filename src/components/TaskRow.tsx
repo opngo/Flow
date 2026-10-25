@@ -4,6 +4,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { useFlow } from '../store';
 import { Chip, Icon, IconBtn, MenuBtn } from './ui';
 import { RichTip } from './Tooltip';
+import { openContextMenu } from './ContextMenu';
 import { format } from 'date-fns';
 import { PriorityFlag } from './TodoDialog';
 import { dueState, dueTint, fmtTime, minsToHM, relDay, cn } from '../lib/utils';
@@ -55,6 +56,15 @@ export function TaskRow({ todo, onEdit, selected, onSelect, compact, showMeta = 
         selected ? 'bg-accentsoft' : 'row-hover',
       )}
       onClick={(e) => { if (e.metaKey || e.ctrlKey) { onSelect?.(); } }}
+      onContextMenu={(e) => openContextMenu(e, [
+        { label: done ? 'Mark as open' : 'Mark as done', icon: done ? 'RotateCcw' : 'Check', onClick: () => toggleTodo(todo.id) },
+        { label: 'Open details', icon: 'PenLine', onClick: () => onEdit(todo) },
+        { label: todo.startAt ? 'Clear start time' : 'Start now', icon: 'Play', onClick: () => updateTodo(todo.id, { startAt: todo.startAt ? undefined : new Date().toISOString() }) },
+        { label: 'Focus on this', icon: 'Timer', onClick: () => { startFocus({ todoId: todo.id }); navigate('/focus'); } },
+        { label: 'Snooze to tomorrow', icon: 'AlarmClock', onClick: () => snoozeTodo(todo.id, 1440) },
+        { label: 'Duplicate', icon: 'Copy', onClick: () => duplicateTodo(todo.id) },
+        { label: 'Delete', icon: 'Trash2', danger: true, separator: true, onClick: () => deleteTodo(todo.id) },
+      ], todo.title)}
     >
       <TaskCheckbox done={done} priority={todo.priority} onClick={() => toggleTodo(todo.id)} />
       <div className="min-w-0 flex-1">

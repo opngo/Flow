@@ -409,9 +409,9 @@ export const SettingsSchema = z.object({
     inFullscreen: z.boolean().default(true),
   }).default({}),
   typography: z.object({
-    ui: z.string().default('Inter'),
-    content: z.string().default('Inter'),
-    timer: z.string().default('Inter'),
+    ui: z.string().default('Satoshi'),
+    content: z.string().default('Sentient'),
+    timer: z.string().default('Satoshi'),
     mono: z.string().default('JetBrains Mono'),
     baseSize: z.number().default(14.5),
     lineHeight: z.number().default(1.55),
@@ -488,4 +488,4 @@ export type DB = z.infer<typeof DBSchema>;
 export type CollectionKey = 'categories' | 'todos' | 'habits' | 'habitLogs' | 'goals' | 'subjects' | 'marks'
   | 'focusSessions' | 'reminders' | 'notifications' | 'notes' | 'decks' | 'events' | 'mixes' | 'activity' | 'timers' | 'projects';
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;

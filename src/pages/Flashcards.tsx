@@ -3,10 +3,13 @@ import { useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { useFlow } from '../store';
 import { useUI } from '../ui';
+import { openContextMenu } from '../components/ContextMenu';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   Badge, Btn, Chip, EmptyState, Field, Icon, IconBtn, Modal, Panel, ProgressRing, SectionHead, Select,
   Stat, TextArea, TextInput,
-} from '../components/ui';
+  PlusBtn,
+ } from '../components/ui';
 import { parseCSV } from '../lib/utils';
 import { cn } from '../lib/utils';
 
@@ -63,7 +66,7 @@ export default function Flashcards() {
         </div>
         <div className="flex gap-2">
           <Btn variant="soft" icon="Upload" onClick={() => setImportOpen(true)}>Import CSV</Btn>
-          <Btn variant="primary" icon="Plus" onClick={() => setCardOpen(true)}>New card</Btn>
+          <PlusBtn label="New card" onClick={() => setCardOpen(true)} />
         </div>
       </div>
 
@@ -84,30 +87,77 @@ export default function Flashcards() {
 
           {current ? (
             <div className="mt-4 flex flex-col items-center">
-              <button onClick={() => setRevealed((r) => !r)} className="focusable panel-raised w-full max-w-xl min-h-[220px] p-6 text-center">
-                <div className="label mb-2">Front</div>
-                <div className="text-[18px] leading-relaxed">{current.front}</div>
-                {revealed ? (
-                  <>
-                    <div className="my-4 h-px w-16 self-center" style={{ background: 'color-mix(in srgb, var(--text-faint) 20%, transparent)' }} />
-                    <div className="label mb-2">Back</div>
-                    <div className="text-[15px] leading-relaxed text-muted">{current.back}</div>
-                  </>
-                ) : (
-                  <div className="mt-6 text-[11.5px] text-faint">Click to reveal</div>
-                )}
-              </button>
-              <div className="mt-4 grid w-full max-w-xl grid-cols-4 gap-2">
+              {/* The card turns over in place: the face rotates away, the answer
+                  rises behind it, and each card enters from the side the last
+                  one left by, so a review session reads as movement rather than
+                  as text swapping. */}
+              <div className="w-full max-w-xl" style={{ perspective: 1200 }}>
+                <AnimatePresence mode="popLayout" initial={false}>
+                  <motion.button
+                    key={current.id}
+                    onClick={() => setRevealed((r) => !r)}
+                    layout
+                    initial={{ opacity: 0, x: 26, rotateY: 0 }}
+                    animate={{ opacity: 1, x: 0, rotateY: revealed ? 0 : 0, scale: 1 }}
+                    exit={{ opacity: 0, x: -26 }}
+                    whileHover={{ scale: 1.004 }}
+                    whileTap={{ scale: 0.995 }}
+                    transition={{ duration: 0.24, ease: [0.22, 0.61, 0.36, 1] }}
+                    className="focusable panel-raised relative flex min-h-[220px] w-full flex-col items-center justify-center p-6 text-center"
+                  >
+                    <motion.div
+                      animate={revealed ? { rotateX: [0, -8, 0] } : { rotateX: 0 }}
+                      transition={{ duration: 0.32, ease: 'easeOut' }}
+                      className="w-full"
+                      style={{ transformStyle: 'preserve-3d' }}
+                    >
+                      <motion.div animate={{ opacity: revealed ? 0.45 : 1 }} transition={{ duration: 0.2 }}>
+                        <div className="label mb-2">Front</div>
+                        <div className="text-[18px] leading-relaxed">{current.front}</div>
+                      </motion.div>
+                      <AnimatePresence initial={false}>
+                        {revealed ? (
+                          <motion.div
+                            key="back"
+                            initial={{ opacity: 0, height: 0, y: -6 }}
+                            animate={{ opacity: 1, height: 'auto', y: 0 }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.24, ease: [0.22, 0.61, 0.36, 1] }}
+                            className="overflow-hidden"
+                          >
+                            <div className="mx-auto my-4 h-px w-16" style={{ background: 'color-mix(in srgb, var(--text-faint) 20%, transparent)' }} />
+                            <div className="label mb-2">Back</div>
+                            <div className="text-[15px] leading-relaxed text-muted">{current.back}</div>
+                          </motion.div>
+                        ) : (
+                          <motion.div key="hint" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mt-6 text-[11.5px] text-faint">
+                            Click to reveal
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  </motion.button>
+                </AnimatePresence>
+              </div>
+              <motion.div
+                className="mt-4 grid w-full max-w-xl grid-cols-4 gap-2"
+                initial={false}
+                animate={{ opacity: revealed ? 1 : 0.55, y: revealed ? 0 : 4 }}
+                transition={{ duration: 0.2, ease: [0.22, 0.61, 0.36, 1] }}
+              >
                 {RATINGS.map((r) => (
-                  <button key={r.q} disabled={!revealed} onClick={() => rate(r.q)}
-                    className={cn('focusable flex flex-col items-center gap-1 rounded-[12px] py-2.5 disabled:opacity-40')}
+                  <motion.button key={r.q} disabled={!revealed} onClick={() => rate(r.q)}
+                    whileHover={revealed ? { y: -2 } : undefined}
+                    whileTap={revealed ? { scale: 0.97 } : undefined}
+                    transition={{ duration: 0.14 }}
+                    className={cn('focusable flex flex-col items-center gap-1 rounded-[12px] py-2.5 disabled:pointer-events-none disabled:opacity-40')}
                     style={{ background: 'var(--surface-2)', color: r.tone }}>
                     <Icon name={r.icon} size={15} />
                     <span className="text-[11px]">{r.label}</span>
                     <span className="num text-[9px] text-faint">{r.key}</span>
-                  </button>
+                  </motion.button>
                 ))}
-              </div>
+              </motion.div>
               <div className="mt-2 flex items-center gap-3 text-[10.5px] text-faint">
                 <span>ease {current.ease.toFixed(2)}</span>
                 <span>interval {current.interval}d</span>
@@ -123,7 +173,12 @@ export default function Flashcards() {
           {db.decks.map((d) => {
             const due = d.cards.filter((c) => c.due <= today).length;
             return (
-              <Panel key={d.id} className="p-3.5">
+              <Panel key={d.id} className="p-3.5"
+                onContextMenu={(e) => openContextMenu(e, [
+                  { label: 'Study this deck', icon: 'Play', onClick: () => { setActiveDeck(d.id); setIndex(0); setRevealed(false); } },
+                  { label: 'Add a card', icon: 'Plus', onClick: () => setCardOpen(true) },
+                  { label: 'Delete deck', icon: 'Trash2', danger: true, separator: true, onClick: () => deleteDeck(d.id) },
+                ], d.name)}>
                 <div className="flex items-start gap-2">
                   <span className="flex h-9 w-9 items-center justify-center rounded-[11px] bg-s2"><Icon name="Layers" size={16} className="text-accent" /></span>
                   <div className="min-w-0 flex-1">
