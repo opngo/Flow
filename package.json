@@ -2,7 +2,7 @@
   "name": "flow",
   "productName": "Flow",
   "version": "1.9.0",
-  "description": "Flow \u2014 all-in-one, local-first productivity desktop suite",
+  "description": "Flow — all-in-one, local-first productivity desktop suite",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
@@ -72,7 +72,7 @@
   "build": {
     "appId": "com.flow.app",
     "productName": "Flow",
-    "copyright": "Copyright \u00a9 2026 opngo",
+    "copyright": "Copyright © 2026 opngo",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -133,6 +133,7 @@
       "artifactName": "${productName}-${version}-portable.${ext}"
     },
     "mac": {
+      "identity": null,
       "target": [
         {
           "target": "dmg",
@@ -152,7 +153,7 @@
       "icon": "electron/assets/icon.icns",
       "category": "public.app-category.productivity",
       "darkModeSupport": true,
-      "hardenedRuntime": true,
+      "hardenedRuntime": false,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist"
@@ -165,6 +166,7 @@
       }
     },
     "linux": {
+      "maintainer": "opngo <3487139@gmail.com>",
       "target": [
         {
           "target": "AppImage",
