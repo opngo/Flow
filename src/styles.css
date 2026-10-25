@@ -676,6 +676,32 @@ html[data-labels='none'] :is(.flex, .grid):not(:has(*:not([data-label]))) {
   margin: 0 !important;
 }
 
+/* Bento packing: the grid is twelve columns on a wide screen, and each card
+   is told how many to take. Below that it is one column and the number is
+   ignored, so nothing has to be duplicated per breakpoint. */
+.bento-card { grid-column: span 1; }
+@media (min-width: 1024px) {
+  .bento-card { grid-column: span var(--col-span, 4); }
+}
+
+/* Dashboard cards. They arrive through Framer Motion, so this only handles
+   the resting state: a hair of lift and a deeper shadow on hover, which reads
+   as the card coming forward. No outline, no ring. */
+.dash-card {
+  transition: transform 200ms ease, box-shadow 200ms ease, background-color 200ms ease;
+  will-change: transform;
+}
+.dash-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 40px -26px rgba(0, 0, 0, 0.75), 0 2px 10px -6px rgba(0, 0, 0, 0.4);
+  background-color: color-mix(in srgb, var(--surface-2) 46%, var(--surface-1));
+}
+html[data-reduce-motion='true'] .dash-card,
+html[data-reduce-motion='true'] .dash-card:hover {
+  transition: none;
+  transform: none;
+}
+
 /* Sidebar accent line: a soft bloom around the travelling bar, breathing at
    rest so it reads as alive without ever asking for attention. */
 .rail-glow {

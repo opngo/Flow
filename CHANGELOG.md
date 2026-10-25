@@ -7,6 +7,52 @@ All notable changes to Flow are recorded here. The format follows
 The `release.yml` workflow reads the section matching the version being released,
 so keep headings exactly as `## [x.y.z] - YYYY-MM-DD`.
 
+## [1.7.0] - 2026-10-24
+
+### Changed
+
+- **The dashboard is a bento, not a stack.** Nine widgets now sit on a twelve-column grid
+  (`grid-flow-row-dense`) in place of one full-width card after another, so the page is read in
+  blocks instead of a scroll: quick stats across the top, the focus engine and today's tasks as a
+  7/5 pair, habits beside the study heatmap at 4/8, then grades, coming up and goals, then notes.
+  Every card has the same anatomy — icon chip, title, one word of state, one action — so the page
+  has a rhythm rather than nine different notions of a header.
+- **Rows pack themselves.** Widget spans are *preferences*, not pixel promises: `packRows` closes
+  a row before the next card would overflow, lets the last card in that row take the remainder,
+  and stretches the final row to the edge. Switch a widget off and the row still sums to twelve —
+  no orphan cell, which is the failure mode a hand-written `col-span` map always has.
+- **The focus card earns its size.** The clock keeps its ring and controls on the left, with the
+  day's totals closing that column; the right half — which used to be empty glass — now holds the
+  attached task, the last seven days as a capped 50 px bar strip, and then either the blocks
+  already logged today or, if there are none, the three soonest-due tasks with a Play button that
+  starts a session and opens the focus page.
+- **Opening animation.** Cards rise 14 px and fade in on a spring (380 / 32 / 0.7) on a 45 ms
+  stagger, so the page assembles top-left to bottom-right in about a second. Each card also lifts
+  a hair on hover with a deeper shadow. Both are off when the app is in reduced motion — the
+  cards simply appear.
+- **Smaller than it sounds.** Habit week squares are 9 px, the study heatmap runs 34 rolling weeks
+  at 14 px cells, the week footer under the habits card is a stacked done/due bar with a
+  percentage, and the seven-day strip under the clock carries the week's total at its end. Empty
+  states are `Icon` + `data-label="meta"` text, so they survive no-text mode like everything else.
+
+### Fixed
+
+- Weekday letters under the two dashboard week strips carried `text-accent` when the day was
+  today, which put them outside the no-text rule that strips `text-faint` — one stray "S" was left
+  behind in the quietest mode. Both strips now declare `data-label="meta"`.
+- The focus card's task list no longer clips: it is allowed to grow and to absorb slack, rather
+  than being pinned to a measured row count that could hide a row — and its Play button with it —
+  in no-text mode.
+
+### Verification
+
+`tsc` clean · `vitest` 98/98 · `vite build` clean · 18-route sweep `{"bad":[],"errorCount":0}` ·
+no-text mode on the dashboard **102/102 icons, 296/296 controls** visible, zero hidden, zero
+grey-pill fallbacks · every grid row sums to the full 1392 px column at 1440 px and collapses to a
+single 772 px column at 820 px · entrance stagger sampled frame by frame (card 1 reaches opacity
+1.00 by ~600 ms, card 9 still rising at ~990 ms) and confirmed to be zero-length under reduced
+motion.
+
 ## [Unreleased]
 
 ### Planned
