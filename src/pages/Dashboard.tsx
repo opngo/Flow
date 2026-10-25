@@ -6,7 +6,7 @@ import { useUI } from '../ui';
 import { TaskRow } from '../components/TaskRow';
 import { TodoDialog } from '../components/TodoDialog';
 import { Heatmap, HeatLegend } from '../components/Heatmap';
-import { Badge, Btn, Chip, EmptyState, Icon, Panel, ProgressRing, SectionHead, Sparkline, Stat } from '../components/ui';
+import { Badge, Btn, Chip, EmptyState, Icon, Panel, ProgressRing, SectionHead, Sparkline, Stat, PlusBtn } from '../components/ui';
 import { bucketSessions, buildRollingGrid, summaryStats, thresholds } from '../lib/analytics';
 import { computeSubjectGrade, termGPA } from '../lib/grades';
 import { habitStats, isHabitScheduled } from '../lib/habits';
@@ -107,7 +107,7 @@ export default function Dashboard() {
             <span className="num text-[11px] text-muted">{Math.round(dayProgress)}%</span>
           </div>
           <Btn variant="soft" icon="Command" onClick={() => openPalette()}>Command</Btn>
-          <Btn variant="primary" icon="Plus" onClick={() => { setEditing(null); setDialogOpen(true); }}>New task</Btn>
+          <PlusBtn label="New task" onClick={() => { setEditing(null); setDialogOpen(true); }} />
         </div>
       </div>
 

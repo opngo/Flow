@@ -312,10 +312,15 @@ export function Sidebar({ onPrefetch }: { onPrefetch?: (route: string) => void }
                     )}
                     style={active ? { background: 'var(--accent-soft)' } : undefined}
                   >
+                    {/* The rail is drawn per row rather than shared through a
+                        layout animation: a shared one travelled between rows
+                        over several frames, so it read as lagging behind the
+                        click, and the layout transform overrode the centring
+                        offset and pushed it toward the bottom of the pill. */}
                     {active && (
-                      <motion.span
-                        layoutId="nav-active"
-                        className="absolute left-1 top-1/2 h-[18px] w-[3px] -translate-y-1/2 rounded-full"
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute left-1 top-[9px] h-[18px] w-[3px] rounded-full"
                         style={{ background: 'var(--accent)' }}
                       />
                     )}

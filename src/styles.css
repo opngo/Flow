@@ -8,6 +8,50 @@
    Separation = tonal elevation + soft shadow + spacing + blur.
    --------------------------------------------------------------- */
 
+
+/* ---------------------------------------------------------------
+   Bundled type. Satoshi (interface) and Sentient (prose) are served
+   from /public/fonts, so no request leaves the machine. woff2 first,
+   with woff and ttf kept alongside for older webviews and for anyone
+   packaging the desktop build.
+   --------------------------------------------------------------- */
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/satoshi-400.woff2') format('woff2'),
+       url('/fonts/satoshi-400.woff') format('woff'),
+       url('/fonts/satoshi-400.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/satoshi-500.woff2') format('woff2'),
+       url('/fonts/satoshi-500.woff') format('woff'),
+       url('/fonts/satoshi-500.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/satoshi-700.woff2') format('woff2'),
+       url('/fonts/satoshi-700.woff') format('woff'),
+       url('/fonts/satoshi-700.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Sentient';
+  src: url('/fonts/sentient-400.woff2') format('woff2'),
+       url('/fonts/sentient-400.woff') format('woff'),
+       url('/fonts/sentient-400.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --surface: #0b0d12;
   --surface-1: #12151c;
@@ -30,9 +74,9 @@
   --blur: 18px;
   --pad: 1;
 
-  --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-content: 'Inter', Georgia, serif;
-  --font-timer: 'Inter', ui-monospace, monospace;
+  --font-ui: 'Satoshi', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-content: 'Sentient', Georgia, serif;
+  --font-timer: 'Satoshi', ui-monospace, monospace;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
   --fs-base: 14.5px;
   --lh: 1.55;
@@ -493,6 +537,20 @@ html[data-corners='sharp'] *::after {
    none is an icon-only shell. Anything marked up in a component follows.
    --------------------------------------------------------------- */
 html[data-labels='none'] [data-label] { display: none !important; }
+/* No-text mode means no text: page titles, section heads, stat labels,
+   chips, field labels and table headers all go, not just the pieces that
+   carried a data-label. Values, times and numerals stay — they are the
+   interface. Prose the user wrote is never touched. */
+html[data-labels='none'] h1,
+html[data-labels='none'] h2,
+html[data-labels='none'] h3,
+html[data-labels='none'] .h1,
+html[data-labels='none'] .h2,
+html[data-labels='none'] .label,
+html[data-labels='none'] .chip,
+html[data-labels='none'] th,
+html[data-labels='none'] [data-label='chrome'],
+html[data-labels='none'] p:not(.prose p):not(.prose *) { display: none !important; }
 html[data-labels='minimal'] [data-label='meta'] { display: none !important; }
 html[data-labels='minimal'] [data-label='minor'] { display: none !important; }
 
@@ -538,11 +596,13 @@ html[data-labels='minimal'] [data-label='minor'] { display: none !important; }
   transition: fill 320ms linear, filter 320ms linear;
 }
 
-/* The dot rides the band at the playhead. */
-.clock-dot-halo { opacity: 0.22; transition: fill 320ms linear; }
-.clock-dot { transition: fill 320ms linear; }
-/* The punched centre: the page surface showing through the bead. */
-.clock-dot-core { fill: var(--surface); }
+/* The playhead is a marker, not a light: a small bead in the text colour, so
+   it is white on a dark surface and black on a light one, with no halo and no
+   tint of its own. */
+.clock-dot {
+  fill: var(--text);
+  transition: fill 320ms linear;
+}
 
 .clock-face {
   /* The time sits above the band rather than inside a ring. */

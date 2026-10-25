@@ -9,7 +9,8 @@ import { useUI } from '../ui';
 import {
   Badge, Btn, Chip, ColorPicker, ConfirmDialog, EmptyState, Field, Icon, IconBtn, IconPicker, MenuBtn,
   Modal, Panel, ProgressRing, SectionHead, Segmented, Select, Sparkline, Stat, TextArea, TextInput, Toggle,
-} from '../components/ui';
+  PlusBtn,
+ } from '../components/ui';
 import {
   computeSubjectGrade, gradeTrend, letterFor, neededOnFinal, normalizedWeights, pctOf, projections,
   termGPA, LETTER_SCALE,
@@ -99,7 +100,7 @@ function Overview() {
           <h1 className="h1">Grade overview</h1>
           <div className="mt-0.5 text-[12px] text-muted">{db.subjects[0]?.term || 'Current term'}</div>
         </div>
-        <Btn variant="primary" icon="Plus" onClick={() => addSubject({ name: 'New subject' })}>Add subject</Btn>
+        <PlusBtn label="Add subject" onClick={() => addSubject({ name: 'New subject' })} />
       </div>
 
       <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
@@ -222,7 +223,7 @@ function SubjectDetail({ subject }: { subject: Subject }) {
         <div className="ml-auto flex gap-2">
           <Btn variant="soft" icon="Settings2" onClick={() => setSubjectOpen(true)}>Subject</Btn>
           <Btn variant="soft" icon="Table" onClick={() => setBulkOpen(true)}>Bulk entry</Btn>
-          <Btn variant="primary" icon="Plus" onClick={() => { setEditingMark(null); setMarkOpen(true); }}>Add mark</Btn>
+          <PlusBtn label="Add mark" onClick={() => { setEditingMark(null); setMarkOpen(true); }} />
         </div>
       </div>
 

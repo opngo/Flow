@@ -134,13 +134,18 @@ function archLength(cx: number, cy: number, rx: number, ry: number) {
 
 /** Repaints the component on an interval; every value it feeds is derived
  *  from a timestamp, so this is only a redraw hint, never a clock. */
-function useNow(active: boolean, interval = 200) {
+function useNow(active: boolean) {
   const [, force] = useState(0);
   useEffect(() => {
     if (!active) return;
-    const id = window.setInterval(() => force((n) => n + 1), interval);
-    return () => window.clearInterval(id);
-  }, [active, interval]);
+    let frame = 0;
+    const tick = () => {
+      force((n) => n + 1);
+      frame = window.requestAnimationFrame(tick);
+    };
+    frame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frame);
+  }, [active]);
 }
 
 const pad2 = (n: number) => String(Math.floor(Math.abs(n))).padStart(2, '0');
@@ -225,7 +230,7 @@ export function TimerFullscreen() {
   const running =
     mode === 'pomodoro' ? pomodoroRunning : mode === 'stopwatch' ? timerRunning : timerRunning;
 
-  useNow(open && running, mode === 'stopwatch' ? 90 : 250);
+  useNow(open && running);
 
   const now = Date.now();
 
@@ -333,19 +338,20 @@ export function TimerFullscreen() {
     }
     return { cx, cy, rx, ry, sections, gap, tIn, tOut, total };
   }, [vp.w, vp.h, cornerRadius]);
-  const filled = mode === 'stopwatch' ? SEGMENTS : Math.round((pct / 100) * SEGMENTS);
   const arcFraction = Math.max(0, Math.min(1, pct / 100));
-  const litSections = Math.floor(arcFraction * SECTIONS);
-  // A trailing section shorter than the band is thick reads as a loose blob, so
-  // the dot carries the position alone until there is a real sliver to draw.
-  const sliver = (arcFraction - litSections / SECTIONS) * geom.total;
-  const partialFill = arcFraction > litSections / SECTIONS && arcFraction < 1 && sliver > BAND + 6
-    ? archSection(geom.cx, geom.cy, geom.rx, geom.ry, litSections / SECTIONS + geom.gap / 2, arcFraction, cornerRadius)
+  // Progress is drawn as one continuous shape rather than as sections that
+  // switch on: lighting a section at a time meant the bar jumped 1/26th of the
+  // sweep every few seconds while the clock itself moved smoothly. A sliver is
+  // still suppressed when it is shorter than the band is thick, so the tip
+  // never reads as a blob.
+  const sliver = arcFraction * geom.total;
+  const progressPath = sliver > (mode === 'stopwatch' ? 0 : BAND + 6) && arcFraction > 0
+    ? archSection(geom.cx, geom.cy, geom.rx, geom.ry, 0, arcFraction, cornerRadius)
     : null;
-  // A dot rides the band at the current position so progress is legible even
-  // when a single section is barely started.
-  const dotT = Math.min(geom.tOut, Math.max(geom.tIn, arcFraction));
-  const [dotX, dotY] = archPoint(geom.cx, geom.cy, geom.rx, geom.ry, dotT);
+  // The dot rides the arc itself. It used to be clamped to the part of the band
+  // that still fits on screen, which parked it near the frame edge while the
+  // fill kept going — the two read as disconnected.
+  const [dotX, dotY] = archPoint(geom.cx, geom.cy, geom.rx, geom.ry, arcFraction);
 
   /* ------------------------------------------------------------- actions */
 
@@ -514,22 +520,9 @@ export function TimerFullscreen() {
             {geom.sections.map((d, i) => (
               <path key={`track-${i}`} d={d} className="clock-arc-track" />
             ))}
-            {geom.sections.map((d, i) =>
-              (i + 1) / SECTIONS <= arcFraction ? (
-                <path
-                  key={`fill-${i}`}
-                  d={d}
-                  className="clock-arc-fill"
-                  style={{
-                    fill: arcColor,
-                    filter: drift > 0.15 ? `drop-shadow(0 0 18px ${arcColor})` : undefined,
-                  }}
-                />
-              ) : null,
-            )}
-            {partialFill && (
+            {progressPath && (
               <path
-                d={partialFill}
+                d={progressPath}
                 className="clock-arc-fill"
                 style={{
                   fill: arcColor,
@@ -537,11 +530,14 @@ export function TimerFullscreen() {
                 }}
               />
             )}
-            {/* Playhead: a halo, an accent bead, and a punched centre so it
-                reads against the band instead of melting into it. */}
-            <circle cx={dotX} cy={dotY} r={HALF_BAND + 12} className="clock-dot-halo" style={{ fill: arcColor }} />
-            <circle cx={dotX} cy={dotY} r={HALF_BAND - 1} className="clock-dot" style={{ fill: arcColor }} />
-            <circle cx={dotX} cy={dotY} r={HALF_BAND - 8} className="clock-dot-core" />
+            {/* Playhead: a small bead in the text colour — white on dark,
+                black on light — so it reads as a marker rather than a light.
+                It rides the arc wherever the arc is; while the arc is still
+                outside the frame there is nothing to mark, so it is not drawn
+                and cannot appear to stick to an edge. */}
+            {dotX > -HALF_BAND && dotX < vp.w + HALF_BAND && (
+              <circle cx={dotX} cy={dotY} r={HALF_BAND * 0.5} className="clock-dot" />
+            )}
           </svg>
 
           <div className="clock-face">

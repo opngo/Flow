@@ -85,9 +85,30 @@ export function demoDataset(): DB {
 }
 
 /** Demo items currently in a database. */
+/**
+ * Ids that belong to the shipped example set.
+ *
+ * The first run seeds a full example database whose ids are stable
+ * (`todo-…`, `note-…`, `ev-…`). Those records are sample content just as much
+ * as the `demo-` ones, but they predate the namespace, so removal has to know
+ * about both — otherwise "Remove demo data" silently does nothing on a fresh
+ * install, which is exactly what it used to do.
+ */
+let seedIds: Set<string> | null = null;
+export function exampleIds(): Set<string> {
+  if (!seedIds) {
+    const ids = new Set<string>();
+    collectIds(seedDB(), ids);
+    seedIds = ids;
+  }
+  return seedIds;
+}
+
+const isSample = (id: string) => id.startsWith(DEMO_PREFIX) || exampleIds().has(id);
+
 export function countDemoItems(db: DB): number {
   return DEMO_COLLECTIONS.reduce(
-    (total, key) => total + (db[key] as Array<{ id: string }>).filter((i) => i.id.startsWith(DEMO_PREFIX)).length,
+    (total, key) => total + (db[key] as Array<{ id: string }>).filter((i) => isSample(i.id)).length,
     0,
   );
 }
@@ -120,7 +141,7 @@ export function stripDemo(current: DB): { db: DB; removed: number } {
   const db: DB = { ...current };
   for (const key of DEMO_COLLECTIONS) {
     const items = current[key] as Array<{ id: string }>;
-    const kept = items.filter((i) => !i.id.startsWith(DEMO_PREFIX));
+    const kept = items.filter((i) => !isSample(i.id));
     removed += items.length - kept.length;
     (db as unknown as Record<string, unknown[]>)[key] = kept;
   }

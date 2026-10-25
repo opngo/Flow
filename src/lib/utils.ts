@@ -202,3 +202,44 @@ export function endDrift(remaining: number, total: number, windowPct: number): n
   const raw = 1 - remaining / threshold;
   return Math.pow(Math.min(1, Math.max(0, raw)), 1.6);
 }
+
+/**
+ * Read a time the way a person types it: `1830`, `18:30`, `6.30pm`, `6 pm`,
+ * `9`, `0930`. Returns `HH:mm` in 24 hour form, or null when it cannot be read.
+ * A bare hour is taken as written, not guessed into the other half of the day —
+ * the caller decides what `9` means.
+ */
+export function parseClockInput(raw: string): string | null {
+  const text = raw.trim().toLowerCase().replace(/\s+/g, '');
+  if (!text) return null;
+  const suffix = text.match(/(am|pm|a|p)$/)?.[0];
+  const body = suffix ? text.slice(0, -suffix.length) : text;
+  const digits = body.replace(/[^0-9]/g, '');
+  if (!digits) return null;
+  let hour: number;
+  let minute: number;
+  if (digits.length <= 2) {
+    hour = Number(digits);
+    minute = 0;
+  } else if (digits.length === 3) {
+    hour = Number(digits.slice(0, 1));
+    minute = Number(digits.slice(1));
+  } else {
+    hour = Number(digits.slice(0, 2));
+    minute = Number(digits.slice(2, 4));
+  }
+  if (suffix === 'p' || suffix === 'pm') { if (hour < 12) hour += 12; }
+  if (suffix === 'a' || suffix === 'am') { if (hour === 12) hour = 0; }
+  if (hour > 23 || minute > 59) return null;
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+/** 24 hour `HH:mm` → the same clock in the reader's 12 hour form. */
+export function prettyClock(value?: string) {
+  if (!value) return '';
+  const [h, m] = value.split(':').map(Number);
+  if (Number.isNaN(h)) return value;
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour}:${String(m || 0).padStart(2, '0')} ${suffix}`;
+}

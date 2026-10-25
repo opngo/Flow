@@ -19,13 +19,17 @@ export type HeatmapProps = {
   emptyLabel?: string;
   displayMask?: (value: number, date: string) => string;
   weekStart?: number;
+  /** Values are fractions in 0..1 and each cell fills by that share, so a day
+   *  where half the habits were done shows a half-filled square rather than
+   *  dropping a whole intensity level. */
+  partial?: boolean;
 };
 
 /** GitHub-style contribution grid: 53 x 7, five intensity levels (spec §9). */
 export function Heatmap({
   weeks, values, thresholds = [15, 30, 60, 120], color = 'var(--accent)', cell = 11, gap = 3,
   onDayClick, showMonthLabels = true, showWeekdayLabels = true, formatTooltip, emptyLabel = 'No activity',
-  displayMask, weekStart = 1,
+  displayMask, weekStart = 1, partial = false,
 }: HeatmapProps) {
   const [hover, setHover] = useState<{ x: number; y: number; date: string; value: number } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -117,10 +121,25 @@ export function Heatmap({
                     onMouseLeave={() => setHover(null)}
                     whileHover={{ scale: 1.25 }}
                     transition={{ duration: 0.12 }}
-                    className="focusable rounded-[2.5px]"
-                    style={{ width: cell, height: cell, background: bg(lvl) }}
+                    className="focusable relative overflow-hidden rounded-[2.5px]"
+                    style={{
+                      width: cell,
+                      height: cell,
+                      background: partial ? 'color-mix(in srgb, var(--text-faint) 22%, transparent)' : bg(lvl),
+                      boxShadow: partial ? 'inset 0 0 0 1px color-mix(in srgb, var(--text-faint) 7%, transparent)' : undefined,
+                    }}
                     aria-label={`${key}: ${displayMask ? displayMask(v, key) : v}`}
-                  />
+                  >
+                    {partial && v > 0 && (
+                      <motion.span
+                        className="absolute inset-y-0 left-0"
+                        initial={false}
+                        animate={{ width: `${Math.min(1, v) * 100}%` }}
+                        transition={{ duration: 0.22, ease: [0.22, 0.61, 0.36, 1] }}
+                        style={{ background: color }}
+                      />
+                    )}
+                  </motion.button>
                 );
               })}
             </div>

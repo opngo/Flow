@@ -3,8 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { addDays, differenceInDays, format } from 'date-fns';
 import { useFlow } from '../store';
 import {
-  Badge, Btn, ColorPicker, EmptyState, Field, Icon, IconBtn, IconPicker, Modal, Panel, ProgressRing, SectionHead, Segmented, Select, Slider, Stat, TextInput, Toggle,
-} from '../components/ui';
+  Badge, Btn, ColorPicker, EmptyState, Field, Icon, IconBtn, IconPicker, Modal, Panel, ProgressRing, SectionHead, Segmented, Select, Slider, Stat, TextInput, Toggle, PlusBtn } from '../components/ui';
 import { bucketSessions } from '../lib/analytics';
 import { computeSubjectGrade } from '../lib/grades';
 import { habitStats } from '../lib/habits';
@@ -80,7 +79,7 @@ export default function Goals() {
             { value: 'milestones', label: 'Milestones', icon: 'ListChecks' },
             { value: 'timeline', label: 'Timeline', icon: 'GanttChartSquare' },
           ]} />
-          <Btn variant="primary" icon="Plus" onClick={() => { setEditing(null); setOpen(true); }}>New goal</Btn>
+          <PlusBtn label="New goal" onClick={() => { setEditing(null); setOpen(true); }} />
         </div>
       </div>
 

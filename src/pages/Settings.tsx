@@ -5,7 +5,7 @@ import { useFlow } from '../store';
 import { useUI } from '../ui';
 import {
   Badge, Btn, ColorPicker, ConfirmDialog, Field, Icon, IconBtn, Panel, RadioCards, SectionHead, Segmented,
-  Modal, Select, Slider, SliderField, TextArea, TextInput, Toggle,
+  Modal, Select, Slider, SliderField, TextArea, TextInput, TimeField, Toggle,
 } from '../components/ui';
 import { ACCENTS, FONTS, PRESETS } from '../lib/theme';
 import { DEFAULT_SIDEBAR, NAV } from '../lib/nav';
@@ -174,8 +174,8 @@ export default function Settings() {
             <SectionHead title="Quiet hours" subtitle="Never drop, only hold" />
             <Toggle label="Enable quiet hours" checked={s.notifications.quietHours.enabled} onChange={(v) => updateSettings((x) => ({ ...x, notifications: { ...x.notifications, quietHours: { ...x.notifications.quietHours, enabled: v } } }))} />
             <div className="grid grid-cols-2 gap-2">
-              <Field label="From"><TextInput type="time" value={s.notifications.quietHours.from} onChange={(e) => updateSettings((x) => ({ ...x, notifications: { ...x.notifications, quietHours: { ...x.notifications.quietHours, from: e.target.value } } }))} /></Field>
-              <Field label="To"><TextInput type="time" value={s.notifications.quietHours.to} onChange={(e) => updateSettings((x) => ({ ...x, notifications: { ...x.notifications, quietHours: { ...x.notifications.quietHours, to: e.target.value } } }))} /></Field>
+              <Field label="From"><TimeField label="Quiet hours start" value={s.notifications.quietHours.from} onChange={(v) => updateSettings((x) => ({ ...x, notifications: { ...x.notifications, quietHours: { ...x.notifications.quietHours, from: v } } }))} /></Field>
+              <Field label="To"><TimeField label="Quiet hours end" value={s.notifications.quietHours.to} onChange={(v) => updateSettings((x) => ({ ...x, notifications: { ...x.notifications, quietHours: { ...x.notifications.quietHours, to: v } } }))} /></Field>
             </div>
             <div className="mt-3 space-y-1">
               {(['todo', 'habit', 'timer', 'mark', 'wellness', 'system'] as const).map((kind) => (
@@ -601,7 +601,7 @@ function DataPanel() {
       </Panel>
 
       <Panel className="p-4">
-        <SectionHead title="Demo data" subtitle="Example records you can add and remove at any time"
+        <SectionHead title="Demo data" subtitle="Example records, including the set the app ships with, addable and removable at any time"
           right={<span className="chip" style={demoLoaded ? { color: 'var(--accent)' } : undefined}>{demoLoaded ? `${demoItems} items` : 'not loaded'}</span>} />
         <div className="space-y-2">
           <Btn variant={demoLoaded ? 'soft' : 'primary'} icon="Sparkles" full
@@ -616,7 +616,8 @@ function DataPanel() {
             }}>Remove demo data</Btn>
         </div>
         <div className="mt-3 rounded-[12px] bg-s1 p-3 text-[11.5px] leading-relaxed text-muted">
-          Demo records are tagged and additive. Loading or removing them never touches your theme, sidebar,
+          Removal clears both the demo set and the example records that ship with a new install — every
+          task, note, habit, event, subject and card that came with the app. Loading or removing them never touches your theme, sidebar,
           enabled tools, keyboard shortcuts, notification settings, the running timer or the tutorial state.
           Your own records are never removed.
           {db.demo?.loadedAt && (

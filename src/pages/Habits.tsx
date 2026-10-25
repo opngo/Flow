@@ -3,11 +3,13 @@ import { useSearchParams } from 'react-router-dom';
 import { addDays, format, isSameDay, startOfWeek, subDays } from 'date-fns';
 import { useFlow } from '../store';
 import { useUI } from '../ui';
-import { Heatmap, HeatLegend } from '../components/Heatmap';
+import { openContextMenu } from '../components/ContextMenu';
+import { Heatmap } from '../components/Heatmap';
 import {
   Badge, Btn, Chip, ColorPicker, EmptyState, Field, Icon, IconBtn, IconPicker, MenuBtn, Modal,
-  Panel, ProgressRing, ScrollArea, SectionHead, Segmented, Select, Stat, TextArea, TextInput, Toggle,
-} from '../components/ui';
+  Panel, ProgressRing, ScrollArea, SectionHead, Segmented, Select, Stat, TextArea, TextInput, TimeField, Toggle,
+  PlusBtn,
+ } from '../components/ui';
 import { habitStats, isHabitScheduled, weeklyTarget, RRULE_PRESETS } from '../lib/habits';
 import { buildRollingGrid, bucketSessions, thresholds } from '../lib/analytics';
 import { dayKey, fmtDate, minsToHM, relDay, cn } from '../lib/utils';
@@ -67,7 +69,7 @@ export default function Habits() {
         </div>
         <div className="flex items-center gap-2">
           <Segmented value={view} onChange={setView} options={VIEWS.map((v) => ({ value: v.id, label: v.label, icon: v.icon }))} />
-          <Btn variant="primary" icon="Plus" onClick={() => { setEditing(null); setOpen(true); }}>New habit</Btn>
+          <PlusBtn label="New habit" onClick={() => { setEditing(null); setOpen(true); }} />
         </div>
       </div>
 
@@ -77,6 +79,10 @@ export default function Habits() {
         <Stat label="Perfect weeks" value={db.habits.reduce((a, h) => a + habitStats(h, db.habitLogs, weekStart).weeklyStreak, 0)} sub="combined weekly streaks" icon="Trophy" tone="success" />
         <Stat label="Check-ins" value={db.habitLogs.filter((l) => !l.skipped).length} sub="all time" icon="CheckCircle2" />
       </div>
+
+      {/* Every view carries the same year of coverage, so switching tabs never
+          hides how the habits are actually going. */}
+      <HabitYearStrip />
 
       {view === 'week' && (
         <Panel className="p-3">
@@ -97,7 +103,13 @@ export default function Habits() {
                 const st = habitStats(h, db.habitLogs, weekStart);
                 return (
                   <div key={h.id} className="grid grid-cols-[minmax(180px,1fr)_repeat(7,44px)_70px] items-center gap-1 rounded-[10px] px-1 py-1 hover:bg-s1/60">
-                    <div className="flex min-w-0 items-center gap-2">
+                    <div className="flex min-w-0 items-center gap-2"
+                      onContextMenu={(e) => openContextMenu(e, [
+                        { label: 'Edit habit', icon: 'PenLine', onClick: () => { setEditing(h); setOpen(true); } },
+                        { label: 'Check in today', icon: 'Check', onClick: () => checkIn(h.id, format(today, 'yyyy-MM-dd'), h.target.type === 'boolean' ? 1 : h.target.value) },
+                        { label: h.pausedUntil ? 'Resume' : 'Pause for a week', icon: h.pausedUntil ? 'Play' : 'Pause', onClick: () => updateHabit(h.id, { pausedUntil: h.pausedUntil ? undefined : addDays(today, 7).toISOString() }) },
+                        { label: 'Delete', icon: 'Trash2', danger: true, separator: true, onClick: () => deleteHabit(h.id) },
+                      ], h.name)}>
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px]" style={{ background: `color-mix(in srgb, ${h.color} 16%, transparent)` }}>
                         <Icon name={h.icon} size={14} style={{ color: h.color }} />
                       </span>
@@ -190,10 +202,18 @@ export default function Habits() {
   );
 }
 
-function HeatmapView() {
+/**
+ * One year of habit coverage, as a share of the habits that were due.
+ *
+ * Each square fills from the left by the fraction of the day's scheduled habits
+ * that were checked off: a day where two of four were done is exactly half
+ * filled, not "somewhere between two intensity steps". Filters to a single
+ * habit when one is chosen.
+ */
+function useHabitCoverage(habitId: string) {
   const db = useFlow((s) => s.db);
   const weekStart = db.settings.behavior.weekStart;
-  const [selected, setSelected] = useState<string>('all');
+
   const grid = useMemo(() => {
     const weeks: Date[][] = [];
     const start = startOfWeek(subDays(new Date(), 364), { weekStartsOn: weekStart as 0 | 1 });
@@ -201,34 +221,87 @@ function HeatmapView() {
     return weeks;
   }, [weekStart]);
 
-  const values = useMemo(() => {
-    const habits = selected === 'all' ? db.habits : db.habits.filter((h) => h.id === selected);
+  const coverage = useMemo(() => {
+    const habits = (habitId === 'all' ? db.habits : db.habits.filter((h) => h.id === habitId))
+      .filter((h) => !h.pausedUntil || new Date(h.pausedUntil) >= new Date());
+    const done = new Set(db.habitLogs.filter((l) => !l.skipped).map((l) => `${l.habitId}|${l.date}`));
     const out: Record<string, number> = {};
-    for (const l of db.habitLogs) {
-      if (!habits.some((h) => h.id === l.habitId) || l.skipped) continue;
-      out[l.date] = (out[l.date] ?? 0) + 1;
+    const counts: Record<string, { due: number; done: number }> = {};
+    for (const week of grid) {
+      for (const day of week) {
+        const key = format(day, 'yyyy-MM-dd');
+        if (day > new Date()) continue;
+        for (const h of habits) {
+          if (!isHabitScheduled(h, day)) continue;
+          const bucket = counts[key] ?? { due: 0, done: 0 };
+          bucket.due += 1;
+          if (done.has(`${h.id}|${key}`)) bucket.done += 1;
+          counts[key] = bucket;
+        }
+        const c = counts[key];
+        if (c && c.due > 0) out[key] = c.done / c.due;
+      }
     }
     return out;
-  }, [db.habitLogs, db.habits, selected]);
+  }, [db.habits, db.habitLogs, grid, habitId]);
+
+  return { grid, coverage, weekStart };
+}
+
+function HabitYearStrip() {
+  const db = useFlow((s) => s.db);
+  const [habitId, setHabitId] = useState('all');
+  const { grid, coverage, weekStart } = useHabitCoverage(habitId);
+  const days = Object.keys(coverage);
+  const average = days.length ? days.reduce((a, k) => a + coverage[k], 0) / days.length : 0;
 
   return (
     <Panel className="p-4">
       <SectionHead
-        title="Consistency"
-        subtitle="Every check-in across the last year"
-        right={<Select value={selected} onChange={setSelected} options={[{ value: 'all', label: 'All habits' }, ...db.habits.map((h) => ({ value: h.id, label: h.name, icon: h.icon }))]} />}
+        title="Coverage"
+        subtitle={`${Math.round(average * 100)}% of scheduled habits done across the year`}
+        right={<Select value={habitId} onChange={setHabitId} options={[{ value: 'all', label: 'All habits' }, ...db.habits.map((h) => ({ value: h.id, label: h.name, icon: h.icon }))]} />}
       />
       <div className="overflow-x-auto pb-2">
-        <Heatmap weeks={grid} values={values} thresholds={[1, 2, 3, 4]} cell={11} weekStart={weekStart} color="var(--success)"
-          formatTooltip={(date, value) => (
-            <>
-              <div className="font-medium">{format(new Date(`${date}T12:00:00`), 'EEE, MMM d')}</div>
-              <div className="text-muted">{value ? `${value} check-in${value > 1 ? 's' : ''}` : 'Nothing logged'}</div>
-            </>
-          )} />
+        <Heatmap
+          weeks={grid}
+          values={coverage}
+          partial
+          cell={11}
+          weekStart={weekStart}
+          color="var(--success)"
+          emptyLabel="Nothing scheduled"
+          formatTooltip={(date, value) => {
+            const pct = Math.round(value * 100);
+            return (
+              <>
+                <div className="font-medium">{format(new Date(`${date}T12:00:00`), 'EEE, MMM d')}</div>
+                <div className="text-muted">{value > 0 ? `${pct}% of that day's habits done` : 'No habits due'}</div>
+              </>
+            );
+          }}
+        />
       </div>
-      <HeatLegend thresholds={[1, 2, 3, 4]} color="var(--success)" unit="habits" />
-      <div className="mt-4 grid gap-2 md:grid-cols-3">
+      <div className="mt-1 flex items-center gap-1.5 text-[10px] text-faint">
+        <span>None</span>
+        {[0, 0.25, 0.5, 0.75, 1].map((f) => (
+          <span key={f} className="relative h-2.5 w-2.5 overflow-hidden rounded-[2.5px]" style={{ background: 'color-mix(in srgb, var(--text-faint) 14%, transparent)' }}>
+            {f > 0 && <span className="absolute inset-y-0 left-0" style={{ width: `${f * 100}%`, background: 'var(--success)' }} />}
+          </span>
+        ))}
+        <span>All done</span>
+      </div>
+    </Panel>
+  );
+}
+
+function HeatmapView() {
+  const db = useFlow((s) => s.db);
+  const weekStart = db.settings.behavior.weekStart;
+  return (
+    <>
+      <HabitYearStrip />
+      <div className="mt-3 grid gap-2 md:grid-cols-3">
         {db.habits.map((h) => {
           const st = habitStats(h, db.habitLogs, weekStart);
           return (
@@ -243,7 +316,7 @@ function HeatmapView() {
           );
         })}
       </div>
-    </Panel>
+    </>
   );
 }
 
@@ -513,7 +586,7 @@ export function HabitDialog({ open, onClose, habit }: { open: boolean; onClose: 
               onChange={(e) => set({ target: { type: form.target?.type ?? 'boolean', value: Number(e.target.value) } })} />
           </Field>
           <Field label="Reminder time">
-            <TextInput type="time" value={form.reminderTimes?.[0] ?? ''} onChange={(e) => set({ reminderTimes: e.target.value ? [e.target.value] : [] })} />
+            <TimeField label="Reminder time" value={form.reminderTimes?.[0] ?? ''} onChange={(v) => set({ reminderTimes: v ? [v] : [] })} />
           </Field>
         </div>
 

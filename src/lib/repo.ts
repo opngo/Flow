@@ -47,6 +47,28 @@ const migrations: Record<number, (db: Raw) => Raw> = {
   /* 5 adds settings.ui (label density) and settings.immersive (end colour,
      arc). Both are defaulted by the schema, so the step only records it. */
   5: (db) => db,
+  /* 6 bundles Satoshi and Sentient with the app, so they become the defaults.
+     Anyone still on the old default (Inter) moves across; a face the user
+     picked on purpose is left exactly as it is. */
+  6: (db) => {
+    const settings = db.settings as Raw | undefined;
+    if (!settings) return db;
+    const type = settings.typography as Raw | undefined;
+    if (!type) return db;
+    const pick = (v: unknown, next: string) => (v === 'Inter' || v === undefined ? next : v);
+    return {
+      ...db,
+      settings: {
+        ...settings,
+        typography: {
+          ...type,
+          ui: pick(type.ui, 'Satoshi'),
+          content: pick(type.content, 'Sentient'),
+          timer: pick(type.timer, 'Satoshi'),
+        },
+      },
+    };
+  },
 };
 
 export function migrate(raw: Raw): DB {

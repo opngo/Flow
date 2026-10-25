@@ -8,7 +8,7 @@ import {
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, ChevronDown, ChevronRight, Search, X } from 'lucide-react';
 import { ICONS, ICON_NAMES, type IconName } from '../lib/icons';
-import { cn, hexToRgb } from '../lib/utils';
+import { cn, hexToRgb, parseClockInput, prettyClock, toLocalInput, parseLocalInput } from '../lib/utils';
 
 /* Icon ---------------------------------------------------------------- */
 export function Icon({ name, size = 16, className, strokeWidth = 1.9, style }: {
@@ -50,7 +50,9 @@ export const Btn = React.forwardRef<HTMLButtonElement, BtnProps>(function Btn(
       {...rest}
     >
       {icon && <Icon name={icon} size={size === 'sm' ? 14 : 16} />}
-      {children}
+      {/* A button that has an icon can survive no-text mode as an icon; the
+          word goes with the rest of the chrome. */}
+      {children && <span data-label={icon ? 'chrome' : undefined}>{children}</span>}
       {iconRight && <Icon name={iconRight} size={size === 'sm' ? 14 : 16} />}
     </button>
   );
@@ -76,6 +78,29 @@ export const IconBtn = React.forwardRef<HTMLButtonElement, {
       {...rest}
     >
       <Icon name={icon} size={size} />
+    </button>
+  );
+});
+
+/** The one create affordance in a page header: a bare plus, no words. */
+export const PlusBtn = React.forwardRef<HTMLButtonElement, {
+  label: string; className?: string;
+} & React.ButtonHTMLAttributes<HTMLButtonElement>>(function PlusBtn(
+  { label, className, ...rest }, ref,
+) {
+  return (
+    <button
+      ref={ref}
+      aria-label={label}
+      data-tip={label}
+      className={cn(
+        'focusable inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] text-white shadow-soft transition-[filter,transform] duration-150 hover:brightness-110 active:scale-[0.96]',
+        className,
+      )}
+      style={{ background: 'var(--accent)' }}
+      {...rest}
+    >
+      <Icon name="Plus" size={17} strokeWidth={2.4} />
     </button>
   );
 });
@@ -133,6 +158,93 @@ export function Stat({ label, value, sub, icon, tone }: { label: string; value: 
     </div>
   );
 }
+
+/**
+ * A clock you type into.
+ *
+ * The native time control brings its own spinner, its own locale rules and its
+ * own look, and it cannot read `1830`. This is a text field: click it, the
+ * current time is selected, type anything a person would type, press Enter or
+ * leave the field. It shows the reading back in 12 hour form and keeps the
+ * value as `HH:mm`.
+ */
+export function TimeField({ value, onChange, label = 'Time', disabled, className, placeholder = '18:30' }: {
+  value?: string; onChange: (next: string) => void; label?: string; disabled?: boolean; className?: string; placeholder?: string;
+}) {
+  const [draft, setDraft] = useState(prettyClock(value));
+  const [invalid, setInvalid] = useState(false);
+  const focused = useRef(false);
+
+  useEffect(() => {
+    if (!focused.current) setDraft(prettyClock(value));
+  }, [value]);
+
+  const commit = () => {
+    focused.current = false;
+    if (!draft.trim()) { setDraft(prettyClock(value)); setInvalid(false); return; }
+    const next = parseClockInput(draft);
+    if (next) { setDraft(prettyClock(next)); setInvalid(false); onChange(next); }
+    else { setDraft(prettyClock(value)); setInvalid(false); }
+  };
+
+  return (
+    <div className={cn('relative', className)}>
+      <input
+        value={draft}
+        disabled={disabled}
+        aria-label={label}
+        inputMode="numeric"
+        autoComplete="off"
+        spellCheck={false}
+        placeholder={placeholder}
+        onFocus={(e) => { focused.current = true; e.currentTarget.select(); }}
+        onChange={(e) => { setDraft(e.target.value); setInvalid(!parseClockInput(e.target.value) && !!e.target.value.trim()); }}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') { e.preventDefault(); commit(); e.currentTarget.blur(); }
+          if (e.key === 'Escape') { setDraft(prettyClock(value)); e.currentTarget.blur(); }
+        }}
+        className={cn(
+          'num h-9 w-full rounded-[12px] bg-s2 px-3 text-[13px] text-ink outline-none transition-colors placeholder:text-faint focus:bg-s3',
+          invalid && 'text-danger',
+        )}
+      />
+      <Icon name="Clock" size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-faint" />
+    </div>
+  );
+}
+
+/**
+ * Date plus a typed clock, in one control. The date half stays a native date
+ * field (a calendar popup is the right affordance for a date); the time half is
+ * the typed `TimeField` above.
+ */
+export function DateTimeField({ value, onChange, label = 'Date', compact }: {
+  value?: string; onChange: (iso: string | undefined) => void; label?: string; compact?: boolean;
+}) {
+  const local = toLocalInput(value);
+  const [datePart, timePart] = local ? local.split('T') : ['', ''];
+  const set = (nextDate: string, nextTime: string) => {
+    if (!nextDate) { onChange(undefined); return; }
+    const iso = parseLocalInput(`${nextDate}T${nextTime || '09:00'}`);
+    if (iso) onChange(iso);
+  };
+  return (
+    <div className={cn('grid gap-1.5', compact ? 'grid-cols-[1fr_104px]' : 'grid-cols-[1fr_112px]')}>
+      <input
+        type="date"
+        value={datePart}
+        aria-label={`${label} date`}
+        onChange={(e) => set(nextDateOrEmpty(e.target.value), timePart)}
+        className="num h-9 w-full rounded-[12px] bg-s2 px-3 text-[13px] text-ink outline-none transition-colors focus:bg-s3"
+      />
+      <TimeField value={timePart} label={`${label} time`} onChange={(next) => set(datePart || toLocalInput(new Date().toISOString())!.split('T')[0], next)} />
+    </div>
+  );
+}
+
+/** `nextDateOrEmpty` keeps the grid stable when the date field is cleared. */
+function nextDateOrEmpty(v: string) { return v; }
 
 /* Form fields ---------------------------------------------------------- */
 export function Field({ label, hint, children, className }: { label?: string; hint?: string; children: React.ReactNode; className?: string }) {
@@ -697,8 +809,12 @@ export function ColorPicker({ value, onChange, label = 'Colour' }: {
   const hueColour = hsvToHex(hsv.h, 1, 1);
 
   return (
-    <div className="space-y-2.5">
-      <div className="flex items-center gap-2">
+    /* The picker owns the full width it is given and stacks: preview + hex,
+       then the preset row, then the field, then the rail. Nothing is allowed
+       to sit beside the field, which is what used to squeeze it in narrow
+       panels and leave swatches floating over the colour it was editing. */
+    <div className="w-full min-w-0 max-w-full space-y-2.5">
+      <div className="flex min-w-0 items-center gap-2">
         <span className="h-8 w-8 shrink-0 rounded-[9px]" style={{ background: safe, boxShadow: `0 4px 14px -6px ${safe}` }} />
         <TextInput
           value={draft}
@@ -709,22 +825,24 @@ export function ColorPicker({ value, onChange, label = 'Colour' }: {
             if (isHex(e.target.value)) onChange(e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`);
           }}
           onBlur={() => setDraft(safe)}
-          className="num h-8 w-28 uppercase"
+          className="num h-8 min-w-0 max-w-[112px] flex-1 uppercase"
         />
-        <div className="flex flex-wrap items-center gap-1">
-          {SWATCHES.map((c) => (
-            <button
-              key={c}
-              onClick={() => onChange(c)}
-              aria-label={`Colour ${c}`}
-              data-tip={`Colour ${c}`}
-              className="focusable flex h-5 w-5 items-center justify-center rounded-full transition-transform hover:scale-110"
-              style={{ background: c, boxShadow: safe.toLowerCase() === c.toLowerCase() ? `0 0 0 2px var(--surface), 0 0 0 3.5px ${c}` : undefined }}
-            >
-              {safe.toLowerCase() === c.toLowerCase() && <Check size={9} className="text-white" strokeWidth={3.5} />}
-            </button>
-          ))}
-        </div>
+        <span className="ml-auto shrink-0 text-[10.5px] uppercase tracking-wide text-faint">{label}</span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1.5">
+        {SWATCHES.map((c) => (
+          <button
+            key={c}
+            onClick={() => onChange(c)}
+            aria-label={`Colour ${c}`}
+            data-tip={`Colour ${c}`}
+            className="focusable flex h-5 w-5 items-center justify-center rounded-full transition-transform hover:scale-110"
+            style={{ background: c, boxShadow: safe.toLowerCase() === c.toLowerCase() ? `0 0 0 2px var(--surface), 0 0 0 3.5px ${c}` : undefined }}
+          >
+            {safe.toLowerCase() === c.toLowerCase() && <Check size={9} className="text-white" strokeWidth={3.5} />}
+          </button>
+        ))}
       </div>
 
       <div

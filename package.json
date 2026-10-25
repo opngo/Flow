@@ -1,7 +1,7 @@
 {
   "name": "flow",
   "productName": "Flow",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Flow — all-in-one, local-first productivity desktop suite",
   "private": true,
   "type": "module",

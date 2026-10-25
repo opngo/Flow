@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { useFlow } from '../store';
 import { useUI } from '../ui';
 import {
-  Badge, Btn, Chip, EmptyState, Field, Icon, IconBtn, Panel, SectionHead, Segmented, Select, Stat, TextInput, Toggle,
+  Badge, Btn, Chip, EmptyState, Field, Icon, IconBtn, Panel, SectionHead, Segmented, Select, Stat, TextInput, TimeField, Toggle,
 } from '../components/ui';
 import { notifyHealth, requestNotificationPermission, systemNotify, isElectron } from '../lib/platform';
 import { quietHoursActive } from '../lib/scheduler';
@@ -160,8 +160,8 @@ export default function Notifications() {
               onChange={(v) => flow.updateSettings((s) => ({ ...s, notifications: { ...s.notifications, quietHours: { ...s.notifications.quietHours, enabled: v } } }))} />
             {db.settings.notifications.quietHours.enabled && (
               <div className="mt-1 flex gap-1.5">
-                <TextInput type="time" value={db.settings.notifications.quietHours.from} onChange={(e) => flow.updateSettings((s) => ({ ...s, notifications: { ...s.notifications, quietHours: { ...s.notifications.quietHours, from: e.target.value } } }))} />
-                <TextInput type="time" value={db.settings.notifications.quietHours.to} onChange={(e) => flow.updateSettings((s) => ({ ...s, notifications: { ...s.notifications, quietHours: { ...s.notifications.quietHours, to: e.target.value } } }))} />
+                <TimeField label="Quiet hours start" value={db.settings.notifications.quietHours.from} onChange={(v) => flow.updateSettings((s) => ({ ...s, notifications: { ...s.notifications, quietHours: { ...s.notifications.quietHours, from: v } } }))} />
+                <TimeField label="Quiet hours end" value={db.settings.notifications.quietHours.to} onChange={(v) => flow.updateSettings((s) => ({ ...s, notifications: { ...s.notifications, quietHours: { ...s.notifications.quietHours, to: v } } }))} />
               </div>
             )}
           </Panel>

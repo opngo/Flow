@@ -130,7 +130,7 @@ export type FlowState = {
   addCard: (deckId: string, front: string, back: string) => void;
   updateCard: (deckId: string, card: FlashCard) => void;
   reviewCard: (deckId: string, cardId: string, quality: 0 | 1 | 2 | 3) => void;
-  addEvent: (partial: Partial<CalendarEvent>) => void;
+  addEvent: (partial: Partial<CalendarEvent>) => CalendarEvent;
   updateEvent: (id: string, patch: Partial<CalendarEvent>) => void;
   deleteEvent: (id: string) => void;
   saveMix: (mix: SoundMix) => void;
@@ -804,10 +804,14 @@ export const useFlow = create<FlowState>((set, get) => ({
   },
   addEvent(partial) {
     const start = partial.start ?? nowISO();
-    get().add('events', {
+    const event: CalendarEvent = {
       id: uuid(), title: 'New event', start, end: partial.end ?? new Date(new Date(start).getTime() + 3600000).toISOString(),
       allDay: false, color: '#7c8cff', location: '', notes: '', ...partial,
-    });
+    };
+    get().add('events', event);
+    /* The page needs the new id straight away: it selects the event and opens
+     * its rail, and a callback that returned nothing could not do that. */
+    return event;
   },
   updateEvent(id, patch) { get().patch('events', id, patch); },
   deleteEvent(id) { get().remove('events', id); },

@@ -15,6 +15,55 @@ so keep headings exactly as `## [x.y.z] - YYYY-MM-DD`.
 - Optional encrypted database at rest
 - Split view: two panes side by side in one window
 
+## [1.5.0] - 2026-10-24
+
+### Added
+
+- **Calendar rebuilt.** A dated badge, the exact span the view covers, search, a joined
+  previous / Today / next group and a view picker sit above three real views: a month grid with
+  tinted event chips and `N more`, a week grid with events placed by minute, a live now-line and
+  click-to-create empty hours, and a day view paired with a rail that shows the selected event's
+  own details — time and span, place, subject, notes, duplicate, prep task, delete — over a mini
+  month with activity dots.
+- **Habit coverage.** The heatmap can fill each square by a fraction instead of an intensity step,
+  so a day where half the scheduled habits were done is exactly half a square. The strip sits under
+  the stats on every Habits tab, filterable per habit.
+- **Typed times.** `TimeField` takes `1830`, `18:30`, `6.30pm` or `6 pm`, shows the reading back as
+  `6:30 PM`, commits on Enter and reverts on Escape. It replaces every native time and
+  date-time field in tasks, events, habits, timers, quiet hours and the tools.
+- **Context menus.** One layer serves tasks, habits, notes, timers, decks and calendar chips:
+  opens at the pointer, flips at the edges, closes on Escape, outside click or scroll, arrows and
+  Enter navigate.
+- **Satoshi and Sentient, bundled.** Both faces ship inside the app as woff2, woff and ttf with
+  `@font-face` declarations; Satoshi is the interface face and Sentient the prose face. Nothing is
+  fetched from Google Fonts or Fontshare at runtime, so type is identical offline.
+
+### Changed
+
+- **Colour picker layout.** Preview and hex, then a swatch row, then the field and the hue rail:
+  the picker stacks in the width it is given and can no longer sit on top of the colour it is
+  editing.
+- **Create actions are a bare plus.** A single `PlusBtn` replaces “+ New habit”, “+ New task”,
+  “+ New goal”, “+ New card”, “+ New timer”, “+ Add subject”, “+ Add mark” and “+ Event”.
+- **The notebook list lives on the right** and folds away from its own header; the choice is
+  remembered.
+- **Flashcards move.** Cards enter and leave from opposite sides, the face tips back on reveal,
+  the answer unrolls, and the rating row settles in.
+- **No-text mode removes far more text**: page titles, section heads, stat and field labels, chips,
+  table headers and the words on any control that has an icon.
+
+### Fixed
+
+- **Removing demo data did nothing on a fresh install.** The example database seeded on first run
+  uses plain ids, not the `demo-` namespace, so the filter matched nothing. Removal now clears both
+  the demo set and the shipped example records, and leaves preferences and the tutorial untouched.
+- **Playhead and progress.** The immersive clock redraws every frame instead of four times a second,
+  progress is one continuous arc rather than sections switching on, and the dot is a quiet bead in
+  the text colour — white on dark, black on light — riding the arc instead of parking at the frame
+  edge.
+- **Sidebar accent rail** is drawn per row: it no longer slides between rows over several frames,
+  and it sits centred in the row instead of low.
+
 ## [1.4.0] - 2026-10-24
 
 ### Added

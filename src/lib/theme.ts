@@ -68,6 +68,10 @@ export function resolveTokens(presetId: string, mode: 'dark' | 'light' | 'system
 }
 
 export const FONTS = [
+  // The two bundled faces come first: they ship with the app, so choosing them
+  // costs no network request and looks the same offline.
+  { id: 'Satoshi', stack: "'Satoshi', 'Inter', system-ui, sans-serif" },
+  { id: 'Sentient', stack: "'Sentient', Georgia, serif" },
   { id: 'Inter', stack: "'Inter', system-ui, sans-serif" },
   { id: 'Geist', stack: "'Geist', 'Inter', system-ui, sans-serif" },
   { id: 'DM Sans', stack: "'DM Sans', system-ui, sans-serif" },

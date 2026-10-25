@@ -203,19 +203,20 @@ export default function Todos() {
         <div>
           <div className="px-2.5 pb-2 pt-1">
             <h1 className="h1">Todos</h1>
-            <div className="mt-0.5 text-[12px] text-muted">{open.length} open · {counts.overdue} overdue</div>
+            <div className="mt-0.5 text-[12px] text-muted" data-label="minor">{open.length} open · {counts.overdue} overdue</div>
           </div>
-          <button onClick={() => openNew()} className="focusable mb-2 flex w-full items-center gap-2 rounded-[11px] px-2.5 py-2 text-[13px] text-accent" style={{ background: 'var(--accent-soft)' }}>
-            <Icon name="Plus" size={15} /> New task
+          <button onClick={() => openNew()} aria-label="New task" data-tip="New task"
+            className="focusable mb-2 flex h-9 w-9 items-center justify-center rounded-[11px] text-accent" style={{ background: 'var(--accent-soft)' }}>
+            <Icon name="Plus" size={16} />
           </button>
           <button onClick={() => setSmart('all')} className={cn('focusable flex w-full items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-[12.5px]', smart === 'all' ? 'bg-s2 text-ink' : 'text-muted hover:bg-s1')}>
-            <Icon name="ListTodo" size={14} /> All tasks <span className="num ml-auto text-[11px] text-faint">{open.length}</span>
+            <Icon name="ListTodo" size={14} /> <span data-label="nav">All tasks</span> <span className="num ml-auto text-[11px] text-faint">{open.length}</span>
           </button>
           {SMART.map((s) => (
             <button key={s.id} onClick={() => setSmart(s.id)}
               className={cn('focusable flex w-full items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-[12.5px]', smart === s.id ? 'bg-s2 text-ink' : 'text-muted hover:bg-s1')}>
               <Icon name={s.icon} size={14} />
-              {s.label}
+              <span data-label="nav">{s.label}</span>
               {s.id === 'today' && counts.today > 0 && <span className="num ml-auto text-[11px] text-accent">{counts.today}</span>}
               {s.id === 'overdue' && counts.overdue > 0 && <span className="num ml-auto text-[11px] text-danger">{counts.overdue}</span>}
             </button>
@@ -224,9 +225,9 @@ export default function Todos() {
 
         <div className="divider" />
         <div>
-          <div className="label px-2.5 pb-1">Categories</div>
+          <div className="label px-2.5 pb-1" data-label="meta">Categories</div>
           <button onClick={() => setCategoryId('all')} className={cn('focusable flex w-full items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-[12.5px]', categoryId === 'all' ? 'bg-s2 text-ink' : 'text-muted hover:bg-s1')}>
-            <Icon name="Layers" size={14} /> Every category
+            <Icon name="Layers" size={14} /> <span data-label="nav">Every category</span>
           </button>
           {db.categories.map((c) => {
             const n = open.filter((t) => t.categoryId === c.id).length;
@@ -234,7 +235,7 @@ export default function Todos() {
               <div key={c.id} className="flex items-center">
                 <button onClick={() => setCategoryId(c.id)} className={cn('focusable flex flex-1 items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-[12.5px]', categoryId === c.id ? 'bg-s2 text-ink' : 'text-muted hover:bg-s1')}>
                   <Icon name={c.icon} size={14} style={{ color: c.color }} />
-                  <span className="truncate">{c.name}</span>
+                  <span className="truncate" data-label="nav">{c.name}</span>
                   {n > 0 && <span className="num ml-auto text-[11px] text-faint">{n}</span>}
                 </button>
                 <IconBtn icon="ArrowUpRight" label={`Open ${c.name}`} onClick={() => navigate(`/categories/${c.id}`)} className="h-7 w-7 opacity-0 hover:opacity-100 [div:hover>&]:opacity-60" />
@@ -244,7 +245,7 @@ export default function Todos() {
         </div>
 
         <div className="divider" />
-        <div className="px-2.5 text-[11px] leading-relaxed text-faint">
+        <div className="px-2.5 text-[11px] leading-relaxed text-faint" data-label="meta">
           <div className="label mb-1">Keyboard</div>
           <div><span className="num">j / k</span> move</div>
           <div><span className="num">space</span> complete</div>
@@ -281,7 +282,7 @@ export default function Todos() {
                 <button key={v.id} onClick={() => setView(v.id)}
                   className={cn('focusable flex h-8 shrink-0 items-center gap-1.5 rounded-[10px] px-2.5 text-[12.5px] transition-colors',
                     view === v.id ? 'bg-s3 text-ink' : 'text-muted hover:bg-s1 hover:text-ink')}>
-                  <Icon name={v.icon} size={13} /> {v.label}
+                  <Icon name={v.icon} size={13} /> <span data-label="chrome">{v.label}</span>
                 </button>
               ))}
             </div>
