@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DBSchema, SCHEMA_VERSION } from '../src/lib/types';
+import { DBSchema, NoteSchema, SCHEMA_VERSION, TodoSchema } from '../src/lib/types';
 import { migrate, repairSettings, withDefaults } from '../src/lib/repo';
 
 /**
@@ -108,5 +108,28 @@ describe('migrate', () => {
     const once = withDefaults(DBSchema.parse({ version: SCHEMA_VERSION }));
     const twice = withDefaults(once);
     expect(JSON.stringify(twice.settings)).toBe(JSON.stringify(once.settings));
+  });
+});
+
+describe('title repair', () => {
+  it('strips command syntax out of titles that are already saved', () => {
+    const now = new Date().toISOString();
+    const db = {
+      version: 6,
+      todos: [
+        TodoSchema.parse({ id: 't1', title: '{type:task}{when:tomorrow }{repeat:daily}{priority:low}', createdAt: now, updatedAt: now }),
+        TodoSchema.parse({ id: 't2', title: 'Buy milk', createdAt: now, updatedAt: now }),
+      ],
+      notes: [NoteSchema.parse({ id: 'n1', title: '{type:note}', createdAt: now, updatedAt: now })],
+    } as unknown as Parameters<typeof migrate>[0];
+    const out = migrate(db);
+    const titles = out.todos.map((t) => t.title);
+    expect(titles[0]).toBe('New task');
+    expect(titles[1]).toBe('Buy milk');
+    expect(out.notes[0].title).toBe('Untitled note');
+    for (const t of [...out.todos.map((x) => x.title), ...out.notes.map((x) => x.title)]) {
+      expect(t).not.toMatch(/[{}]/);
+    }
+    expect(out.version).toBe(SCHEMA_VERSION);
   });
 });

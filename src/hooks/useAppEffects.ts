@@ -105,7 +105,9 @@ export function useGlobalKeys() {
         if (e.shiftKey) redo(); else undo();
         return;
       }
-      if (mod && e.shiftKey && e.key.toLowerCase() === 'space') {
+      /* `e.key` for the space bar is the space character itself, never the
+         word "space", so this shortcut never fired. */
+      if (mod && e.shiftKey && (e.code === 'Space' || e.key === ' ')) {
         e.preventDefault();
         setQuickAdd(true);
         return;

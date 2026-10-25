@@ -1,4 +1,5 @@
 import { DBSchema, SCHEMA_VERSION, type DB, type Settings } from './types';
+import { cleanLine } from './commands';
 import { isElectron } from './platform';
 
 const KEY = 'flow.db.v3';
@@ -73,6 +74,28 @@ const migrations: Record<number, (db: Raw) => Raw> = {
           timer: pick(type.timer, 'Satoshi'),
         },
       },
+    };
+  },
+  /* 7 repairs titles that swallowed their own command syntax. A line of only
+     tokens (`{type:task}{when:tomorrow }`) used to be saved verbatim, so it
+     showed up in the list and in every reminder as braces. Clean the titles
+     that are already stored instead of leaving the user to fix them by hand. */
+  7: (db) => {
+    /* A corrupt collection is not an array: leave it alone and let the
+       schema's own repair deal with it. */
+    const fix = (rows: unknown, key: string, fallback: string) =>
+      Array.isArray(rows)
+        ? rows.map((row) => {
+          if (!isPlainObject(row)) return row;
+          const title = typeof row[key] === 'string' ? (row[key] as string) : '';
+          const clean = cleanLine(title);
+          return clean === title ? row : { ...row, [key]: clean || fallback };
+        })
+        : rows;
+    return {
+      ...db,
+      todos: fix(db.todos as Raw[] | undefined, 'title', 'New task'),
+      notes: fix(db.notes as Raw[] | undefined, 'title', 'Untitled note'),
     };
   },
 };

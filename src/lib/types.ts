@@ -491,4 +491,4 @@ export type DB = z.infer<typeof DBSchema>;
 export type CollectionKey = 'categories' | 'todos' | 'habits' | 'habitLogs' | 'goals' | 'subjects' | 'marks'
   | 'focusSessions' | 'reminders' | 'notifications' | 'notes' | 'decks' | 'events' | 'mixes' | 'activity' | 'timers' | 'projects';
 
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;

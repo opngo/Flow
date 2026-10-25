@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format, startOfWeek } from 'date-fns';
 import { useFlow } from '../store';
@@ -49,6 +49,14 @@ export default function Timers() {
   const [rest, setRest] = useState(30);
   const [attach, setAttach] = useState('');
   const [exam, setExam] = useState({ open: false, minutes: 90, sections: 3, subjectId: '' });
+
+  /* `?new=1` opens the same New timer dialog the plus does. */
+  useEffect(() => {
+    if (!params.get('new')) return;
+    setNewOpen(true);
+    params.delete('new');
+    setParams(params, { replace: true });
+  }, [params, setParams]);
 
   const bucket = useMemo(() => bucketSessions(db.focusSessions), [db.focusSessions]);
   const todayMin = bucket[format(new Date(), 'yyyy-MM-dd')]?.minutes ?? 0;

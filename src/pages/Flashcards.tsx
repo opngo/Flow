@@ -39,6 +39,16 @@ export default function Flashcards() {
   const [deckName, setDeckName] = useState('');
   const [importOpen, setImportOpen] = useState(view === 'import');
 
+  /* `?new=1` drops you into the card writer with the first deck picked, which
+     is the same dialog the deck's plus opens. */
+  useEffect(() => {
+    if (!params.get('new')) return;
+    setActiveDeck((d) => d ?? db.decks[0]?.id ?? null);
+    setCardOpen(true);
+    params.delete('new');
+    setParams(params, { replace: true });
+  }, [params, setParams, db.decks]);
+
   // Deep links (?view=import) and back/forward keep the importer in sync.
   useEffect(() => { setImportOpen(params.get('view') === 'import'); }, [params]);
   const [importText, setImportText] = useState('');

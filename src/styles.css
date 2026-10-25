@@ -734,6 +734,9 @@ html[data-reduce-motion='true'] .rail-glow { animation: none; }
   place-items: center;
   container-type: size;
   transition: transform 700ms cubic-bezier(0.32, 0.72, 0, 1);
+  /* This layer is the whole screen; without this it sat on top of every
+     control on the page and swallowed the clicks. */
+  pointer-events: none;
 }
 .clock-wrap.is-running { transform: scale(1.012); }
 
@@ -745,6 +748,9 @@ html[data-reduce-motion='true'] .rail-glow { animation: none; }
   overflow: hidden;
   mask-image: linear-gradient(to right, transparent 0, #000 7%, #000 93%, transparent 100%);
   -webkit-mask-image: linear-gradient(to right, transparent 0, #000 7%, #000 93%, transparent 100%);
+  /* The arc is a full-viewport layer: it must never stand between the pointer
+     and the controls it is drawn behind. */
+  pointer-events: none;
 }
 .clock-arc-track,
 .clock-arc-fill {
@@ -757,15 +763,60 @@ html[data-reduce-motion='true'] .rail-glow { animation: none; }
   transition: fill 320ms linear, filter 320ms linear;
 }
 
-/* The playhead is a marker, not a light: a small bead in the text colour, so
-   it is white on a dark surface and black on a light one, with no halo and no
-   tint of its own. */
-.clock-dot {
-  fill: var(--text);
-  transition: fill 320ms linear;
+/* The command bar is a text surface: its list keeps its words even when the
+   rest of the interface has gone quiet, because finding a row *is* reading. */
+html[data-labels='none'] .command-list .command-group { display: block !important; }
+html[data-labels='none'] .command-list .command-hint { display: inline !important; }
+
+/* The countdown is written straight into the clock: two fields, no chrome. */
+.clock-time {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.02em;
+  cursor: text;
 }
+.clock-time-field {
+  min-width: 1ch;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  caret-color: var(--accent);
+  border-radius: 10px;
+  transition: color 160ms ease, text-shadow 160ms ease, background 160ms ease;
+}
+/* Focus is a tint on the digits and a glow behind them — no box, no ring, and
+   nothing that changes the size of the number you are reading. */
+.clock-time-field:hover {
+  color: var(--text);
+}
+.clock-time-field:focus {
+  color: color-mix(in srgb, var(--text) 88%, var(--accent));
+  text-shadow:
+    0 0 2px color-mix(in srgb, var(--accent) 34%, transparent),
+    0 0 46px color-mix(in srgb, var(--accent) 26%, transparent);
+  outline: none;
+}
+/* Selecting the clock should read as "this number is picked", not as a block
+   of colour sitting behind a 300px digit. */
+.clock-time-field::selection {
+  background: transparent;
+  color: color-mix(in srgb, var(--accent) 78%, var(--text));
+}
+.clock-time-colon {
+  opacity: 0.55;
+  transition: opacity 160ms ease;
+}
+.clock-time:focus-within .clock-time-colon { opacity: 1; }
 
 .clock-face {
+  pointer-events: auto;
   /* The time sits above the band rather than inside a ring. */
   position: absolute;
   left: 50%;

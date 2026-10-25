@@ -7,7 +7,7 @@ import { Icon, TextArea } from './ui';
 import { parseQuickAdd } from '../lib/nlp';
 import { describeRecurrence } from '../lib/recur';
 import { fmtDateTime, minsToHM, uuid } from '../lib/utils';
-import { activeToken, applySuggestion, parseCommands, suggestionsFor, type ParsedCommand } from '../lib/commands';
+import { activeToken, applySuggestion, cleanLine, parseCommands, suggestionsFor, type ParsedCommand } from '../lib/commands';
 import { cn } from '../lib/utils';
 
 const PRIORITY: Record<string, number> = { low: 1, medium: 2, med: 2, high: 3, urgent: 3, top: 3 };
@@ -105,7 +105,7 @@ export function QuickCapture() {
     const nat = source === raw ? natural : parseQuickAdd(p.text, { categories: db.categories, subjects: db.subjects });
     const d = derive(p, nat);
     const fields = d.fields;
-    const summary = d.title || raw;
+    const summary = d.title || cleanLine(raw);
     const at = d.dueAt ?? new Date().toISOString();
 
     if (d.target === 'habit') {
@@ -162,7 +162,11 @@ export function QuickCapture() {
       addNote({ title: raw.slice(0, 60), body: raw, folder: 'Inbox' });
       toast({ title: 'Captured to notes', tone: 'success' });
     } else {
-      const todo = quickAdd(p.text || raw, { status: mode === 'inbox' ? 'inbox' : 'todo' });
+      /* Only the de-tokened text goes in. Falling back to `raw` here is what
+         put `{type:task}{when:tomorrow }` into a title when the line was
+         nothing but commands: the tasks then read their own syntax back to
+         the user in the list and in every reminder. */
+      const todo = quickAdd(d.title || p.text || cleanLine(raw), { status: mode === 'inbox' ? 'inbox' : 'todo' });
       // Token values win over whatever the loose parse guessed.
       useFlow.getState().updateTodo(todo.id, {
         title: d.title || todo.title,
@@ -173,8 +177,11 @@ export function QuickCapture() {
         subjectId: d.subject?.id ?? todo.subjectId,
         categoryId: d.category?.id ?? todo.categoryId,
         projectId: db.projects.find((proj) => fields.project && proj.name.toLowerCase() === fields.project.toLowerCase())?.id ?? todo.projectId,
+        /* `{repeat:daily}` on a task used to be parsed and then dropped, so the
+           line said "daily" and the task was one-off. */
+        rrule: fields.repeat ? rruleFromWord(fields.repeat) : todo.rrule,
       });
-      toast({ title: mode === 'inbox' ? 'Captured to inbox' : 'Task created', body: d.title, tone: 'success' });
+      toast({ title: mode === 'inbox' ? 'Captured to inbox' : 'Task created', body: d.title || todo.title, tone: 'success' });
     }
     setText('');
     setQuickAdd(false);

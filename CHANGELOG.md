@@ -138,6 +138,54 @@ config names.
 | every collection deleted | boots, 0 page errors |
 | unparseable JSON | seeds, 0 page errors |
 
+## [1.8.1] - 2026-10-25
+
+Four corrections from using the app: one piece of the timer that should not have been there, one
+that had to become part of the clock, a command bar that asked too much of the writer, and a bug
+that let a line of command syntax become a task title.
+
+### Removed
+
+- **The bead on the timer band is gone.** The progress arc already says how far the block has run;
+  the dot riding its tip was a second, louder marker for the same fact and it fought the band's own
+  shape. `archPoint` is still used for the arc geometry, but nothing is drawn on the arc's tip.
+
+### Changed
+
+- **The countdown is typed into the clock.** The minutes chips and the slider under the arc are
+  gone: in timer mode the digits themselves are two fields, minutes and seconds, and you write the
+  time you want straight into them. Selection turns the digits accent rather than painting a block
+  behind a 300 px number, two typed digits hand the caret to the seconds, the arrows step the value,
+  and the readouts underneath follow the typed time live (`45:03 left`, `45:03 planned`). The
+  `Slider` import left the file with the picker.
+- **The command bar is one plain text field.** No prefix syntax, no `+ capture` legend: what you
+  type narrows the list, and the list grows *upward* out of the field — the panel is anchored low on
+  the glass so typing pushes it up, never down. The first rows are always **Create**: New task, New
+  habit, New note, New event, New mark, New goal, New timer, New flashcard, each of which opens
+  *that* thing's real creation dialog instead of dropping a `{type:…}` line into a text box. Focus
+  actions, running timers, app switches, pages, tools, tasks, notes and subjects follow.
+
+### Fixed
+
+- **A line of command syntax could become a task title.** `{type:task}{when:tomorrow }{repeat:daily}`
+  with no words around it was saved verbatim, so the list showed braces and every reminder repeated
+  them ("Missed: Due soon: {type:task}…"). Braces are syntax, never content now: unknown keys are
+  dropped instead of passed through, a half-typed `{repeat:dai` is cleaned off the line, the capture
+  box no longer falls back to the raw line, and `addTodo`/`addNote` strip brace-shaped text at the
+  write. Reminder titles are cleaned as they are built, so a reminder cannot quote syntax back.
+- **Migration 7 repairs the titles already stored.** Existing todos and notes have their braces
+  stripped once on load (`schema 7`); a title that was nothing but commands becomes `New task` /
+  `Untitled note` rather than an empty row.
+- **`{repeat:daily}` on a captured task now sticks.** The token was parsed and then dropped, so the
+  line said daily and the task was one-off; the todo path now writes `rrule`.
+- **The clock layer swallowed every click.** `.clock-wrap` is a `position: fixed; inset: 0` layer,
+  so the mode switch, Exit and the transport buttons underneath it could not be clicked at all — the
+  numbers worked only by keyboard. The arc and the clock layer are `pointer-events: none`, with the
+  clock face itself clickable so the typed time works.
+- **`⌘⇧Space` never opened the capture box.** The handler compared `e.key` to the word `space`; the
+  space bar's `key` is the space character, so the shortcut fell through. It now checks `e.code`, and
+  Escape closes the full-screen clock from inside the time fields.
+
 ## [1.8.0] - 2026-10-25
 
 A pass over every tab: what each one knew but did not show, and the space it was not using. No page

@@ -166,6 +166,21 @@ export const commandKey = (name: string) => byKey.get(name.trim().toLowerCase())
 /** `{key:value}` anywhere in a line. Values may contain spaces. */
 const TOKEN = /\{([a-z-]+)\s*:\s*([^}]*)\}/gi;
 
+/** Anything bracketed, known key or not, closed or still being typed. */
+const ANY_BRACE = /\{[^{}]*\}?/g;
+
+/**
+ * Strip everything brace-shaped from a line.
+ *
+ * A command that never finished — `{type:task}{when:tomorrow }` on a line with
+ * no title in it — used to be saved as the title itself, so reminders read
+ * "Due soon: {type:task}{when:tomorrow }". Braces are a command syntax, never
+ * content: they leave the text whatever they say.
+ */
+export function cleanLine(input: string) {
+  return input.replace(ANY_BRACE, ' ').replace(/\s{2,}/g, ' ').trim();
+}
+
 export type CommandTarget = 'task' | 'habit' | 'note' | 'event' | 'mark' | 'focus' | 'timer';
 
 export type ParsedCommand = {
@@ -243,7 +258,9 @@ export function parseCommands(input: string, ctx: CommandContext, from = new Dat
   text = text.replace(TOKEN, (whole, rawKey: string, rawValue: string) => {
     const def = commandKey(rawKey);
     const value = rawValue.trim();
-    if (!def) return whole;
+    /* An unknown key is a typo, not content: drop it like any other token so
+       `{wen:tomorrow}` cannot end up in a title. */
+    if (!def) return ' ';
     /* An empty value is a placeholder someone has not filled in yet: it leaves
        the line (so it never ends up in a title) and simply sets nothing. */
     if (!value) return ' ';
@@ -251,7 +268,7 @@ export function parseCommands(input: string, ctx: CommandContext, from = new Dat
     tokens.push({ key: def.key, value, label: def.label, lands: def.lands, icon: def.icon });
     return ' ';
   });
-  text = text.replace(/\s{2,}/g, ' ').trim();
+  text = cleanLine(text);
 
   const target = (fields.type as CommandTarget | undefined) ?? 'task';
   const name = fields.name?.trim() || (target === 'note' ? undefined : text) || undefined;
