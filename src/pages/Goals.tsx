@@ -58,6 +58,24 @@ export default function Goals() {
     return { value: g.manualProgress, detail: 'no link' };
   };
 
+  /* Pace: progress against time. A goal can be 60% done and still late, and the
+     card said nothing about that. */
+  const pace = (g: Goal) => {
+    if (!g.deadline) return null;
+    const total = Math.max(1, differenceInDays(new Date(g.deadline), new Date(g.createdAt)));
+    const elapsed = Math.min(total, Math.max(0, differenceInDays(new Date(), new Date(g.createdAt))));
+    const timeUsed = (elapsed / total) * 100;
+    const progress = autoProgress(g).value;
+    const delta = progress - timeUsed;
+    return {
+      timeUsed,
+      progress,
+      delta,
+      tone: delta >= 0 ? ('success' as const) : delta > -15 ? ('warning' as const) : ('danger' as const),
+      text: delta >= 0 ? 'ahead of pace' : delta > -15 ? 'slightly behind' : 'behind pace',
+    };
+  };
+
   const deadlineTone = (g: Goal) => {
     if (!g.deadline) return 'default' as const;
     const days = differenceInDays(new Date(g.deadline), new Date());
@@ -91,7 +109,8 @@ export default function Goals() {
       </div>
 
       {view === 'board' && (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 xl:grid-cols-[1fr_320px]">
+        <div className="grid content-start gap-3 md:grid-cols-2">
           {db.goals.map((g) => {
             const prog = autoProgress(g);
             const days = g.deadline ? differenceInDays(new Date(g.deadline), new Date()) : null;
@@ -114,6 +133,17 @@ export default function Goals() {
                 <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-s2">
                   <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${prog.value}%`, background: g.color }} />
                 </div>
+                {(() => {
+                  const p = pace(g);
+                  if (!p) return null;
+                  return (
+                    <div className="mt-1.5 flex items-center gap-1.5 text-[10.5px]" data-tip={`${Math.round(p.progress)}% done, ${Math.round(p.timeUsed)}% of the time used`}>
+                      <Icon name={p.delta >= 0 ? 'TrendingUp' : 'TrendingDown'} size={11} style={{ color: `var(--${p.tone === 'success' ? 'success' : p.tone === 'warning' ? 'warning' : 'danger'})` }} />
+                      <span style={{ color: `var(--${p.tone === 'success' ? 'success' : p.tone === 'warning' ? 'warning' : 'danger'})` }} data-label="meta">{p.text}</span>
+                      <span className="num ml-auto text-faint" data-label="meta">{Math.round(p.timeUsed)}% of time</span>
+                    </div>
+                  );
+                })()}
                 {g.milestones.length > 0 && (
                   <div className="mt-2.5 space-y-1">
                     {g.milestones.slice(0, 3).map((m) => (
@@ -146,6 +176,92 @@ export default function Goals() {
             );
           })}
           {!db.goals.length && <EmptyState icon="Target" title="No goals yet" body="A goal can be a grade target, a study-hour count, a habit streak or a checklist of milestones." action={<Btn variant="primary" onClick={() => setOpen(true)}>Create your first goal</Btn>} />}
+        </div>
+
+        {/* The rail the board left empty: what lands next, and how the goals are
+            spread across types. */}
+        <div className="space-y-3">
+          <Panel className="p-3.5">
+            <SectionHead title="Deadlines" subtitle="Sooner first, with pace" />
+            <div className="space-y-1.5">
+              {[...db.goals]
+                .filter((g) => g.status !== 'achieved' && g.status !== 'abandoned' && g.deadline)
+                .sort((a, b) => +new Date(a.deadline!) - +new Date(b.deadline!))
+                .slice(0, 5)
+                .map((g) => {
+                  const days = differenceInDays(new Date(g.deadline!), new Date());
+                  const p = pace(g);
+                  return (
+                    <button key={g.id} onClick={() => { setEditing(g); setOpen(true); }} className="focusable w-full rounded-[9px] px-2 py-1.5 text-left hover:bg-s1">
+                      <div className="flex items-center gap-1.5">
+                        <Icon name={g.icon} size={11} style={{ color: g.color }} />
+                        <span className="min-w-0 flex-1 truncate text-[11.5px]">{g.title}</span>
+                        <span className={cn('num shrink-0 text-[10.5px]', days < 0 ? 'text-danger' : days < 7 ? 'text-warning' : 'text-faint')}>
+                          {days < 0 ? `${Math.abs(days)}d late` : `${days}d`}
+                        </span>
+                      </div>
+                      {p && (
+                        <div className="mt-1 h-1 overflow-hidden rounded-full" style={{ background: 'var(--surface-2)' }}>
+                          <span className="block h-full rounded-full" style={{ width: `${Math.min(100, p.progress)}%`, background: g.color }} />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              {!db.goals.some((g) => g.deadline && g.status !== 'achieved') && (
+                <div className="px-2 py-2 text-[11.5px] text-faint" data-label="meta">No dated goals in flight</div>
+              )}
+            </div>
+          </Panel>
+
+          <Panel className="p-3.5">
+            <SectionHead title="How these goals are measured" subtitle="Type, count and progress" />
+            <div className="space-y-1.5">
+              {(['milestones', 'numeric', 'habit', 'outcome'] as const).map((type) => {
+                const goals = db.goals.filter((g) => g.type === type);
+                if (!goals.length) return null;
+                const avg = goals.reduce((a, g) => a + autoProgress(g).value, 0) / goals.length;
+                const label = type === 'milestones' ? 'Checklist' : type === 'numeric' ? 'Numeric' : type === 'habit' ? 'Habit streak' : 'Outcome';
+                const icon = type === 'milestones' ? 'ListChecks' : type === 'numeric' ? 'Hash' : type === 'habit' ? 'Flame' : 'Flag';
+                return (
+                  <div key={type} className="flex items-center gap-2 text-[11.5px]">
+                    <Icon name={icon} size={11} className="text-faint" />
+                    <span className="min-w-0 flex-1 truncate text-muted" data-label="meta">{label}</span>
+                    <span className="num shrink-0 text-faint">{goals.length}</span>
+                    <div className="h-1 w-16 shrink-0 overflow-hidden rounded-full" style={{ background: 'var(--surface-2)' }}>
+                      <span className="block h-full rounded-full" style={{ width: `${avg}%`, background: 'var(--accent)' }} />
+                    </div>
+                    <span className="num w-8 shrink-0 text-right text-faint">{Math.round(avg)}%</span>
+                  </div>
+                );
+              })}
+            </div>
+          </Panel>
+
+          <Panel className="p-3.5">
+            <SectionHead title="Milestones ahead" subtitle="Next few, across every goal" />
+            <div className="space-y-1">
+              {db.goals
+                .flatMap((g) => g.milestones.filter((m) => !m.done).map((m) => ({ g, m })))
+                .sort((a, b) => +new Date(a.m.date ?? 8.64e15) - +new Date(b.m.date ?? 8.64e15))
+                .slice(0, 5)
+                .map(({ g, m }) => (
+                  <button
+                    key={m.id}
+                    onClick={() => updateGoal(g.id, { milestones: g.milestones.map((x) => (x.id === m.id ? { ...x, done: true } : x)) })}
+                    className="focusable flex w-full items-center gap-2 rounded-[9px] px-2 py-1.5 text-left hover:bg-s1"
+                  >
+                    <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[4px]" style={{ background: 'var(--surface-3)' }} />
+                    <span className="min-w-0 flex-1 truncate text-[11.5px]">{m.title}</span>
+                    <span className="shrink-0 text-[10px] text-faint" data-label="meta">{m.date ? format(new Date(m.date), 'MMM d') : '—'}</span>
+                  </button>
+                ))}
+              {!db.goals.some((g) => g.milestones.some((m) => !m.done)) && (
+                <div className="px-2 py-2 text-[11.5px] text-faint" data-label="meta">Every milestone is done</div>
+              )}
+            </div>
+          </Panel>
+        </div>
         </div>
       )}
 

@@ -59,6 +59,25 @@ export default function Focus() {
     .filter(([d]) => (Date.now() - new Date(`${d}T12:00:00`).getTime()) < 7 * 86400000)
     .reduce((a, [, v]) => a + v.minutes, 0);
 
+  /* The clock column used to end in empty glass under the buttons. These give
+     it something true to say: when this block lands, the week around today, and
+     the last blocks actually logged. */
+  const endAt = running && f?.endsAt ? new Date(f.endsAt) : new Date(Date.now() + remainingMs);
+  const week = useMemo(() => {
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      const key = format(d, 'yyyy-MM-dd');
+      return { key, minutes: bucket[key]?.minutes ?? 0, isToday: i === 6, day: format(d, 'EEEEE') };
+    });
+    const max = Math.max(1, ...days.map((d) => d.minutes));
+    return { days, max };
+  }, [bucket]);
+  const recent = useMemo(
+    () => [...db.focusSessions].filter((s) => s.kind === 'focus').sort((a, b) => +new Date(b.startedAt) - +new Date(a.startedAt)).slice(0, 5),
+    [db.focusSessions],
+  );
+
   const task = db.todos.find((t) => t.id === f?.todoId);
   const subject = db.subjects.find((s) => s.id === f?.subjectId);
   const queue = db.todos.filter((t) => t.status !== 'done' && t.status !== 'archived').slice(0, 6);
@@ -93,8 +112,10 @@ export default function Focus() {
       </div>
 
       <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr]">
-        <Panel className="relative overflow-hidden p-5">
-          <div className="flex flex-col items-center gap-4">
+        <Panel className="relative flex h-full flex-col overflow-hidden p-5 pb-[104px]">
+          {/* The clock, the controls and the foot share the height evenly, so a
+              tall neighbouring column no longer opens a hole under the buttons. */}
+          <div className="flex flex-1 flex-col items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               {(['focus', 'short-break', 'long-break'] as const).map((p) => (
                 <button key={p} onClick={() => skipPhase()} data-tip={`Switch to a ${p.replace('-', ' ')}`}
@@ -111,8 +132,10 @@ export default function Focus() {
               </span>
             </div>
 
-            <div className="relative flex h-[248px] w-[248px] items-center justify-center">
-              <svg width={248} height={248} className="absolute -rotate-90">
+            {/* The ring grows with the column instead of sitting at a fixed
+                248 px in the middle of a much taller panel. */}
+            <div className="relative flex aspect-square w-[min(100%,clamp(280px,42vh,460px))] items-center justify-center">
+              <svg viewBox="0 0 248 248" className="absolute h-full w-full -rotate-90">
                 <circle cx={124} cy={124} r={112} fill="none" stroke="var(--surface-2)" strokeWidth={10} />
                 <motion.circle
                   cx={124} cy={124} r={112} fill="none" stroke={phaseColor} strokeWidth={10} strokeLinecap="round"
@@ -122,7 +145,7 @@ export default function Focus() {
                 />
               </svg>
               {/* liquid fill */}
-              <div className="absolute inset-[26px] overflow-hidden rounded-full">
+              <div className="absolute inset-[10.5%] overflow-hidden rounded-full">
                 <motion.div
                   className="absolute inset-x-0 bottom-0"
                   animate={{ height: `${pct}%` }}
@@ -130,7 +153,7 @@ export default function Focus() {
                   style={{ background: `linear-gradient(180deg, color-mix(in srgb, ${phaseColor} 35%, transparent), color-mix(in srgb, ${phaseColor} 12%, transparent))` }}
                 />
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <div className="num text-[42px] font-semibold leading-none tracking-tight">{minsToClock(remainingMs / 60000)}</div>
+                  <div className="num text-[clamp(34px,4.4vw,52px)] font-semibold leading-none tracking-tight">{minsToClock(remainingMs / 60000)}</div>
                   <div className="mt-1 text-[10.5px] uppercase tracking-[0.14em] text-muted">{running ? 'running' : 'paused'}</div>
                   <div className="mt-1 text-[10px] text-faint">{(f?.sessionsDone ?? 0) + (running ? 1 : 0)} of {profile?.sessionsBeforeLong ?? 4} to a long break</div>
                 </div>
@@ -156,6 +179,53 @@ export default function Focus() {
               {task && <Chip icon="CheckSquare" onClick={() => navigate('/todos')}>{task.title}</Chip>}
               {subject && <Chip icon={subject.icon} color={subject.color}>{subject.name}</Chip>}
               {profile?.strict && <Badge tone="warning">strict mode</Badge>}
+            </div>
+          </div>
+
+          {/* The foot of the clock: the cycle as four steps, when this block
+              lands, and the week it belongs to. */}
+          <div className="absolute inset-x-5 bottom-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                {Array.from({ length: profile?.sessionsBeforeLong ?? 4 }, (_, i) => {
+                  const done = i < (f?.sessionsDone ?? 0) % (profile?.sessionsBeforeLong ?? 4);
+                  const current = i === (f?.sessionsDone ?? 0) % (profile?.sessionsBeforeLong ?? 4) && phase === 'focus';
+                  return (
+                    <span
+                      key={i}
+                      data-label="meta"
+                      className="flex h-5 items-center gap-1 rounded-[6px] px-1.5 text-[10px]"
+                      style={{
+                        background: done ? 'color-mix(in srgb, var(--accent) 22%, transparent)' : current ? 'var(--accent-soft)' : 'var(--surface-1)',
+                        color: done ? 'var(--accent)' : current ? 'var(--accent)' : 'var(--text-faint)',
+                      }}
+                    >
+                      <Icon name={done ? 'Check' : current ? 'Play' : 'Circle'} size={9} />
+                      <span className="num">{i + 1}</span>
+                    </span>
+                  );
+                })}
+                <span className="ml-1 text-[10.5px] text-faint" data-label="meta">
+                  {phase === 'focus' ? 'focus' : phase === 'short-break' ? 'short break' : 'long break'} ends {format(endAt, 'h:mm a')}
+                </span>
+              </div>
+              <div className="mt-2 flex items-end gap-1">
+                {week.days.map((d) => (
+                  <div key={d.key} className="flex w-8 flex-col items-center gap-1" data-tip={`${d.day} · ${minsToHM(d.minutes)}`}>
+                    <span
+                      className="w-full rounded-[3px]"
+                      style={{
+                        height: `${Math.max(3, (d.minutes / week.max) * 22)}px`,
+                        background: d.minutes
+                          ? d.isToday ? 'var(--accent)' : 'color-mix(in srgb, var(--accent) 42%, transparent)'
+                          : 'color-mix(in srgb, var(--text-faint) 16%, transparent)',
+                      }}
+                    />
+                    <span data-label="meta" className={cn('text-[9px]', d.isToday ? 'text-accent' : 'text-faint')}>{d.day}</span>
+                  </div>
+                ))}
+                <span className="ml-auto self-center text-[10.5px] text-faint" data-label="meta">{minsToHM(weekMinutes)} this week</span>
+              </div>
             </div>
           </div>
         </Panel>
@@ -250,10 +320,32 @@ export default function Focus() {
               );
             })}
             {!todaySessions.length && (
-              <div className="flex flex-col items-center gap-1.5 py-6 text-center text-[12px] text-faint" data-tip="No sessions logged yet today">
-                <Icon name="History" size={16} />
-                <span data-label="meta">No sessions logged yet today.</span>
-              </div>
+              <>
+                <div className="flex items-center justify-between gap-2 rounded-[10px] bg-s1 px-2.5 py-2">
+                  <span className="flex items-center gap-1.5 text-[11.5px] text-muted" data-label="meta">
+                    <Icon name="History" size={12} /> Nothing logged today
+                  </span>
+                  <Btn size="sm" variant="primary" icon="Play" onClick={() => startFocus({ todoId: attachTask || undefined, subjectId: subject?.id })}>
+                    Start a block
+                  </Btn>
+                </div>
+                {recent.length > 0 && (
+                  <>
+                    <div className="mt-2 px-0.5 text-[10px] uppercase tracking-[0.08em] text-faint" data-label="meta">Most recent</div>
+                    {recent.map((s) => {
+                      const sub = db.subjects.find((x) => x.id === s.subjectId);
+                      return (
+                        <div key={s.id} className="flex items-center gap-2 rounded-[10px] px-2 py-1.5 text-[12px] hover:bg-s1">
+                          <Icon name="Timer" size={12} className="text-faint" />
+                          <span className="text-[11px] text-faint">{format(new Date(s.startedAt), 'EEE h:mm a')}</span>
+                          <span className="flex-1 truncate">{sub?.name ?? s.label ?? 'Focus'}</span>
+                          <span className="num text-[11px]" style={{ color: sub?.color }}>{s.actualMin}m</span>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+              </>
             )}
           </div>
         </Panel>

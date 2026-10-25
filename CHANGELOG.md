@@ -138,6 +138,70 @@ config names.
 | every collection deleted | boots, 0 page errors |
 | unparseable JSON | seeds, 0 page errors |
 
+## [1.8.0] - 2026-10-25
+
+A pass over every tab: what each one knew but did not show, and the space it was not using. No page
+gained a new heading or a new set of stats cards — the work is inside the pages, where the content
+that already existed was either hidden behind a click or simply absent.
+
+### Added
+
+- **Focus — the clock column now carries the session.** The cycle draws as four steps with the
+  current one marked, the block states when it ends ("focus ends 5:27 AM"), and a seven-day bar
+  strip with the week total sits under it. The ring scales with the column instead of sitting at a
+  fixed 248 px in the middle of a much taller panel, and the digits scale with it
+  (`clamp(34px, 4.4vw, 52px)`). When nothing is logged today, the sessions panel offers a
+  **Start a block** button and falls back to the most recent blocks instead of a lone empty state.
+- **Flashcards — a review column and a card browser.** Next seven days as a forecast bar chart with
+  the study streak, a maturity split (new / learning / mature), and a "needs work" list of cards
+  that have lapsed three or more times. Under the decks, **All cards** lists every card across
+  every deck with a search over front, back and deck name — the only way to find a card before was
+  to open decks one at a time. The header gained one primary **Study N due** action.
+- **Calendar — a week strip and an agenda.** Seven day cards above the month (load dots, habit
+  count, focus sessions) with today marked and the selected day tinted, and the day rail now opens
+  on today instead of being hidden until a cell is clicked. When no day is selected the rail shows
+  a **Coming up** agenda of the next events, deadlines and assessments.
+- **Timers — an empty tab is now an invitation.** "Nothing running" lists the timers that have
+  actually run (label, minutes, how many times), each one click from starting again, beside a
+  custom-timer button. A side column carries the week as bars, **Run it again**, and the most
+  recently logged blocks. Presets became a six-column grid with the minutes right-aligned.
+- **Analytics — two panels under the calendar.** Month by month for the year with the current month
+  highlighted, and **Where the time goes**: a stacked subject split with percentages, plus the
+  longest blocks. Both follow the same subject/category/project/source filters as the heatmap.
+- **Goals — pace, not just progress.** Every dated card states whether it is ahead of or behind
+  pace and what share of the time has been used, which the ring alone could not say. A rail beside
+  the board lists deadlines soonest first with mini progress bars, how the goals are measured
+  (checklist / numeric / habit streak / outcome, with counts and average progress), and the next
+  milestones across every goal, each one click from done.
+- **Habits — what is still open, one tap each.** A strip above the week lists every habit scheduled
+  for today and not yet checked in, with **All done**, and each row gained a 30-day consistency
+  sparkline so the shape of a habit is visible next to its name.
+- **Notifications — an inbox, not a log.** The feed is grouped by day (Today / Yesterday / weekday)
+  with a per-day unread count, and the left column now carries the **Recent activity** log that was
+  previously only on the dashboard.
+- **Notes — the rail does more.** Links now distinguish outgoing from backlinks, mark a link that
+  points at a note that does not exist yet as one click from creating it, and the rail adds an
+  **Outline** of the note's headings (jumps to the heading in preview) and **In this notebook** with
+  a new-note action.
+
+### Changed
+
+- **No blank frame between tabs.** A route-level `<Suspense>` replaced the whole page with the grey
+  skeleton on the first visit to any tab, which is the one moment the app looked unfinished. A
+  `HeldSuspense` now keeps the previous page on screen while the next chunk loads and fades the new
+  one in over it; the skeleton remains for a genuinely cold start. Page transitions went from a
+  120 ms fade to a 180 ms lift (6 px in, 3 px out).
+- **Habits week rows** are 720 px minimum with the habit name column at `minmax(180px, 1fr)`, so
+  the consistency sparkline has room without pushing the day cells off a laptop screen.
+
+### Verification
+
+`tsc --noEmit` clean · `vitest` **112/112** (12 files) · `vite build` clean · 18-route sweep
+`{"bad":[],"errorCount":0}` · no-text mode across all 18 routes: **1548 icons visible, zero
+regressions** in icons or controls, zero grey-pill fallbacks · tab-to-tab navigation sampled 12
+times per route: the page never drops below 558 characters, so no route ever flashes empty.
+Evidence: `evidence/t-*.png`.
+
 ## [Unreleased]
 
 ### Planned

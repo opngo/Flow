@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar, Titlebar } from './components/Shell';
@@ -69,10 +69,10 @@ export function prefetchRoute(path: string) {
 function PageFrame({ children }: { children: React.ReactNode }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 4 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.12, ease: [0.22, 0.61, 0.36, 1] }}
+      exit={{ opacity: 0, y: -3 }}
+      transition={{ duration: 0.18, ease: [0.22, 0.61, 0.36, 1] }}
       className="h-full"
     >
       {children}
@@ -94,12 +94,40 @@ function PageSkeleton() {
   );
 }
 
+/**
+ * Keeps the last page on screen while the next chunk loads.
+ *
+ * A plain <Suspense fallback={<PageSkeleton/>}> at the route level replaces the
+ * whole page with grey blocks on every first visit to a tab, which is the one
+ * moment the app looks unfinished. Holding the previous page and letting the
+ * new one fade in over it removes that flash entirely; the skeleton is still
+ * there for a genuinely cold start.
+ */
+function HeldSuspense({ path, children }: { path: string; children: React.ReactNode }) {
+  const [shown, setShown] = useState<React.ReactNode>(children);
+  const [loadedPath, setLoadedPath] = useState(path);
+  const [first, setFirst] = useState(true);
+
+  useEffect(() => {
+    if (path === loadedPath) return;
+    setFirst(false);
+    setShown(children);
+    setLoadedPath(path);
+  }, [path, loadedPath, children]);
+
+  return (
+    <Suspense fallback={first ? <PageSkeleton /> : <div className="h-full opacity-0" aria-hidden>{shown}</div>}>
+      {children}
+    </Suspense>
+  );
+}
+
 function AnimatedRoutes() {
   const location = useLocation();
   return (
     <AnimatePresence initial={false}>
       <ErrorBoundary scope={location.pathname}>
-      <Suspense fallback={<PageSkeleton />}>
+      <HeldSuspense path={location.pathname}>
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<PageFrame><Dashboard /></PageFrame>} />
         <Route path="/todos" element={<PageFrame><Todos /></PageFrame>} />
@@ -121,7 +149,7 @@ function AnimatedRoutes() {
         <Route path="/settings" element={<PageFrame><Settings /></PageFrame>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      </Suspense>
+      </HeldSuspense>
       </ErrorBoundary>
     </AnimatePresence>
   );
