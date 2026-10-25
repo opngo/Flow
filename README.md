@@ -7,7 +7,7 @@
 **All-in-one, local-first productivity for the desktop.**
 Todos · habits · goals · focus timers · grades · notes · flashcards · sound studio · 124 tools
 
-[![CI](https://github.com/opngo/flow/actions/workflows/ci.yml/badge.svg)](https://github.com/opngo/flow/actions/workflows/ci.yml)
+
 [![Release](https://github.com/opngo/flow/actions/workflows/release.yml/badge.svg)](https://github.com/opngo/flow/actions/workflows/release.yml)
 [![Pages](https://github.com/opngo/flow/actions/workflows/pages.yml/badge.svg)](https://github.com/opngo/flow/actions/workflows/pages.yml)
 [![CodeQL](https://github.com/opngo/flow/actions/workflows/codeql.yml/badge.svg)](https://github.com/opngo/flow/actions/workflows/codeql.yml)
