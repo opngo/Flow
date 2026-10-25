@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dialog, DialogPanel, DialogTitle, Menu, MenuButton, MenuItems, MenuItem,
   Listbox, ListboxButton, ListboxOptions, ListboxOption, Switch, TabGroup, TabList, Tab, TabPanels, TabPanel,
@@ -8,7 +8,7 @@ import {
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, ChevronDown, ChevronRight, Search, X } from 'lucide-react';
 import { ICONS, ICON_NAMES, type IconName } from '../lib/icons';
-import { cn } from '../lib/utils';
+import { cn, hexToRgb } from '../lib/utils';
 
 /* Icon ---------------------------------------------------------------- */
 export function Icon({ name, size = 16, className, strokeWidth = 1.9, style }: {
@@ -619,26 +619,156 @@ export function IconPicker({ value, onChange, color }: { value: string; onChange
 
 export const SWATCHES = ['#7c8cff', '#57c9a0', '#f0a75a', '#ef6f6c', '#b18cff', '#4db6e5', '#e577b5', '#c9d24b', '#f5f5f5', '#9aa2b4'];
 
-export function ColorPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+/* Colour --------------------------------------------------------------- */
+
+const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
+
+function rgbToHex(r: number, g: number, b: number) {
+  const to = (n: number) => Math.round(clamp01(n / 255) * 255).toString(16).padStart(2, '0');
+  return `#${to(r)}${to(g)}${to(b)}`;
+}
+
+/** #rgb / #rrggbb → { h, s, v } with h in 0..360, s,v in 0..1. */
+function hexToHsv(hex: string) {
+  const { r, g, b } = hexToRgb(hex);
+  const rn = r / 255, gn = g / 255, bn = b / 255;
+  const max = Math.max(rn, gn, bn);
+  const min = Math.min(rn, gn, bn);
+  const d = max - min;
+  let h = 0;
+  if (d) {
+    if (max === rn) h = ((gn - bn) / d) % 6;
+    else if (max === gn) h = (bn - rn) / d + 2;
+    else h = (rn - gn) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return { h, s: max === 0 ? 0 : d / max, v: max };
+}
+
+function hsvToHex(h: number, s: number, v: number) {
+  const c = v * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = v - c;
+  const [r, g, b] =
+    h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x]
+      : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return rgbToHex((r + m) * 255, (g + m) * 255, (b + m) * 255);
+}
+
+const isHex = (v: string) => /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v.trim());
+
+/**
+ * Colour control.
+ *
+ * Nothing here is a native input: the saturation field, the hue rail and the
+ * swatches are all drawn and driven by hand, which is the house rule for
+ * sliders. Typing a hex is always available, so a colour is never limited to
+ * the preset row.
+ */
+export function ColorPicker({ value, onChange, label = 'Colour' }: {
+  value: string; onChange: (v: string) => void; label?: string;
+}) {
+  const safe = isHex(value) ? (value.startsWith('#') ? value : `#${value}`) : '#7c8cff';
+  const hsv = useMemo(() => hexToHsv(safe), [safe]);
+  const svRef = useRef<HTMLDivElement>(null);
+  const [draggingSv, setDraggingSv] = useState(false);
+  const [draggingHue, setDraggingHue] = useState(false);
+  const [draft, setDraft] = useState(safe);
+
+  useEffect(() => { setDraft(safe); }, [safe]);
+
+  const setSv = (e: React.PointerEvent) => {
+    const el = svRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const s = clamp01((e.clientX - r.left) / r.width);
+    const v = 1 - clamp01((e.clientY - r.top) / r.height);
+    onChange(hsvToHex(hsv.h, s, v));
+  };
+
+  const setHue = (e: React.PointerEvent) => {
+    const el = e.currentTarget as HTMLElement;
+    const r = el.getBoundingClientRect();
+    const h = clamp01((e.clientX - r.left) / r.width) * 360;
+    onChange(hsvToHex(h, hsv.s || 1, hsv.v || 1));
+  };
+
+  const hueColour = hsvToHex(hsv.h, 1, 1);
+
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {SWATCHES.map((c) => (
-        <button
-          key={c}
-          onClick={() => onChange(c)}
-          aria-label={`Colour ${c}`}
-          data-tip={`Colour ${c}`}
-          className="focusable flex h-6 w-6 items-center justify-center rounded-full transition-transform hover:scale-110"
-          style={{ background: c, boxShadow: value.toLowerCase() === c.toLowerCase() ? `0 4px 14px -4px ${c}` : undefined }}
-        >
-          {value.toLowerCase() === c.toLowerCase() && <Check size={11} className="text-white" strokeWidth={3} />}
-        </button>
-      ))}
-      <label className="focusable ml-1 flex h-6 items-center gap-1.5 rounded-full bg-s2 px-2 text-[11px] text-muted">
-        <span className="h-3 w-3 rounded-full" style={{ background: value }} />
-        <input type="color" value={value} onChange={(e) => onChange(e.target.value)} className="w-0 opacity-0" />
-        Custom
-      </label>
+    <div className="space-y-2.5">
+      <div className="flex items-center gap-2">
+        <span className="h-8 w-8 shrink-0 rounded-[9px]" style={{ background: safe, boxShadow: `0 4px 14px -6px ${safe}` }} />
+        <TextInput
+          value={draft}
+          aria-label={`${label} hex`}
+          spellCheck={false}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            if (isHex(e.target.value)) onChange(e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`);
+          }}
+          onBlur={() => setDraft(safe)}
+          className="num h-8 w-28 uppercase"
+        />
+        <div className="flex flex-wrap items-center gap-1">
+          {SWATCHES.map((c) => (
+            <button
+              key={c}
+              onClick={() => onChange(c)}
+              aria-label={`Colour ${c}`}
+              data-tip={`Colour ${c}`}
+              className="focusable flex h-5 w-5 items-center justify-center rounded-full transition-transform hover:scale-110"
+              style={{ background: c, boxShadow: safe.toLowerCase() === c.toLowerCase() ? `0 0 0 2px var(--surface), 0 0 0 3.5px ${c}` : undefined }}
+            >
+              {safe.toLowerCase() === c.toLowerCase() && <Check size={9} className="text-white" strokeWidth={3.5} />}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div
+        ref={svRef}
+        role="slider"
+        tabIndex={0}
+        aria-label={`${label} saturation and brightness`}
+        aria-valuetext={safe}
+        onPointerDown={(e) => { e.preventDefault(); (e.target as HTMLElement).setPointerCapture?.(e.pointerId); setDraggingSv(true); setSv(e); }}
+        onPointerMove={(e) => { if (draggingSv) setSv(e); }}
+        onPointerUp={(e) => { setDraggingSv(false); (e.target as HTMLElement).releasePointerCapture?.(e.pointerId); }}
+        onPointerCancel={() => setDraggingSv(false)}
+        className="flow-sv focusable relative h-24 w-full cursor-crosshair touch-none rounded-[10px]"
+        style={{
+          background: `linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, ${hueColour})`,
+        }}
+      >
+        <span className="pointer-events-none absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white"
+          style={{ left: `${hsv.s * 100}%`, top: `${(1 - hsv.v) * 100}%`, boxShadow: '0 0 0 1px rgba(0,0,0,0.35)' }} />
+      </div>
+
+      <div
+        role="slider"
+        tabIndex={0}
+        aria-label={`${label} hue`}
+        aria-valuemin={0}
+        aria-valuemax={360}
+        aria-valuenow={Math.round(hsv.h)}
+        data-dragging={draggingHue || undefined}
+        onPointerDown={(e) => { e.preventDefault(); (e.target as HTMLElement).setPointerCapture?.(e.pointerId); setDraggingHue(true); setHue(e); }}
+        onPointerMove={(e) => { if (draggingHue) setHue(e); }}
+        onPointerUp={(e) => { setDraggingHue(false); (e.target as HTMLElement).releasePointerCapture?.(e.pointerId); }}
+        onPointerCancel={() => setDraggingHue(false)}
+        onKeyDown={(e) => {
+          const step = e.shiftKey ? 15 : 3;
+          if (e.key === 'ArrowRight') { e.preventDefault(); onChange(hsvToHex((hsv.h + step) % 360, hsv.s || 1, hsv.v || 1)); }
+          if (e.key === 'ArrowLeft') { e.preventDefault(); onChange(hsvToHex((hsv.h - step + 360) % 360, hsv.s || 1, hsv.v || 1)); }
+        }}
+        className="flow-hue focusable relative h-3 w-full cursor-pointer touch-none rounded-full"
+        style={{ background: 'linear-gradient(to right, #f00, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00)' }}
+      >
+        <span className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white"
+          style={{ left: `${(hsv.h / 360) * 100}%`, boxShadow: '0 1px 6px rgba(0,0,0,0.5)' }} />
+      </div>
     </div>
   );
 }

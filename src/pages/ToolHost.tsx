@@ -6,7 +6,7 @@ import { marked } from 'marked';
 import { useFlow } from '../store';
 import { useUI } from '../ui';
 import {
-  Badge, Btn, Chip, EmptyState, Field, Icon, IconBtn, Modal, Panel, ProgressRing, SectionHead, Segmented, Select, Slider, Stat, TextArea, TextInput, Toggle,
+  Badge, Btn, Chip, ColorPicker, EmptyState, Field, Icon, IconBtn, Modal, Panel, ProgressRing, SectionHead, Segmented, Select, Slider, Stat, TextArea, TextInput, Toggle,
 } from '../components/ui';
 import { safeStore } from '../lib/repo';
 import { TOOLS } from '../lib/nav';
@@ -1322,7 +1322,7 @@ function ColorTool() {
   return (
     <ToolShell title="Colour picker and palette" subtitle="Harmonies generated from a base colour">
       <Panel className="p-3">
-        <Field label="Base colour"><input type="color" value={base} onChange={(e) => setBase(e.target.value)} className="h-10 w-24 cursor-pointer rounded-[10px] bg-transparent" /></Field>
+        <Field label="Base colour"><ColorPicker value={base} onChange={setBase} label="Base colour" /></Field>
         <div className="num mt-2 text-[12px] text-muted">{base} · H {Math.round(h)} S {Math.round(s)} L {Math.round(l)}</div>
         <div className="mt-4 space-y-3">
           {Object.entries(harmonies).map(([name, hues]) => (

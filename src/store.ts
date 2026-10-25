@@ -352,6 +352,7 @@ export const useFlow = create<FlowState>((set, get) => ({
       priority: parsed.priority || (fallback.priority ?? 0),
       estimateMin: parsed.estimateMin,
       tags: parsed.tags,
+      rrule: parsed.rrule,
       status: fallback.status ?? 'todo',
       ...fallback,
     });

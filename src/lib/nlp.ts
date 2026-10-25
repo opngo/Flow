@@ -1,5 +1,6 @@
 import { addDays, setHours, setMinutes, startOfDay, nextDay, format, isBefore } from 'date-fns';
 import type { Category, Subject } from './types';
+import { parseRecurrence, firstOccurrence } from './recur';
 
 export type ParsedTodo = {
   title: string;
@@ -10,6 +11,10 @@ export type ParsedTodo = {
   priority: number;
   estimateMin?: number;
   tags: string[];
+  /** iCalendar rule when the phrase said "every…", "on …", "biweekly". */
+  rrule?: string;
+  /** Why the rule exists, for the preview line. */
+  repeats?: string;
 };
 
 const WEEKDAYS: Record<string, number> = {
@@ -31,6 +36,12 @@ export function parseQuickAdd(input: string, ctx: { categories: Category[]; subj
   let estimateMin: number | undefined;
   let dueDate: Date | undefined;
   let dueTime: { h: number; m: number } | undefined;
+
+  // Recurrence first: "every monday at 18:00" has to be taken whole, before the
+  // weekday and time passes below claim those words.
+  const repeat = parseRecurrence(input);
+  const recurrence = repeat.recurrence;
+  if (recurrence) input = repeat.text;
 
   // #category or #tag
   input = input.replace(/(^|\s)#([\w-]+)/g, (_m, pre: string, name: string) => {
@@ -101,7 +112,11 @@ export function parseQuickAdd(input: string, ctx: { categories: Category[]; subj
   }
 
   let dueAt: string | undefined;
-  if (dueDate) {
+  if (recurrence) {
+    // A repeating task is due at its first occurrence, at the time it stated.
+    const first = firstOccurrence(recurrence.rrule, recurrence.time ?? dueTime);
+    if (first) dueAt = first.toISOString();
+  } else if (dueDate) {
     const d = new Date(dueDate);
     if (dueTime) d.setHours(dueTime.h, dueTime.m, 0, 0);
     else d.setHours(23, 59, 0, 0);
@@ -114,7 +129,11 @@ export function parseQuickAdd(input: string, ctx: { categories: Category[]; subj
   }
 
   const title = input.replace(/\s{2,}/g, ' ').replace(/^\s*[-–,]\s*/, '').trim();
-  return { title: title || input.trim(), dueAt, categoryId, subjectId, priority, estimateMin, tags };
+  return {
+    title: title || input.trim(), dueAt, categoryId, subjectId, priority, estimateMin, tags,
+    rrule: recurrence?.rrule,
+    repeats: recurrence ? recurrence.matched : undefined,
+  };
 }
 
 /** `math quiz 18/20` — palette grade quick add. */

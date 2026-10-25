@@ -4,6 +4,7 @@ import { useFlow } from '../store';
 import { useUI } from '../ui';
 import { Icon, TextArea } from './ui';
 import { parseQuickAdd } from '../lib/nlp';
+import { describeRecurrence } from '../lib/recur';
 import { fmtDateTime } from '../lib/utils';
 
 /** Global quick capture: one hotkey, one line, triage later (spec §5). */
@@ -46,7 +47,7 @@ export function QuickCapture() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit('todo'); }
               }}
-              placeholder="Chem lab report friday 5pm #school @chemistry !high ~2h"
+              placeholder="Read every monday at 18:00 — or Chem lab friday 5pm #school !high ~2h"
               className="bg-transparent text-[14px] placeholder:text-faint"
             />
           </div>
@@ -54,6 +55,12 @@ export function QuickCapture() {
             <div className="mt-2 flex flex-wrap items-center gap-1.5 px-1 text-[11.5px] text-muted">
               <span className="chip"><Icon name="Type" size={11} />{parsed.title}</span>
               {parsed.dueAt && <span className="chip"><Icon name="CalendarClock" size={11} />{fmtDateTime(parsed.dueAt)}</span>}
+              {parsed.rrule && (
+                <span className="chip" style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>
+                  <Icon name="Repeat" size={11} />
+                  {describeRecurrence({ rrule: parsed.rrule, matched: parsed.repeats ?? '', auto: false })}
+                </span>
+              )}
               {parsed.subjectId && <span className="chip" style={{ color: db.subjects.find((s) => s.id === parsed.subjectId)?.color }}><Icon name="GraduationCap" size={11} />{db.subjects.find((s) => s.id === parsed.subjectId)?.name}</span>}
               {parsed.categoryId && <span className="chip"><Icon name="Folder" size={11} />{db.categories.find((c) => c.id === parsed.categoryId)?.name}</span>}
               {parsed.priority > 0 && <span className="chip"><Icon name="Flag" size={11} />P{4 - parsed.priority}</span>}
