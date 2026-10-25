@@ -81,6 +81,36 @@ export default function Settings() {
             ))}
           </div>
         </Panel>
+        <Panel className="p-4">
+          <SectionHead title="Heatmaps" subtitle="How a year of activity is drawn"
+            right={<span className="chip">{s.ui.heatmap === 'filled' ? 'filled' : 'stepped'}</span>} />
+          <div className="grid gap-2 sm:grid-cols-2">
+            {([
+              { id: 'filled', label: 'Filled columns', icon: 'ChartNoAxesColumn', body: 'Each day fills from the bottom by the share done. Default.' },
+              { id: 'stepped', label: 'Five steps', icon: 'LayoutGrid', body: 'The classic ladder of five intensities.' },
+            ] as const).map((mode) => (
+              <button key={mode.id} onClick={() => updateSettings((x) => ({ ...x, ui: { ...x.ui, heatmap: mode.id } }))}
+                className="focusable rounded-[12px] p-3 text-left"
+                style={{ background: s.ui.heatmap === mode.id ? 'var(--accent-soft)' : 'var(--surface-2)' }}>
+                <span className="flex items-center gap-1.5 text-[12.5px] text-ink">
+                  <Icon name={mode.icon} size={13} />
+                  {mode.label}
+                  {s.ui.heatmap === mode.id && <Icon name="Check" size={11} className="ml-auto text-accent" />}
+                </span>
+                <span className="mt-1 block text-[11px] leading-relaxed text-faint">{mode.body}</span>
+                <span className="mt-2 flex items-end gap-[3px]">
+                  {[0.2, 0.45, 0.7, 1, 0.35, 0.85].map((f, i) => (
+                    <span key={i} className="relative h-4 w-[9px] overflow-hidden rounded-[2px]" style={{ background: 'color-mix(in srgb, var(--text-faint) 18%, transparent)' }}>
+                      {mode.id === 'filled'
+                        ? <span className="absolute inset-x-0 bottom-0" style={{ height: `${f * 100}%`, background: 'var(--accent)' }} />
+                        : <span className="absolute inset-0" style={{ background: `color-mix(in srgb, var(--accent) ${[28, 50, 72, 100, 50, 100][i]}%, transparent)` }} />}
+                    </span>
+                  ))}
+                </span>
+              </button>
+            ))}
+          </div>
+        </Panel>
         <div className="grid gap-3 lg:grid-cols-2">
           <Panel className="p-4">
             <SectionHead title="Theme" subtitle="Presets, mode and accent" />

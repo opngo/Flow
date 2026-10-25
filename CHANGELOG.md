@@ -15,6 +15,54 @@ so keep headings exactly as `## [x.y.z] - YYYY-MM-DD`.
 - Optional encrypted database at rest
 - Split view: two panes side by side in one window
 
+## [1.6.0] - 2026-10-24
+
+### Added
+
+- **Braced commands.** `{type:habit} Read poetry {repeat:daily} {target:25}` builds the record you
+  mean. Twenty-five keys — name, type, date, time, when, repeat, priority, estimate, subject,
+  category, tag, project, habit, target, body, folder, score, out-of, place, for, label, remind,
+  colour, deck — each with a plain-language note about where its value lands. Typing `{` opens the
+  list, keys first and then the values that key accepts; picking a key drops the caret inside its
+  braces and the value list appears behind it. Everything typed is previewed field by field before
+  it is saved, and an unfinished `{repeat:daily` is closed for you at commit instead of leaking
+  into the title.
+- **Placement chips.** Under the capture box, one tap adds When, Date, Time, Repeat, Priority,
+  Estimate, Subject, Category, Tag, Place, Folder, Score or For.
+- **Seven things to capture.** The same line can become a task, a habit, a note, an event, a mark,
+  a focus block or a running timer, and the dialog says which one before you press Enter.
+- **A working command palette.** Capture (eight entries), Focus (start, pause, resume, skip, extend,
+  end, reset, log a distraction, focus mode, pick a target), Timers (new, stopwatch, tea, one row
+  each to stop or pause every running timer, stop all, open, full-screen clock), Habits (new,
+  check the whole day in, one row per habit), Marks, Notes and App (no-text mode, heatmap style,
+  lock, mark notifications read, undo, redo, export, settings). `+` filters to capture, `>` to
+  everything that acts.
+- **Command icon on the dashboard.** The titlebar plus and the soft `Command` button are gone; a
+  single command glyph sits beside the day's numbers and opens the palette.
+- **Animated sidebar accent.** One accent bar travels between rows instead of a line per row: it is
+  positioned from live layout (so it survives a width change or a label-density change), springs
+  between rows and carries a soft bloom that breathes at rest. Respects reduced motion.
+- **Filled vertical heatmaps, and the option to step.** Default now: each cell is a small column
+  that fills from the bottom by the share done that day (fraction of scheduled habits, or value
+  against the top threshold). Settings → Appearance → Heatmaps offers the five-step ladder instead,
+  with a live preview of both. Legibility work: filled cells are 25 % taller than they are wide so a
+  half-done day reads as half a bar.
+- **Habit calendar dots explained.** The monthly habit grid is now a row of dots per day — filled
+  for done, a ring for still open, a dash for skipped — each with a tooltip naming the habit and its
+  state, above a key that spells the three states out and says that a dot checks the habit in.
+- **Notebook type.** Notes read in the content face at 15 px on a 1.78 line, headings in the
+  interface face so structure still scans; editor and preview share the same rhythm. Text in notes,
+  previews and tables is selectable again, so a paragraph can be copied in preview mode.
+
+### Fixed
+
+- Weekday names in `{date:friday}` resolved one day early (Monday-first list indexed into a
+  Sunday-first calendar), and `{date:10/28}` was read day-first, overflowing into a date two years
+  out.
+- The Habits heatmap tab drew the year of coverage twice: the page already shows it above every tab.
+- Empty `{name:}` placeholders no longer end up in titles.
+- Duplicate suggestions are no longer re-picked by Enter when the token already says exactly that.
+
 ## [1.5.0] - 2026-10-24
 
 ### Added

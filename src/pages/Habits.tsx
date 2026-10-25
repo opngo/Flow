@@ -282,11 +282,13 @@ function HabitYearStrip() {
           }}
         />
       </div>
-      <div className="mt-1 flex items-center gap-1.5 text-[10px] text-faint">
+      {/* The squares fill from the bottom, the same way the year does, so the
+          legend and the grid are read with one motion. */}
+      <div className="mt-1 flex items-center gap-1.5 text-[10px] text-faint" data-tip="Each square is one day: its height is the share of that day's scheduled habits you finished">
         <span>None</span>
         {[0, 0.25, 0.5, 0.75, 1].map((f) => (
-          <span key={f} className="relative h-2.5 w-2.5 overflow-hidden rounded-[2.5px]" style={{ background: 'color-mix(in srgb, var(--text-faint) 14%, transparent)' }}>
-            {f > 0 && <span className="absolute inset-y-0 left-0" style={{ width: `${f * 100}%`, background: 'var(--success)' }} />}
+          <span key={f} className="relative h-2.5 w-2.5 overflow-hidden rounded-[2.5px]" style={{ background: 'color-mix(in srgb, var(--text-faint) 20%, transparent)' }}>
+            {f > 0 && <span className="absolute inset-x-0 bottom-0" style={{ height: `${f * 100}%`, background: 'var(--success)' }} />}
           </span>
         ))}
         <span>All done</span>
@@ -300,8 +302,9 @@ function HeatmapView() {
   const weekStart = db.settings.behavior.weekStart;
   return (
     <>
-      <HabitYearStrip />
-      <div className="mt-3 grid gap-2 md:grid-cols-3">
+      {/* The year of coverage is already at the top of the page for every tab,
+          so this view adds only the per-habit breakdown. */}
+      <div className="grid gap-2 md:grid-cols-3">
         {db.habits.map((h) => {
           const st = habitStats(h, db.habitLogs, weekStart);
           return (
@@ -385,26 +388,58 @@ function CalendarView() {
           const scheduled = db.habits.filter((h) => isHabitScheduled(h, d));
           const done = db.habitLogs.filter((l) => l.date === format(d, 'yyyy-MM-dd') && !l.skipped);
           return (
-            <div key={d.toISOString()} className={cn('min-h-[86px] rounded-[12px] p-1.5', d.getMonth() === month.getMonth() ? 'bg-s1/60' : 'bg-s1/20')}>
+            <div key={d.toISOString()} className={cn('min-h-[50px] rounded-[12px] p-1.5', d.getMonth() === month.getMonth() ? 'bg-s1/60' : 'bg-s1/20')}>
               <div className={cn('num mb-1 text-[10.5px]', isSameDay(d, new Date()) ? 'text-accent' : 'text-faint')}>{format(d, 'd')}</div>
-              <div className="space-y-0.5">
-                {scheduled.slice(0, 4).map((h) => {
-                  const isDone = done.some((l) => l.habitId === h.id);
+              {/* One dot per habit that was due. Filled and in colour means
+                  done; a hollow ring means still open; a dash means skipped
+                  with a reason. Clicking a dot checks that habit in. */}
+              <div className="flex flex-wrap content-start gap-1">
+                {scheduled.slice(0, 8).map((h) => {
+                  const log = done.find((l) => l.habitId === h.id);
+                  const skip = db.habitLogs.find((l) => l.habitId === h.id && l.date === format(d, 'yyyy-MM-dd') && l.skipped);
+                  const state = log ? 'done' : skip ? 'skipped' : 'open';
                   return (
-                    <button key={h.id} onClick={() => checkIn(h.id, format(d, 'yyyy-MM-dd'), h.target.type === 'boolean' ? 1 : h.target.value)}
-                      className="focusable flex w-full items-center gap-1 rounded-[6px] px-1 py-0.5 text-left text-[10px]"
-                      style={{ background: isDone ? `color-mix(in srgb, ${h.color} 26%, transparent)` : 'var(--surface-2)' }}>
-                      <Icon name={isDone ? 'Check' : h.icon} size={9} style={{ color: h.color }} />
-                      <span className="truncate">{h.name}</span>
+                    <button
+                      key={h.id}
+                      onClick={() => checkIn(h.id, format(d, 'yyyy-MM-dd'), h.target.type === 'boolean' ? 1 : h.target.value)}
+                      aria-label={`${h.name} — ${state} on ${format(d, 'MMM d')}`}
+                      data-tip={`${h.name} — ${state === 'done' ? 'done' : state === 'skipped' ? 'skipped' : 'still open'} on ${format(d, 'MMM d')}`}
+                      className="focusable flex h-[13px] w-[13px] items-center justify-center rounded-full transition-transform hover:scale-125"
+                      style={{
+                        background: state === 'done' ? h.color : 'transparent',
+                        boxShadow: state === 'done'
+                          ? undefined
+                          : `inset 0 0 0 1.5px color-mix(in srgb, ${h.color} ${state === 'skipped' ? 30 : 75}%, transparent)`,
+                      }}
+                    >
+                      {state === 'skipped' && <span className="h-[1.5px] w-[6px] rounded-full" style={{ background: h.color, opacity: 0.7 }} />}
                     </button>
                   );
                 })}
+                {scheduled.length > 8 && (
+                  <span className="num flex h-[13px] items-center text-[9.5px] text-faint">+{scheduled.length - 8}</span>
+                )}
               </div>
             </div>
           );
         })}
       </div>
-      <div className="mt-2 text-[11px] text-faint">Click a habit chip to check it in for that day.</div>
+      {/* The dots are small on purpose, so they come with their own key. */}
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-faint" data-tip="Each dot is one habit that was due that day">
+        <span className="flex items-center gap-1.5">
+          <span className="h-[9px] w-[9px] rounded-full" style={{ background: 'var(--success)' }} />
+          done
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-[9px] w-[9px] rounded-full" style={{ boxShadow: 'inset 0 0 0 1.5px color-mix(in srgb, var(--success) 75%, transparent)' }} />
+          still open
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-[9px] w-[9px] rounded-full" style={{ boxShadow: 'inset 0 0 0 1.5px color-mix(in srgb, var(--success) 30%, transparent)' }} />
+          skipped
+        </span>
+        <span className="ml-auto">Click a dot to check that habit in · hover a dot for its name</span>
+      </div>
     </Panel>
   );
 }

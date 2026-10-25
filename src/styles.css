@@ -115,6 +115,24 @@ textarea {
   user-select: text;
 }
 
+/* Writing is for copying. Anything the user wrote — note bodies, previews,
+   markdown, exports, table cells — stays selectable even though the shell's
+   own chrome is not, so you can highlight a paragraph in preview mode and
+   take it somewhere else. */
+.markdown,
+.markdown *,
+.prose,
+.prose *,
+[data-selectable],
+[data-selectable] *,
+pre,
+code,
+td,
+th {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 /* Focus without rings: tint + glow + micro scale (spec §3.2) */
 .focusable {
   transition: box-shadow 180ms ease, background-color 180ms ease, transform 180ms ease,
@@ -275,6 +293,47 @@ html[data-reduce-motion='true'] * {
 .markdown table { border-collapse: collapse; margin: 0.6em 0; }
 .markdown th, .markdown td { padding: 6px 10px; background: var(--surface-2); }
 .markdown input[type='checkbox'] { accent-color: var(--accent); }
+
+/* ---------------------------------------------------------------
+   Notebook type.
+   Notes are written text, not interface text: the body reads in the
+   content face at a real reading size with generous leading, while
+   headings stay in the interface face so structure still scans like
+   the rest of the app. Editor and preview share the same measures, so
+   toggling between them no longer reflows the page under the cursor.
+   --------------------------------------------------------------- */
+.notebook {
+  font-family: var(--font-content);
+  font-size: 15px;
+  line-height: 1.78;
+  letter-spacing: 0.002em;
+  text-wrap: pretty;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.notebook :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--font-ui);
+  letter-spacing: -0.012em;
+  line-height: 1.25;
+}
+.notebook h1 { font-size: 1.42em; font-weight: 700; margin: 0.2em 0 0.5em; }
+.notebook h2 { font-size: 1.18em; font-weight: 700; margin: 1em 0 0.35em; }
+.notebook h3 { font-size: 1.02em; font-weight: 600; margin: 0.9em 0 0.3em; }
+.notebook :is(p, li) { margin: 0.55em 0; }
+.notebook :is(strong, b) { font-weight: 600; }
+.notebook :is(code, pre) { font-family: var(--font-mono); font-size: 0.88em; }
+.notebook blockquote {
+  font-style: italic;
+  padding-left: 14px;
+}
+/* The raw editor gets the same rhythm while staying monospaced, so the
+   caret does not jump when you flip to preview. */
+.notebook-editor {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  line-height: 1.78;
+  tab-size: 2;
+}
 
 /* ---------------------------------------------------------------
    Backdrop: CRT wrap (opt-in, Settings → Appearance → Backdrop).
@@ -550,9 +609,57 @@ html[data-labels='none'] .label,
 html[data-labels='none'] .chip,
 html[data-labels='none'] th,
 html[data-labels='none'] [data-label='chrome'],
-html[data-labels='none'] p:not(.prose p):not(.prose *) { display: none !important; }
+html[data-labels='none'] p:not(.prose p):not(.prose *),
+html[data-labels='none'] small,
+/* Secondary and tertiary text is text: hints, subtitles, streak captions,
+   row metadata. Numerals and clocks opt out with `.num`, because those are
+   the values the mode is meant to leave standing. */
+html[data-labels='none'] .text-muted:not(.num):not(:has(.num)),
+html[data-labels='none'] .text-faint:not(.num):not(:has(.num)) { display: none !important; }
 html[data-labels='minimal'] [data-label='meta'] { display: none !important; }
 html[data-labels='minimal'] [data-label='minor'] { display: none !important; }
+
+/* No-text mode is also no *space*. Hiding a word used to leave the gap, the
+   padding and the row height that were only ever there to hold it, so panels
+   stayed the same size with holes in them. Anything whose remaining children
+   are all hidden labels now stops taking room, and rows that still hold an
+   icon close up to icon spacing. Nothing here is conditional on a flag in the
+   component: switch the labels back to full and every one of these expands
+   again on its own. */
+html[data-labels='none'] :is(div, span, section, header, footer, li, p, button, label, h1, h2, h3, h4):has(> [data-label]):not(:has(> :not([data-label]))) {
+  display: none !important;
+}
+html[data-labels='none'] :is(.flex, .grid):has(> [data-label]) {
+  gap: 0.3rem !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  min-height: 0 !important;
+}
+/* Chips and pills were sized around their word; with the word gone they take
+   just enough for the icon they still carry. */
+html[data-labels='none'] .chip {
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+  gap: 0.3rem !important;
+}
+/* A title row that has collapsed to nothing should not keep its breathing
+   room either. */
+html[data-labels='none'] :is(.flex, .grid):not(:has(*:not([data-label]))) {
+  margin: 0 !important;
+}
+
+/* Sidebar accent line: a soft bloom around the travelling bar, breathing at
+   rest so it reads as alive without ever asking for attention. */
+.rail-glow {
+  box-shadow: 0 0 10px -1px color-mix(in srgb, var(--accent) 85%, transparent),
+    0 0 22px -4px color-mix(in srgb, var(--accent) 55%, transparent);
+  animation: rail-breathe 3.4s ease-in-out infinite;
+}
+@keyframes rail-breathe {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.28); }
+}
+html[data-reduce-motion='true'] .rail-glow { animation: none; }
 
 @keyframes tip-in {
   from { opacity: 0; transform: translateY(2px); }

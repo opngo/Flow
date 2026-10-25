@@ -6,6 +6,7 @@ import { useUI } from '../ui';
 import { NAV, TOOLS } from '../lib/nav';
 import { Icon } from './ui';
 import { parseQuickMark } from '../lib/nlp';
+import { isHabitScheduled } from '../lib/habits';
 import { download } from '../lib/platform';
 import { cn } from '../lib/utils';
 
@@ -18,31 +19,95 @@ export function CommandPalette() {
   const flow = useFlow.getState();
   const navigate = useNavigate();
   const openPalette = useUI((s) => s.openPalette);
+  const setQuickAdd = useUI((s) => s.setQuickAdd);
   const toast = useUI((s) => s.toast);
 
   const withNav = (route: string) => () => { closePalette(); navigate(route); };
 
   const items = useMemo<Item[]>(() => {
+    const today = () => new Date().toISOString().slice(0, 10);
+    const running = db.timers.filter((t) => t.running);
+
+    /** Capture: every shape of thing you can type into one box, with the
+     *  command already opened so you only fill the braces. */
+    const capture: Item[] = [
+      { id: 'capture-any', label: 'Capture anything', hint: 'one line, any type', icon: 'Command', group: 'Capture', run: () => { closePalette(); setQuickAdd(true); } },
+      { id: 'capture-task', label: 'Capture a task', hint: '{type:task}', icon: 'CheckSquare', group: 'Capture', run: () => { closePalette(); setQuickAdd(true, '{type:task} '); } },
+      { id: 'capture-habit', label: 'Capture a habit', hint: '{type:habit}', icon: 'Flame', group: 'Capture', run: () => { closePalette(); setQuickAdd(true, '{type:habit} '); } },
+      { id: 'capture-note', label: 'Capture a note', hint: '{type:note}', icon: 'NotebookPen', group: 'Capture', run: () => { closePalette(); setQuickAdd(true, '{type:note} '); } },
+      { id: 'capture-event', label: 'Capture an event', hint: '{type:event}', icon: 'CalendarDays', group: 'Capture', run: () => { closePalette(); setQuickAdd(true, '{type:event} '); } },
+      { id: 'capture-mark', label: 'Capture a mark', hint: '{type:mark}', icon: 'Percent', group: 'Capture', run: () => { closePalette(); setQuickAdd(true, '{type:mark} '); } },
+      { id: 'capture-focus', label: 'Start a focus block from a command', hint: '{type:focus}', icon: 'Timer', group: 'Capture', run: () => { closePalette(); setQuickAdd(true, '{type:focus} '); } },
+      { id: 'capture-timer', label: 'Start a timer from a command', hint: '{type:timer}', icon: 'Hourglass', group: 'Capture', run: () => { closePalette(); setQuickAdd(true, '{type:timer} '); } },
+    ];
+
+    /** Focus: the whole session lifecycle, not just start and pause. */
+    const focusItems: Item[] = [
+      { id: 'focus-start', label: flow.db.focus?.running ? 'Focus is already running' : 'Start a focus session', hint: 'pomodoro', icon: 'Play', group: 'Focus', run: () => { flow.startFocus(); closePalette(); navigate('/focus'); } },
+      { id: 'focus-pause', label: 'Pause the focus session', icon: 'Pause', group: 'Focus', run: () => { flow.pauseFocus(); closePalette(); toast({ title: 'Focus paused' }); } },
+      { id: 'focus-resume', label: 'Resume the focus session', icon: 'Play', group: 'Focus', run: () => { flow.resumeFocus(); closePalette(); toast({ title: 'Focus resumed' }); } },
+      { id: 'focus-skip', label: 'Skip to the next phase', icon: 'SkipForward', group: 'Focus', run: () => { flow.skipPhase(); closePalette(); } },
+      { id: 'focus-extend', label: 'Add five minutes to this phase', icon: 'Plus', group: 'Focus', run: () => { flow.extendFocus(5); closePalette(); toast({ title: 'Five more minutes' }); } },
+      { id: 'focus-end', label: 'End this focus block', icon: 'Square', group: 'Focus', run: () => { flow.finishPhase(); closePalette(); toast({ title: 'Block logged' }); } },
+      { id: 'focus-reset', label: 'Reset the focus clock', icon: 'RotateCcw', group: 'Focus', run: () => { flow.resetFocus(); closePalette(); } },
+      { id: 'focus-distraction', label: 'Log a distraction', icon: 'BellOff', group: 'Focus', run: () => { flow.bumpDistraction(); closePalette(); toast({ title: 'Distraction logged' }); } },
+      { id: 'focus-mode', label: 'Enter focus mode', icon: 'Crosshair', group: 'Focus', run: () => { useUI.getState().setFocusMode(true); closePalette(); navigate('/focus'); } },
+      { id: 'focus-link', label: 'Pick what to focus on', hint: 'subjects and tasks', icon: 'GraduationCap', group: 'Focus', run: withNav('/focus?pick=1') },
+    ];
+
+    /** Timers: one row per running timer so stopping is a single keystroke. */
+    const timerItems: Item[] = [
+      { id: 'timer-new', label: 'New countdown timer', hint: '5 minutes', icon: 'Hourglass', group: 'Timers', run: () => { flow.startTimer({ label: 'Timer', plannedMin: 5, kind: 'countdown' }); closePalette(); toast({ title: '5 minute timer started' }); } },
+      { id: 'timer-stopwatch', label: 'Start a stopwatch', icon: 'Timer', group: 'Timers', run: () => { flow.startTimer({ label: 'Stopwatch', plannedMin: 0, kind: 'stopwatch' }); closePalette(); } },
+      { id: 'timer-tea', label: 'Start a 5 minute tea timer', icon: 'CupSoda', group: 'Timers', run: () => { flow.startTimer({ label: 'Tea', plannedMin: 5, kind: 'countdown' }); closePalette(); toast({ title: 'Tea timer started' }); } },
+      ...running.flatMap((t): Item[] => [
+        { id: `timer-stop-${t.id}`, label: `Stop ${t.label}`, hint: 'running', icon: 'Square', group: 'Timers', run: () => { flow.finishTimer(t.id); closePalette(); toast({ title: `${t.label} stopped`, tone: 'success' }); } },
+        { id: `timer-pause-${t.id}`, label: `Pause ${t.label}`, hint: 'running', icon: 'Pause', group: 'Timers', run: () => { flow.pauseTimer(t.id); closePalette(); } },
+      ]),
+      { id: 'timer-stop-all', label: 'Stop all running timers', icon: 'StopCircle', group: 'Timers', run: () => { running.forEach((t) => flow.finishTimer(t.id)); closePalette(); toast({ title: running.length ? `Stopped ${running.length} timer${running.length > 1 ? 's' : ''}` : 'Nothing was running' }); } },
+      { id: 'timer-open', label: 'Open the timers page', icon: 'Hourglass', group: 'Timers', run: withNav('/timers') },
+      { id: 'timer-immersive', label: 'Open the full-screen clock', icon: 'Maximize', group: 'Timers', run: () => { useUI.getState().setImmersive(true); closePalette(); } },
+    ];
+
+    /** Habits and marks: the two things you log rather than edit. */
+    const habitItems: Item[] = [
+      { id: 'habit-new', label: 'New habit', hint: 'create', icon: 'Flame', group: 'Habits', run: () => { closePalette(); navigate('/habits?new=1'); } },
+      { id: 'habit-all', label: "Check in today's habits", hint: `${db.habits.length} habits`, icon: 'CheckCheck', group: 'Habits', run: () => {
+        const date = today();
+        db.habits.filter((h) => isHabitScheduled(h, new Date())).forEach((h) => flow.checkIn(h.id, date, h.target.type === 'boolean' ? 1 : h.target.value));
+        closePalette();
+        toast({ title: 'Day checked in', tone: 'success' });
+      } },
+      { id: 'habit-open', label: 'Open habits', icon: 'Flame', group: 'Habits', run: withNav('/habits') },
+      ...db.habits.slice(0, 12).map((h): Item => ({
+        id: `habit-check-${h.id}`, label: `Check in ${h.name}`, hint: 'today', icon: h.icon, group: 'Habits',
+        run: () => { flow.checkIn(h.id, today(), h.target.type === 'boolean' ? 1 : h.target.value); closePalette(); toast({ title: `${h.name} checked in`, tone: 'success' }); },
+      })),
+      { id: 'mark-new', label: 'Add a mark', hint: 'grades', icon: 'Percent', group: 'Marks', run: () => { closePalette(); navigate('/grades?new=1'); } },
+      { id: 'mark-open', label: 'Open the gradebook', icon: 'GraduationCap', group: 'Marks', run: withNav('/grades') },
+      { id: 'note-new', label: 'New note', hint: 'create', icon: 'NotebookPen', group: 'Notes', run: () => { closePalette(); navigate('/notes?new=1'); } },
+      { id: 'note-journal', label: 'Write today\u2019s journal entry', icon: 'Sun', group: 'Notes', run: withNav('/tools/journal') },
+      { id: 'note-search', label: 'Search notes', icon: 'Search', group: 'Notes', run: withNav('/notes') },
+    ];
+
+    /** App-level switches. These change how the app looks, not what is in it. */
+    const appItems: Item[] = [
+      { id: 'app-notext', label: flow.db.settings.ui.labels === 'none' ? 'Show text again' : 'Hide all interface text', icon: 'Type', group: 'App', run: () => { closePalette(); flow.updateSettings((st) => ({ ...st, ui: { ...st.ui, labels: st.ui.labels === 'none' ? 'full' : 'none' } })); } },
+      { id: 'app-heatmap', label: 'Toggle filled vertical heatmaps', hint: flow.db.settings.ui.heatmap, icon: 'ChartNoAxesColumn', group: 'App', run: () => { closePalette(); flow.updateSettings((st) => ({ ...st, ui: { ...st.ui, heatmap: st.ui.heatmap === 'filled' ? 'stepped' : 'filled' } })); } },
+      { id: 'app-lock', label: 'Lock the app', icon: 'Lock', group: 'App', run: () => { closePalette(); useUI.getState().setLocked(true); } },
+      { id: 'app-notifications-clear', label: 'Mark every notification read', icon: 'BellOff', group: 'App', run: () => { flow.markAllNotificationsRead(); closePalette(); } },
+      { id: 'app-undo', label: 'Undo last change', icon: 'Undo2', group: 'App', run: () => { flow.undo(); closePalette(); } },
+      { id: 'app-redo', label: 'Redo', icon: 'Redo2', group: 'App', run: () => { flow.redo(); closePalette(); } },
+      { id: 'app-export', label: 'Export everything as JSON', icon: 'Download', group: 'App', run: () => { download(`flow-backup-${new Date().toISOString().slice(0, 10)}.json`, flow.exportJSON(), 'application/json'); closePalette(); } },
+      { id: 'app-settings', label: 'Open settings', icon: 'Settings', group: 'App', run: withNav('/settings') },
+    ];
+
     const commands: Item[] = [
-      { id: 'cmd-new-todo', label: 'New todo', hint: 'create', icon: 'Plus', group: 'Commands', run: () => { closePalette(); navigate('/todos?new=1'); } },
-      { id: 'cmd-new-note', label: 'New note', hint: 'create', icon: 'NotebookPen', group: 'Commands', run: () => { closePalette(); navigate('/notes?new=1'); } },
-      { id: 'cmd-new-habit', label: 'New habit', hint: 'create', icon: 'Flame', group: 'Commands', run: () => { closePalette(); navigate('/habits?new=1'); } },
-      { id: 'cmd-new-mark', label: 'Add mark', hint: 'grades', icon: 'GraduationCap', group: 'Commands', run: () => { closePalette(); navigate('/grades?new=1'); } },
       { id: 'cmd-new-event', label: 'New calendar event', hint: 'schedule', icon: 'CalendarDays', group: 'Commands', run: () => { closePalette(); navigate('/calendar?new=1'); } },
-      { id: 'cmd-start-focus', label: 'Start focus session', hint: 'pomodoro', icon: 'Timer', group: 'Commands', run: () => { flow.startFocus(); closePalette(); navigate('/focus'); toast({ title: 'Focus started', body: 'Your timer is running', tone: 'success' }); } },
-      { id: 'cmd-pause-focus', label: 'Pause focus session', icon: 'Pause', group: 'Commands', run: () => { flow.pauseFocus(); closePalette(); } },
-      { id: 'cmd-skip', label: 'Skip to next phase', icon: 'SkipForward', group: 'Commands', run: () => { flow.skipPhase(); closePalette(); } },
-      { id: 'cmd-timer-tea', label: 'Start a 5 minute tea timer', icon: 'CupSoda', group: 'Commands', run: () => { flow.startTimer({ label: 'Tea', plannedMin: 5, kind: 'countdown' }); closePalette(); toast({ title: 'Tea timer started' }); } },
-      { id: 'cmd-stop-all', label: 'Stop all running timers', icon: 'StopCircle', group: 'Commands', run: () => { flow.db.timers.filter((t) => t.running).forEach((t) => flow.finishTimer(t.id)); closePalette(); } },
       { id: 'cmd-demo-load', label: 'Load demo data', icon: 'Sparkles', group: 'Commands', run: () => { flow.loadDemoData(); closePalette(); } },
       { id: 'cmd-demo-clear', label: 'Remove demo data', icon: 'Eraser', group: 'Commands', run: () => { flow.clearDemoData(); closePalette(); } },
-      { id: 'cmd-immersive', label: 'Open immersive timer', icon: 'Maximize', group: 'Commands', run: () => { useUI.getState().setImmersive(true); closePalette(); } },
       { id: 'cmd-theme', label: 'Toggle light / dark', icon: 'Contrast', group: 'Commands', run: () => { flow.updateSettings((s) => ({ ...s, theme: { ...s.theme, mode: s.theme.mode === 'dark' ? 'light' : 'dark' } })); closePalette(); } },
       { id: 'cmd-sound', label: 'Open Sound Studio', icon: 'AudioLines', group: 'Commands', run: () => { closePalette(); navigate('/sound'); } },
-      { id: 'cmd-focusmode', label: 'Enter focus mode', icon: 'Crosshair', group: 'Commands', run: () => { useUI.getState().setFocusMode(true); closePalette(); navigate('/focus'); } },
-      { id: 'cmd-export', label: 'Export everything as JSON', icon: 'Download', group: 'Commands', run: () => { download(`flow-backup-${new Date().toISOString().slice(0, 10)}.json`, flow.exportJSON(), 'application/json'); closePalette(); } },
-      { id: 'cmd-undo', label: 'Undo last change', icon: 'Undo2', group: 'Commands', run: () => { flow.undo(); closePalette(); } },
-      { id: 'cmd-settings', label: 'Open settings', icon: 'Settings', group: 'Commands', run: withNav('/settings') },
     ];
 
     const pages: Item[] = NAV.map((n) => ({ id: `page-${n.id}`, label: n.label, hint: n.route, icon: n.icon, group: 'Pages', run: withNav(n.route) }));
@@ -79,7 +144,10 @@ export function CommandPalette() {
       s.categories.map((c) => ({ id: `${s.id}-${c.id}`, label: c.name, hint: `${s.name} category`, icon: 'Percent', group: 'Categories' })),
     ).map((m) => ({ ...m, run: withNav('/grades') }));
 
-    return [...commands, ...pages, ...tools, ...todos, ...notes, ...habits, ...subjects, ...marks];
+    return [
+      ...capture, ...focusItems, ...timerItems, ...habitItems, ...commands, ...appItems,
+      ...pages, ...tools, ...todos, ...notes, ...habits, ...subjects, ...marks,
+    ];
   }, [db, closePalette, navigate, flow, toast]);
 
   const q = query.trim();
@@ -89,7 +157,12 @@ export function CommandPalette() {
   const filtered = useMemo(() => {
     let pool = items;
     let needle = q.toLowerCase();
-    if (prefix === '>') { pool = items.filter((i) => i.group === 'Commands'); needle = body; }
+    if (prefix === '>') {
+      // Everything that acts rather than navigates, including capture.
+      pool = items.filter((i) => ['Capture', 'Focus', 'Timers', 'Habits', 'Marks', 'Notes', 'Commands', 'App'].includes(i.group));
+      needle = body;
+    }
+    else if (prefix === '+') { pool = items.filter((i) => i.group === 'Capture'); needle = body; }
     else if (prefix === '/') { pool = items.filter((i) => i.group === 'Pages'); needle = body; }
     else if (prefix === '!') { pool = items.filter((i) => i.group === 'Tools'); needle = body; }
     else if (prefix === '@') { pool = items.filter((i) => i.group === 'Subjects'); needle = body; }
@@ -149,7 +222,7 @@ export function CommandPalette() {
               <ComboboxInput
                 autoFocus
                 className="flex-1 bg-transparent text-[14px] placeholder:text-faint"
-                placeholder="Search everything, or type > commands  /  pages  !  tools  @  subjects  #  tags"
+                placeholder="Search everything, or type + capture  >  commands  /  pages  !  tools  @  subjects  #  tags"
                 displayValue={() => query}
                 onChange={(e) => setQuery(e.target.value)}
               />
@@ -180,6 +253,7 @@ export function CommandPalette() {
               )}
             </ComboboxOptions>
             <div className="flex items-center gap-3 border-0 px-4 py-2 text-[11px] text-faint">
+              <span className="flex items-center gap-1"><Icon name="Plus" size={11} /> capture</span>
               <span className={cn('flex items-center gap-1')}><Icon name="Command" size={11} /> commands</span>
               <span className="flex items-center gap-1"><Icon name="Slash" size={11} /> pages</span>
               <span className="flex items-center gap-1"><Icon name="Zap" size={11} /> tools</span>

@@ -91,7 +91,7 @@ export default function Notes() {
         <section className="flex min-w-0 flex-1 flex-col">
           <div className="mb-2 flex items-center gap-2">
             <TextInput value={note.title} onChange={(e) => updateNote(note.id, { title: e.target.value })}
-              className="flex-1 bg-transparent text-[18px] font-semibold" />
+              className="flex-1 bg-transparent text-[18px] font-semibold tracking-[-0.01em]" />
             <IconBtn icon={note.pinned ? 'Pin' : 'Bookmark'} label="Pin note" active={note.pinned} onClick={() => updateNote(note.id, { pinned: !note.pinned })} />
             <IconBtn icon={preview ? 'PenLine' : 'Eye'} label={preview ? 'Edit markdown' : 'Preview'} onClick={() => setPreview(!preview)} />
             <IconBtn icon="Link" label="Insert link to another note" onClick={() => setLinkOpen(true)} />
@@ -129,15 +129,15 @@ export default function Notes() {
           <div className="grid min-h-0 flex-1 gap-2 lg:grid-cols-[1fr_240px]">
             <div className="min-h-0 overflow-hidden rounded-[var(--radius)] bg-s1/60">
               {preview ? (
-                <div className="markdown h-full overflow-y-auto p-4 text-[13.5px] leading-relaxed" style={{ fontFamily: 'var(--font-content)' }}
+                <div className="markdown notebook h-full overflow-y-auto px-5 py-4"
                   dangerouslySetInnerHTML={{ __html: html }} />
               ) : (
                 <textarea
                   ref={bodyRef}
                   value={note.body}
                   onChange={(e) => updateNote(note.id, { body: e.target.value })}
-                  className="h-full w-full resize-none bg-transparent p-4 text-[13.5px] leading-relaxed"
-                  style={{ fontFamily: 'var(--font-mono)' }}
+                  className="notebook-editor h-full w-full resize-none bg-transparent px-5 py-4"
+                  spellCheck={false}
                   placeholder="Write in markdown. [[Double brackets]] create links between notes."
                 />
               )}

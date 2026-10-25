@@ -390,6 +390,9 @@ export const SettingsSchema = z.object({
   /** How much text the interface shows. `none` is an icon-only shell. */
   ui: z.object({
     labels: z.enum(['full', 'minimal', 'none']).default('full'),
+    /** Contribution grids: `filled` draws a solid block that fills vertically
+     *  by the share done that day; `stepped` is the older five-step ladder. */
+    heatmap: z.enum(['filled', 'stepped']).default('filled'),
   }).default({}),
   immersive: z.object({
     /** Colour the clock drifts toward as it runs out. */
