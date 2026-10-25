@@ -79,7 +79,15 @@ export default function Todos() {
       params.delete('new');
       setParams(params, { replace: true });
     }
-  }, [params, setParams]);
+    // Deep link from the calendar's day panel: /todos?task=<id>
+    const taskId = params.get('task');
+    if (taskId) {
+      const target = db.todos.find((t) => t.id === taskId);
+      if (target) { setEditing(target); setDialogOpen(true); }
+      params.delete('task');
+      setParams(params, { replace: true });
+    }
+  }, [params, setParams, db.todos]);
 
   const all = db.todos;
   const open = all.filter((t) => t.status !== 'done' && t.status !== 'archived');

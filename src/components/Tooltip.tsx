@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useFlow } from '../store';
 import { cn } from '../lib/utils';
 
@@ -154,21 +155,33 @@ export function RichTip({
     leave.current = window.setTimeout(() => setOpen(false), 140);
   };
 
+  // Placement waits for a real measurement. Reading the box in the same frame
+  // the card mounts can return 0, which used to leave the card parked off the
+  // right edge instead of flipping to the other side of the anchor.
   useLayoutEffect(() => {
-    const card = cardRef.current;
-    const anchor = anchorRef.current;
-    if (!open || !card || !anchor) return;
-    const rect = anchor.getBoundingClientRect();
-    const box = card.getBoundingClientRect();
-    const pad = 10;
-    let left = rect.right + OFFSET;
-    let top = rect.top;
-    if (left + box.width > window.innerWidth - pad) left = rect.left - box.width - OFFSET;
-    if (left < pad) left = Math.min(window.innerWidth - box.width - pad, rect.left);
-    if (top + box.height > window.innerHeight - pad) top = window.innerHeight - box.height - pad;
-    top = Math.max(pad, top);
-    card.style.left = `${Math.round(left)}px`;
-    card.style.top = `${Math.round(top)}px`;
+    if (!open) return;
+    let raf = 0;
+    const place = () => {
+      const card = cardRef.current;
+      const anchor = anchorRef.current;
+      if (!card || !anchor) return;
+      if (card.offsetWidth < 1) { raf = requestAnimationFrame(place); return; }
+      const rect = anchor.getBoundingClientRect();
+      const width = card.offsetWidth;
+      const height = card.offsetHeight;
+      const pad = 10;
+      let left = rect.right + OFFSET;
+      if (left + width > window.innerWidth - pad) left = rect.left - width - OFFSET;
+      left = Math.max(pad, Math.min(left, window.innerWidth - width - pad));
+      let top = rect.top;
+      if (top + height > window.innerHeight - pad) top = window.innerHeight - height - pad;
+      top = Math.max(pad, top);
+      card.style.left = `${Math.round(left)}px`;
+      card.style.top = `${Math.round(top)}px`;
+      card.style.visibility = 'visible';
+    };
+    place();
+    return () => cancelAnimationFrame(raf);
   }, [open]);
 
   useEffect(() => () => {
@@ -186,7 +199,7 @@ export function RichTip({
       onPointerDown={disabled ? undefined : hide}
     >
       {children}
-      {open && !disabled && (
+      {open && !disabled && createPortal(
         <div
           ref={cardRef}
           role="tooltip"
@@ -198,11 +211,14 @@ export function RichTip({
             background: 'color-mix(in srgb, var(--surface-2) 97%, transparent)',
             backdropFilter: 'blur(16px)',
             boxShadow: 'var(--shadow-3)',
+            // revealed once placement has measured the card
+            visibility: 'hidden',
             animation: 'tip-in 140ms ease-out',
           }}
         >
           {content}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

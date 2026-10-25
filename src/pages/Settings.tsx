@@ -5,7 +5,7 @@ import { useFlow } from '../store';
 import { useUI } from '../ui';
 import {
   Badge, Btn, ColorPicker, ConfirmDialog, Field, Icon, IconBtn, Panel, RadioCards, SectionHead, Segmented,
-  Select, Slider, SliderField, TextArea, TextInput, Toggle,
+  Modal, Select, Slider, SliderField, TextArea, TextInput, Toggle,
 } from '../components/ui';
 import { ACCENTS, FONTS, PRESETS } from '../lib/theme';
 import { DEFAULT_SIDEBAR, NAV } from '../lib/nav';
@@ -26,6 +26,8 @@ export default function Settings() {
   const updateSettings = useFlow((s) => s.updateSettings);
   const toast = useUI((s) => s.toast);
   const s = db.settings;
+  /** Token whose colour picker is open, if any. */
+  const [tokenFor, setTokenFor] = useState<string | null>(null);
 
   const tabs: Array<{ id: Tab; label: string; icon: string }> = [
     { id: 'appearance', label: 'Appearance', icon: 'Palette' },
@@ -122,8 +124,8 @@ export default function Settings() {
               {(['surface', 's1', 's2', 's3', 'text', 'muted', 'accent', 'success', 'warning', 'danger'] as const).map((key) => (
                 <div key={key} className="flex items-center gap-2">
                   <span className="w-24 text-[11.5px] capitalize text-muted">{key}</span>
-                  <input type="color" value={s.theme.overrides[key] ?? readToken(key)} onChange={(e) => updateSettings((x) => ({ ...x, theme: { ...x.theme, overrides: { ...x.theme.overrides, [key]: e.target.value } } }))}
-                    className="h-6 w-10 cursor-pointer rounded-[6px] bg-transparent" aria-label={`${key} colour`} />
+                  <button onClick={() => setTokenFor(key)} aria-label={`${key} colour`} data-tip={`Pick ${key}`}
+                    className="focusable h-6 w-10 shrink-0 rounded-[6px]" style={{ background: s.theme.overrides[key] ?? readToken(key) }} />
                   <span className="num text-[10.5px] text-faint">{s.theme.overrides[key] ?? readToken(key)}</span>
                   {s.theme.overrides[key] && <IconBtn icon="X" label="Reset" className="h-6 w-6" onClick={() => updateSettings((x) => {
                     const next = { ...x.theme.overrides };
@@ -142,7 +144,8 @@ export default function Settings() {
                 onChange={(v) => updateSettings((x) => ({ ...x, theme: { ...x.theme, blur: v } }))} />
             </div>
           </Panel>
-        </div>
+
+           </div>
         <BackdropPanel />
         <CornersPanel />
         </div>
@@ -314,6 +317,18 @@ export default function Settings() {
           </Panel>
         </div>
       )}
+
+      <Modal open={!!tokenFor} onClose={() => setTokenFor(null)} title="Token colour"
+        subtitle="Overrides the preset for this token only"
+        footer={<Btn variant="primary" icon="Check" onClick={() => setTokenFor(null)}>Done</Btn>}>
+        {tokenFor && (
+          <ColorPicker
+            value={s.theme.overrides[tokenFor] ?? readToken(tokenFor) ?? '#7c8cff'}
+            label={`${tokenFor} colour`}
+            onChange={(c) => updateSettings((x) => ({ ...x, theme: { ...x.theme, overrides: { ...x.theme.overrides, [tokenFor]: c } } }))}
+          />
+        )}
+      </Modal>
     </div>
   );
 }

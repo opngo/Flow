@@ -69,13 +69,7 @@ export function Titlebar() {
   const labels = useLabels();
   const trail = useTrail();
   const [maximized, setMaximized] = useState(false);
-  const [time, setTime] = useState(new Date());
   const compact = labels !== 'full';
-
-  useEffect(() => {
-    const t = setInterval(() => setTime(new Date()), 30000);
-    return () => clearInterval(t);
-  }, []);
 
   const pinned = settings.behavior.pinOnTop;
 
@@ -141,10 +135,6 @@ export function Titlebar() {
         <IconBtn icon="Maximize" label="Immersive timer" onClick={() => setImmersive(true)} />
         <IconBtn icon="AppWindow" label="Mini mode" active={miniMode} onClick={() => setMiniMode(!miniMode)} />
         <NotificationBell unread={unread} />
-        <div className="mx-1 hidden items-center gap-1 text-[11.5px] text-faint md:flex">
-          <Icon name="Clock" size={12} />
-          <span className="num">{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-        </div>
         {isElectron() && (
           <>
             <IconBtn icon="Pin" label={pinned ? 'Unpin window' : 'Pin window on top'} active={pinned}

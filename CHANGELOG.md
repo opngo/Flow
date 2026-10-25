@@ -15,6 +15,35 @@ so keep headings exactly as `## [x.y.z] - YYYY-MM-DD`.
 - Optional encrypted database at rest
 - Split view: two panes side by side in one window
 
+## [1.4.0] - 2026-10-24
+
+### Added
+
+- **Repeating tasks.** Quick capture understands a repeat clause — `Read every Monday at 18:00`,
+  `Gym every other Wednesday at 1730`, `Pay rent on the 1st` — and stores it as an RRULE. Military
+  times (`1800`, `0930`) are read as written; `#auto` lets loose times such as a bare `6` resolve
+  against the current half of the day. Every non-repeating added task still behaves exactly as before.
+- **Repeat builder in the task dialog.** Cadence, weekday pills and a time field with a live sentence
+  underneath (`every other Wednesday at 17:30`) so the rule is confirmed before it is saved.
+- **Calendar day panel.** Clicking a day in the month grid opens a side panel for that day: its events,
+  tasks, assessments, habits due and focus sessions, grouped and counted. Rows route straight to the
+  matching record, and hover cards summarise each one the way task rows do.
+- **Colour picker.** A hand-drawn saturation/value field, hue rail, swatches and a hex field replace the
+  native colour input for event colours, subject colours, grade categories and tool palettes. The
+  Untitled UI colour picker is a PRO component, so the shipped one is built in the same visual language:
+  no native control, full keyboard support and no border anywhere.
+
+### Changed
+
+- Task rows accept a start time as well as a due time, and the repeat cadence includes biweekly
+  (every two weeks) alongside daily, weekly and monthly.
+- Hover cards are portalled to the document body and measured before they appear, so they no longer
+  inherit the offset of a transformed ancestor and always flip to stay on screen.
+
+### Removed
+
+- The mini clock in the titlebar. The immersive clock is the only place the time is shown.
+
 ## [1.3.0] - 2026-10-24
 
 ### Added

@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { addDays, addMonths, endOfMonth, endOfWeek, format, isSameDay, isSameMonth, startOfMonth, startOfWeek } from 'date-fns';
+import { addDays, addMonths, format, isSameDay, isSameMonth, startOfMonth, startOfWeek } from 'date-fns';
 import { useFlow } from '../store';
 import {
-  Badge, Btn, Chip, EmptyState, Field, Icon, IconBtn, Modal, Panel, SectionHead, Segmented, Select,
+  Badge, Btn, Chip, ColorPicker, EmptyState, Field, Icon, IconBtn, Modal, Panel, SectionHead, Segmented, Select,
   TextArea, TextInput, Toggle,
 } from '../components/ui';
 import { isHabitScheduled } from '../lib/habits';
-import { cn, dayKey, fmtTime, toLocalInput, parseLocalInput } from '../lib/utils';
+import { cn, fmtTime, toLocalInput, parseLocalInput } from '../lib/utils';
+import { DayPanel } from '../components/DayPanel';
 import type { CalendarEvent } from '../lib/types';
 
 type View = 'month' | 'week' | 'agenda';
@@ -21,6 +22,7 @@ export default function CalendarPage() {
   const addTodo = useFlow((s) => s.addTodo);
   const [view, setView] = useState<View>('month');
   const [cursor, setCursor] = useState(new Date());
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [editing, setEditing] = useState<CalendarEvent | null>(null);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Partial<CalendarEvent>>({});
@@ -37,12 +39,19 @@ export default function CalendarPage() {
     }
   }, [params, setParams]);
 
+  /** Everything that lands on one date. The month grid, the week grid, the
+   *  agenda and the day panel all read from this one function. */
   const dayItems = (day: Date) => {
-    const events = db.events.filter((e) => isSameDay(new Date(e.start), day));
+    const events = db.events
+      .filter((e) => isSameDay(new Date(e.start), day))
+      .sort((a, b) => +new Date(a.start) - +new Date(b.start));
     const assessments = db.marks.filter((m) => m.status === 'pending' && isSameDay(new Date(m.date), day));
-    const todos = db.todos.filter((t) => t.dueAt && isSameDay(new Date(t.dueAt), day) && t.status !== 'done');
+    const todos = db.todos
+      .filter((t) => t.dueAt && isSameDay(new Date(t.dueAt), day))
+      .sort((a, b) => +new Date(a.dueAt!) - +new Date(b.dueAt!));
     const habits = db.habits.filter((h) => isHabitScheduled(h, day));
-    return { events, assessments, todos, habits };
+    const sessions = db.focusSessions.filter((f) => isSameDay(new Date(f.startedAt), day)).length;
+    return { events, assessments, todos, habits, sessions };
   };
 
   const monthStart = startOfMonth(cursor);
@@ -80,6 +89,8 @@ export default function CalendarPage() {
         </div>
       </div>
 
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
+      <div className="min-w-0 flex-1 space-y-3">
       {view === 'month' && (
         <Panel className="p-3">
           <div className="grid grid-cols-7 gap-1 pb-1">
@@ -92,11 +103,16 @@ export default function CalendarPage() {
               const items = dayItems(day);
               const total = items.events.length + items.assessments.length + items.todos.length;
               return (
-                <button key={day.toISOString()} onClick={() => setCursor(day)}
+                <button key={day.toISOString()} onClick={() => { setCursor(day); setSelectedDay(day); }}
+                  aria-pressed={!!selectedDay && isSameDay(day, selectedDay)}
                   className={cn('min-h-[104px] rounded-[12px] p-1.5 text-left transition-colors',
                     isSameMonth(day, cursor) ? 'bg-s1/60 hover:bg-s2/60' : 'bg-s1/20',
-                    isSameDay(day, new Date()) && 'ring-0')}
-                  style={isSameDay(day, new Date()) ? { background: 'var(--accent-soft)' } : undefined}>
+                    selectedDay && isSameDay(day, selectedDay) && 'ring-0')}
+                  style={
+                    isSameDay(day, new Date()) ? { background: 'var(--accent-soft)' }
+                      : selectedDay && isSameDay(day, selectedDay) ? { background: 'color-mix(in srgb, var(--surface-3) 70%, transparent)' }
+                        : undefined
+                  }>
                   <div className="mb-1 flex items-center gap-1">
                     <span className={cn('num text-[10.5px]', isSameMonth(day, cursor) ? 'text-muted' : 'text-faint')}>{format(day, 'd')}</span>
                     {total > 0 && <span className="num text-[9px] text-faint">{total}</span>}
@@ -175,7 +191,9 @@ export default function CalendarPage() {
               return (
                 <div key={d.toISOString()}>
                   <div className="mb-1 flex items-center gap-2">
-                    <span className="text-[12px] font-medium">{format(d, 'EEEE, MMM d')}</span>
+                    <button onClick={() => setSelectedDay(d)} className="focusable rounded-[6px] px-1 text-[12px] font-medium hover:bg-s2">
+                      {format(d, 'EEEE, MMM d')}
+                    </button>
                     {isSameDay(d, new Date()) && <Badge tone="accent">today</Badge>}
                     <span className="num text-[10.5px] text-faint">{total} items</span>
                   </div>
@@ -211,6 +229,26 @@ export default function CalendarPage() {
         </Panel>
       )}
 
+      </div>
+
+      {selectedDay && (
+        <DayPanel
+          day={selectedDay}
+          items={dayItems(selectedDay)}
+          subjects={db.subjects}
+          onClose={() => setSelectedDay(null)}
+          onEditEvent={(e) => { setEditing(e); setForm(e); setOpen(true); }}
+          onNewEvent={() => {
+            const start = new Date(selectedDay);
+            start.setHours(9, 0, 0, 0);
+            setEditing(null);
+            setForm({ title: '', start: start.toISOString(), end: new Date(start.getTime() + 3600000).toISOString(), color: '#7c8cff' });
+            setOpen(true);
+          }}
+        />
+      )}
+      </div>
+
       <Panel className="p-3">
         <SectionHead title="Upcoming" subtitle="Next events with quick actions" />
         <div className="space-y-1">
@@ -245,7 +283,7 @@ export default function CalendarPage() {
             </Field>
             <Field label="Location"><TextInput value={form.location ?? ''} onChange={(e) => setForm({ ...form, location: e.target.value })} /></Field>
           </div>
-          <Field label="Colour"><TextInput type="color" value={form.color ?? '#7c8cff'} onChange={(e) => setForm({ ...form, color: e.target.value })} className="h-9 w-20" /></Field>
+          <Field label="Colour"><ColorPicker value={form.color ?? '#7c8cff'} onChange={(c) => setForm({ ...form, color: c })} label="Event colour" /></Field>
           <Field label="Notes"><TextArea rows={2} value={form.notes ?? ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></Field>
           <Toggle label="All day" checked={!!form.allDay} onChange={(v) => setForm({ ...form, allDay: v })} />
           {editing && (
@@ -256,7 +294,6 @@ export default function CalendarPage() {
           )}
         </div>
       </Modal>
-      <span className="hidden">{dayKey(cursor)}{endOfWeek(cursor).toISOString()}{endOfMonth(cursor).toISOString()}</span>
     </div>
   );
 }

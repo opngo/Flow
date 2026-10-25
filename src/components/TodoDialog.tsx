@@ -3,7 +3,8 @@ import { useFlow } from '../store';
 import { Btn, Chip, Field, Icon, IconBtn, Modal, Select, TextArea, TextInput } from './ui';
 import type { Todo } from '../lib/types';
 import { fmtDateTime, toLocalInput, parseLocalInput, uuid, minsToHM } from '../lib/utils';
-import { RRULE_PRESETS, describeRRule } from '../lib/habits';
+import { describeRRule } from '../lib/habits';
+import { RepeatBuilder } from './RepeatBuilder';
 
 const PRIORITY_OPTS = [
   { value: 0, label: 'None', icon: 'Flag' },
@@ -183,13 +184,13 @@ export function TodoDialog({ open, onClose, todo, defaults }: {
               <Btn variant="soft" icon="Plus" onClick={addTag} aria-label="Add tag" />
             </div>
 
-            <div className="label mb-1.5 mt-3">Repeat</div>
-            <Select
-              value={form.rrule ?? ''}
-              onChange={(v) => set({ rrule: v || undefined })}
-              options={[{ value: '', label: 'Does not repeat' }, ...RRULE_PRESETS.map((r) => ({ value: r.value, label: r.label }))]}
-            />
-            {form.rrule && <div className="mt-1 text-[11px] text-faint">{describeRRule(form.rrule)} — next instance is created when you complete this one.</div>}
+            <div className="mt-3">
+              <RepeatBuilder
+                rrule={form.rrule}
+                dueAt={form.dueAt}
+                onChange={({ rrule, dueAt }) => set({ rrule, dueAt: dueAt ?? form.dueAt })}
+              />
+            </div>
           </div>
         </div>
 

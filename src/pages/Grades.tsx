@@ -370,6 +370,7 @@ function SubjectDetail({ subject }: { subject: Subject }) {
 function CategoriesTab({ subject }: { subject: Subject }) {
   const flow = useFlow.getState();
   const [name, setName] = useState('');
+  const [colorFor, setColorFor] = useState<Subject['categories'][number] | null>(null);
   const total = subject.categories.reduce((a, c) => a + c.weightPct, 0);
   const normalized = normalizedWeights(subject.categories);
   const update = (id: string, patch: Partial<Subject['categories'][number]>) =>
@@ -391,7 +392,7 @@ function CategoriesTab({ subject }: { subject: Subject }) {
           {subject.categories.map((c) => (
             <div key={c.id} className="grid grid-cols-[1fr_70px_70px_70px_60px_32px] items-center gap-2 rounded-[10px] bg-s1 px-1.5 py-1.5">
               <div className="flex min-w-0 items-center gap-2">
-                <input type="color" value={c.color} onChange={(e) => update(c.id, { color: e.target.value })} className="h-5 w-5 shrink-0 cursor-pointer rounded-full bg-transparent" aria-label="Category colour" />
+                <button onClick={() => setColorFor(c)} className="focusable h-5 w-5 shrink-0 rounded-full" style={{ background: c.color }} aria-label={`Category colour ${c.color}`} data-tip="Change colour" />
                 <TextInput value={c.name} onChange={(e) => update(c.id, { name: e.target.value })} className="bg-transparent py-1 text-[12.5px]" />
               </div>
               <TextInput type="number" min={0} max={100} value={c.weightPct} onChange={(e) => update(c.id, { weightPct: Number(e.target.value) })} className="py-1 text-center text-[12px]" />
@@ -416,6 +417,21 @@ function CategoriesTab({ subject }: { subject: Subject }) {
           Drop-lowest and best-N rules are applied per category before averaging. Extracurricular rule: set weight to 0 and extra credit still counts through the points mode.
         </div>
       </Panel>
+
+      <Modal open={!!colorFor} onClose={() => setColorFor(null)} title="Category colour"
+        subtitle="Used on mark rows, charts and the calendar"
+        footer={<Btn variant="primary" icon="Check" onClick={() => setColorFor(null)}>Done</Btn>}>
+        {colorFor && (
+          <ColorPicker
+            value={colorFor.color}
+            label="Category colour"
+            onChange={(c) => {
+              update(colorFor.id, { color: c });
+              setColorFor({ ...colorFor, color: c });
+            }}
+          />
+        )}
+      </Modal>
 
       <Panel className="p-3">
         <SectionHead title="Category rules" subtitle="How each category reduces to one number" />
