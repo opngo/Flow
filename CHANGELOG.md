@@ -25,11 +25,13 @@ so keep headings exactly as `## [x.y.z] - YYYY-MM-DD`.
   reduced-label modes: sidebar rows, titlebar, icon buttons, toggles, swatches, habit cells, toasts.
   Content hover cards opt out through `[data-rich-tip]`.
 - **Todo hover card.** Hovering a task shows created, start, due, estimate, logged time, checklist
-  progress, tags and notes.
+  progress, tags and notes, split by hairlines that are shorter than the card and nearly invisible,
+  with roomier padding than the row itself.
 - **Immersive clock.** The time sits above a single 30 px band that sweeps beneath it and leaves the
   screen at both sides. The band is divided into 26 sections, and each section's end corners follow
   Settings → Appearance: sharp mode squares them, the radius slider rounds them up to a full cap.
-  Sections light in order as the block elapses and a playhead dot rides the tip of the fill.
+  Sections light in order as the block elapses and a playhead dot rides the tip of the fill; the
+  band dissolves at the screen edges instead of being cut by them.
   Digits are sized against the screen, the band grows slightly on play, and chrome is fully hidden
   while the clock runs, returning translucent on hover.
 - **Colour drift.** The clock drifts toward a chosen colour over the closing share of the block

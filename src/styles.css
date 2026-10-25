@@ -521,8 +521,11 @@ html[data-labels='minimal'] [data-label='minor'] { display: none !important; }
 .clock-arc {
   position: absolute;
   inset: 0;
-  /* the ends of the band are meant to leave the frame */
+  /* the ends of the band are meant to leave the frame, so they dissolve into it
+     rather than being chopped off by the edge */
   overflow: hidden;
+  mask-image: linear-gradient(to right, transparent 0, #000 7%, #000 93%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 7%, #000 93%, transparent 100%);
 }
 .clock-arc-track,
 .clock-arc-fill {
