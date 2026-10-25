@@ -61,6 +61,43 @@ function backup(dbJson) {
 }
 
 /* ---------------------------------------------------------------- window */
+
+/** A dev server that is not listening yet must not leave a blank window.
+ *  Retry for ~20s, then say what is wrong in the window itself. */
+function loadDevUrl(win, attempt = 0) {
+  win.loadURL(VITE_URL).catch(() => {
+    if (win.isDestroyed()) return;
+    if (attempt < 40) {
+      setTimeout(() => loadDevUrl(win, attempt + 1), 500);
+      return;
+    }
+    console.error(`Flow: could not reach the dev server at ${VITE_URL}`);
+    win.loadURL(
+      'data:text/html;charset=utf-8,' + encodeURIComponent(devFailurePage()),
+    );
+    win.show();
+  });
+}
+
+function devFailurePage() {
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Flow</title>
+  <style>
+    html,body{height:100%;margin:0;background:#0b0d12;color:#e7e9f2;
+      font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+    main{max-width:520px;margin:0 auto;padding:64px 24px}
+    h1{font-size:16px;font-weight:600;margin:0 0 8px}
+    p{color:#9aa1b8;margin:0 0 12px}
+    code{background:#151925;border-radius:6px;padding:2px 6px;color:#b9c1ff}
+  </style></head><body><main>
+    <h1>The dev server is not running</h1>
+    <p>Flow's window opened, but nothing answered at <code>${VITE_URL}</code>.</p>
+    <p>Start the app with <code>npm run electron:dev</code>, which runs Vite and Electron together,
+       or start <code>npm run dev</code> and reload this window.</p>
+    <p>If port ${VITE_URL.split(':').pop()} is taken by another program, run
+       <code>FLOW_PORT=5180 npm run electron:dev</code>.</p>
+  </main></body></html>`;
+}
+
 function createWindow() {
   const state = windowState();
   mainWindow = new BrowserWindow({
@@ -72,6 +109,7 @@ function createWindow() {
     minHeight: 620,
     frame: false,
     titleBarStyle: 'hidden',
+    icon: path.join(__dirname, 'assets', 'icon.png'),
     backgroundColor: '#0b0d12',
     show: false,
     webPreferences: {
@@ -86,7 +124,7 @@ function createWindow() {
   if (state.maximized) mainWindow.maximize();
 
   if (isDev) {
-    mainWindow.loadURL(VITE_URL);
+    loadDevUrl(mainWindow);
   } else {
     mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   }
@@ -94,6 +132,20 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     if (process.env.FLOW_START_HIDDEN === '1') return;
     mainWindow.show();
+  });
+
+  /* Never leave the user with an invisible window if the first paint never
+     happens (a failed load, a renderer crash). */
+  mainWindow.webContents.on('did-fail-load', (_e, code, description, url, isMainFrame) => {
+    if (!isMainFrame || !isDev || code === -3) return; // -3 = aborted, our own retry
+    console.error(`Flow: renderer failed to load ${url} (${code} ${description})`);
+    mainWindow.show();
+  });
+
+  mainWindow.webContents.on('render-process-gone', (_e, details) => {
+    console.error('Flow: renderer process gone —', details.reason);
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.reload();
   });
 
   mainWindow.on('close', (event) => {
@@ -115,6 +167,13 @@ function createWindow() {
   mainWindow.on('resize', saveWindowState);
   mainWindow.on('move', saveWindowState);
 
+  /* Double-clicking the titlebar, Win+Up or a window manager gesture all
+     maximize the window without touching the renderer's own toggle, so the
+     shell is told what actually happened. */
+  for (const event of ['maximize', 'unmaximize', 'enter-full-screen', 'leave-full-screen']) {
+    mainWindow.on(event, () => sendToRenderer('window-state', currentWindowState()));
+  }
+
   // open external links in the OS browser, never in-app
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:/.test(url)) shell.openExternal(url);
@@ -131,19 +190,33 @@ function showWindow(route) {
 
 /* ---------------------------------------------------------------- tray */
 function trayIcon() {
-  // 16x16 template-ish icon drawn from a data URL so no asset pipeline is needed
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16" rx="4" fill="#7c8cff"/></svg>`;
-  return nativeImage.createFromDataURL(`data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`);
+  /* nativeImage cannot decode SVG — it returns an empty image, and an empty
+     image makes `new Tray()` fail on Windows and Linux, which killed the app
+     before its window ever appeared. These are real PNGs shipped beside the
+     main process, with a generated fallback so the tray can never be the
+     reason Flow refuses to start. */
+  for (const name of ['tray-32.png', 'tray-16.png']) {
+    const file = path.join(__dirname, 'assets', name);
+    if (!fs.existsSync(file)) continue;
+    const image = nativeImage.createFromPath(file);
+    if (!image.isEmpty()) return image;
+  }
+  const size = 16;
+  const buffer = Buffer.alloc(size * size * 4);
+  for (let i = 0; i < size * size; i += 1) {
+    buffer[i * 4] = 0x7c; buffer[i * 4 + 1] = 0x8c; buffer[i * 4 + 2] = 0xff; buffer[i * 4 + 3] = 0xff;
+  }
+  return nativeImage.createFromBuffer(buffer, { width: size, height: size });
 }
 
 function buildTrayMenu(label = 'No timer', running = false) {
   return Menu.buildFromTemplate([
     { label: `Flow — ${label}`, enabled: false },
     { type: 'separator' },
-    { label: running ? 'Pause timer' : 'Start focus', click: () => mainWindow?.webContents.send('flow:action', 'toggle-timer') },
+    { label: running ? 'Pause timer' : 'Start focus', click: () => sendToRenderer('toggle-timer') },
     { label: 'Quick add task', click: () => showWindow('/todos') },
     { label: 'Open Sound Studio', click: () => showWindow('/sound') },
-    { label: 'Mute all sound', click: () => mainWindow?.webContents.send('flow:action', 'mute-sound') },
+    { label: 'Mute all sound', click: () => sendToRenderer('mute-sound') },
     { type: 'separator' },
     { label: 'Show Flow', click: () => showWindow() },
     { label: 'Hide window', click: () => mainWindow?.hide() },
@@ -153,10 +226,26 @@ function buildTrayMenu(label = 'No timer', running = false) {
 }
 
 function createTray() {
-  tray = new Tray(trayIcon());
+  try {
+    tray = new Tray(trayIcon());
+  } catch (err) {
+    /* No tray on this desktop? Flow still runs, it just cannot live in the
+       corner — quitting on close would be a surprise, so don't. */
+    console.error('Flow: tray unavailable, continuing without it', err);
+    closeToTray = false;
+    return;
+  }
   tray.setToolTip('Flow');
   tray.setContextMenu(buildTrayMenu());
   tray.on('click', () => (mainWindow?.isVisible() ? mainWindow.hide() : showWindow()));
+}
+
+/** Sends to the renderer only when there is a live renderer to send to. */
+function sendToRenderer(action, payload) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const contents = mainWindow.webContents;
+  if (!contents || contents.isDestroyed()) return;
+  contents.send('flow:action', action, payload);
 }
 
 function flashTray() {
@@ -191,7 +280,7 @@ function fireDue() {
     const missed = now - new Date(reminder.snoozedUntil ?? reminder.fireAt).getTime() > 5 * 60 * 1000;
     toast(reminder.title, reminder.body, reminder, missed);
     reminder.delivered = true;
-    mainWindow?.webContents.send('flow:action', 'reminder-delivered', reminder.id);
+    sendToRenderer('reminder-delivered', reminder.id);
   }
   writeJSON(remindersPath(), reminders);
   clearTimeout(scheduledTimer);
@@ -209,7 +298,7 @@ function toast(title, body, reminder, missed) {
   });
   n.on('click', () => showWindow(reminder?.route));
   n.on('action', () => {
-    mainWindow?.webContents.send('flow:action', 'complete-reminder', reminder?.targetId);
+    sendToRenderer('complete-reminder', reminder?.targetId);
     showWindow(reminder?.route);
   });
   n.show();
@@ -240,11 +329,13 @@ ipcMain.on('flow:window', (_e, action) => {
 
 ipcMain.on('flow:pin', (_e, value) => mainWindow?.setAlwaysOnTop(!!value));
 
+ipcMain.on('flow:behavior', (_e, behavior) => applyBehavior(behavior));
+
+ipcMain.handle('flow:window-state', () => currentWindowState());
+
 /* Start with the system. Hidden launch keeps the app out of the way until it is
  * wanted; the tray icon is the way back in. */
-ipcMain.handle('flow:login-item', (e, enabled) => {
-  if (e) { /* sender kept for symmetry with the renderer bridge */ }
-  const app = require('electron').app;
+ipcMain.handle('flow:login-item', (_e, enabled) => {
   app.setLoginItemSettings({
     openAtLogin: !!enabled,
     openAsHidden: !!enabled,
@@ -283,20 +374,47 @@ ipcMain.on('flow:export', (_e, name, content) => {
   if (target) fs.writeFileSync(target, content);
 });
 
+/* ---------------------------------------------------------------- behaviour */
+/* closeToTray / minimizeToTray / pinOnTop and the hotkey map live in the
+ * database, so the main process has to be told about them. Before this, the
+ * two tray switches in Settings changed a stored boolean that nothing read. */
+function applyBehavior(behavior) {
+  if (!behavior || typeof behavior !== 'object') return;
+  if (typeof behavior.closeToTray === 'boolean') closeToTray = behavior.closeToTray;
+  if (typeof behavior.minimizeToTray === 'boolean') minimizeToTray = behavior.minimizeToTray;
+  if (typeof behavior.pinOnTop === 'boolean' && mainWindow) mainWindow.setAlwaysOnTop(behavior.pinOnTop);
+  if (behavior.hotkeys && typeof behavior.hotkeys === 'object') registerShortcuts(behavior.hotkeys);
+}
+
+function currentWindowState() {
+  if (!mainWindow || mainWindow.isDestroyed()) return { maximized: false, focused: false };
+  return { maximized: mainWindow.isMaximized(), focused: mainWindow.isFocused() };
+}
+
 /* ---------------------------------------------------------------- shortcuts */
-function registerShortcuts() {
-  const shortcuts = {
-    'CommandOrControl+Shift+Space': 'quick-add',
-    'CommandOrControl+Shift+P': 'toggle-timer',
-    'CommandOrControl+Shift+F': 'mini-mode',
-    'CommandOrControl+Shift+M': 'mute-sound',
-    'CommandOrControl+Shift+D': 'focus-mode',
+function registerShortcuts(overrides = {}) {
+  const keys = {
+    quickAdd: 'CommandOrControl+Shift+Space',
+    toggleTimer: 'CommandOrControl+Shift+P',
+    toggleWindow: 'CommandOrControl+Shift+F',
+    toggleSound: 'CommandOrControl+Shift+M',
+    focusMode: 'CommandOrControl+Shift+D',
+    ...overrides,
   };
+  const shortcuts = {
+    [keys.quickAdd]: 'quick-add',
+    [keys.toggleTimer]: 'toggle-timer',
+    [keys.toggleWindow]: 'mini-mode',
+    [keys.toggleSound]: 'mute-sound',
+    [keys.focusMode]: 'focus-mode',
+  };
+  globalShortcut.unregisterAll();
   for (const [accel, action] of Object.entries(shortcuts)) {
-    globalShortcut.register(accel, () => {
+    const ok = globalShortcut.register(accel, () => {
       showWindow();
-      mainWindow?.webContents.send('flow:action', action);
+      sendToRenderer(action);
     });
+    if (!ok) console.warn(`Flow: shortcut ${accel} is taken by another app`);
   }
 }
 
@@ -315,7 +433,7 @@ if (!gotLock) {
 
     powerMonitor.on('resume', () => {
       // recompute everything after sleep: timers are clock-derived in the renderer
-      mainWindow?.webContents.send('flow:action', 'resume');
+      sendToRenderer('resume');
       reschedule();
     });
 

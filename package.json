@@ -1,7 +1,7 @@
 {
   "name": "flow",
   "productName": "Flow",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "Flow \u2014 all-in-one, local-first productivity desktop suite",
   "private": true,
   "type": "module",
@@ -29,7 +29,7 @@
     "landing:stamp": "node scripts/stamp-landing.mjs",
     "landing:serve": "node scripts/serve-landing.mjs",
     "verify:workflows": "node scripts/validate-workflows.mjs",
-    "icon": "python3 build/make-icon.py",
+    "icon": "python3 scripts/make-icon.py",
     "release:notes": "node scripts/release-notes.mjs"
   },
   "dependencies": {
@@ -110,7 +110,7 @@
           ]
         }
       ],
-      "icon": "build/icon.ico",
+      "icon": "electron/assets/icon.ico",
       "publisherName": "opngo",
       "requestedExecutionLevel": "asInvoker",
       "legalTrademarks": "Flow",
@@ -125,8 +125,8 @@
       "createDesktopShortcut": true,
       "deleteAppDataOnUninstall": false,
       "runAfterFinish": true,
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico",
+      "installerIcon": "electron/assets/icon.ico",
+      "uninstallerIcon": "electron/assets/icon.ico",
       "license": "LICENSE"
     },
     "portable": {
@@ -149,7 +149,7 @@
           ]
         }
       ],
-      "icon": "build/icon.png",
+      "icon": "electron/assets/icon.icns",
       "category": "public.app-category.productivity",
       "darkModeSupport": true,
       "hardenedRuntime": true,
@@ -186,7 +186,7 @@
           ]
         }
       ],
-      "icon": "build/icon.png",
+      "icon": "electron/assets/icon.png",
       "category": "Utility",
       "synopsis": "All-in-one local-first productivity suite",
       "description": "Flow is a local-first productivity suite: todos, habits, goals, focus timers, grades, notes, flashcards, a sound studio and 124 tools in one offline desktop app.",

@@ -10,10 +10,12 @@ export type FlowBridge = {
   notify: (payload: { title: string; body: string; route?: string; targetId?: string }) => void;
   schedule: (json: string) => void;
   tray: (state: { timerLabel: string; running: boolean }) => void;
+  behavior: (behavior: { closeToTray?: boolean; minimizeToTray?: boolean; pinOnTop?: boolean; hotkeys?: Record<string, string> }) => void;
   copy: (text: string) => void;
   exportFile: (name: string, content: string) => void;
-  onAction: (cb: (action: string, payload?: unknown) => void) => void;
-  windowState: () => Promise<{ maximized: boolean }>;
+  /** Subscribe to main-process actions; returns an unsubscribe function. */
+  onAction: (cb: (action: string, payload?: unknown) => void) => (() => void) | void;
+  windowState: () => Promise<{ maximized: boolean; focused?: boolean }>;
   loginItem: (enabled: boolean) => Promise<boolean>;
 };
 

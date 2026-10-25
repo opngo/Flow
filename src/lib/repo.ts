@@ -1,4 +1,4 @@
-import { DBSchema, SCHEMA_VERSION, type DB } from './types';
+import { DBSchema, SCHEMA_VERSION, type DB, type Settings } from './types';
 import { isElectron } from './platform';
 
 const KEY = 'flow.db.v3';
@@ -35,7 +35,13 @@ type Raw = Record<string, unknown>;
 
 /** Versioned migrations. Each step upgrades one version forward. */
 const migrations: Record<number, (db: Raw) => Raw> = {
-  1: (db) => ({ ...db, decks: Array.isArray(db.decks) ? db.decks : [], activity: [] }),
+  1: (db) => ({
+    ...db,
+    decks: Array.isArray(db.decks) ? db.decks : [],
+    /* Only fill a missing array. An existing history is the user's, and an
+       upgrade that quietly erased it would be worse than the bug it fixes. */
+    activity: Array.isArray(db.activity) ? db.activity : [],
+  }),
   2: (db) => {
     const todos = (db.todos as Raw[] | undefined) ?? [];
     return { ...db, todos: todos.map((t) => ({ ...t, loggedMin: typeof t.loggedMin === 'number' ? t.loggedMin : 0 })) };
@@ -71,6 +77,59 @@ const migrations: Record<number, (db: Raw) => Raw> = {
   },
 };
 
+type SettingsShape = typeof DBSchema.shape.settings;
+const settingsDefaults = DBSchema.shape.settings.parse({}) as Record<string, unknown>;
+const settingsGroups = (DBSchema.shape.settings as unknown as {
+  _def: { innerType: { shape: Record<string, { safeParse: (v: unknown) => { success: boolean; data?: unknown } }> } };
+})._def.innerType.shape;
+
+const isPlainObject = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/**
+ * Make a settings object whole again.
+ *
+ * Every group in `settings` is validated on its own and merged over the schema
+ * defaults, so one broken or missing group costs the user that group's
+ * preferences and nothing else. A database written by an older build, repaired
+ * by hand, or half-written before a crash therefore boots into a complete
+ * `settings` object instead of crashing the shell on a missing key
+ * (`settings.backdrop.effect` was exactly that fault).
+ */
+export function repairSettings(raw: unknown): Settings {
+  const source = isPlainObject(raw) ? raw : {};
+  const out: Record<string, unknown> = { ...settingsDefaults };
+  for (const key of Object.keys(settingsDefaults)) {
+    const fallback = settingsDefaults[key];
+    const group = settingsGroups[key];
+    const value = source[key];
+    const merged = isPlainObject(fallback) && isPlainObject(value) ? { ...fallback, ...value } : value;
+    if (merged === undefined || merged === null) continue;
+    if (!group) { out[key] = merged; continue; }
+    const parsed = group.safeParse(merged);
+    if (parsed.success) {
+      out[key] = parsed.data;
+      continue;
+    }
+    /* The group is unusable as a whole. Keep whatever survives one field at a
+       time rather than throwing all of it away. */
+    const salvaged: Record<string, unknown> = { ...(isPlainObject(fallback) ? fallback : {}) };
+    if (isPlainObject(merged)) {
+      for (const field of Object.keys(salvaged)) {
+        const single = group.safeParse({ ...salvaged, [field]: merged[field] });
+        if (single.success) salvaged[field] = (single.data as Record<string, unknown>)[field];
+      }
+    }
+    out[key] = salvaged;
+  }
+  return out as Settings;
+}
+
+/** Guarantee a whole database: settings repaired, collections defaulted. */
+export function withDefaults(db: DB): DB {
+  return { ...db, settings: repairSettings(db.settings) };
+}
+
 export function migrate(raw: Raw): DB {
   let data = raw;
   let v = typeof data.version === 'number' ? data.version : 0;
@@ -81,7 +140,7 @@ export function migrate(raw: Raw): DB {
     data.version = v;
   }
   const parsed = DBSchema.safeParse(data);
-  if (parsed.success) return parsed.data;
+  if (parsed.success) return withDefaults(parsed.data);
 
   // A single corrupt collection must never cost the user their whole database.
   // Each top-level key is validated on its own; only the broken ones fall back
@@ -101,16 +160,27 @@ export function migrate(raw: Raw): DB {
     }
   }
   merged.version = SCHEMA_VERSION;
-  return DBSchema.parse(merged);
+  return withDefaults(DBSchema.parse(merged));
 }
 
+/** A database plus the answer to "did loading have to change anything?".
+ *  The shell writes the repaired version back so the file on disk stops being
+ *  broken, instead of paying for the same recovery on every launch. */
+export type LoadResult = { db: DB; repaired: boolean };
+
+const changedSinceStored = (raw: Raw, db: DB) =>
+  JSON.stringify(raw.settings) !== JSON.stringify(db.settings) ||
+  (typeof raw.version === 'number' ? raw.version : 0) !== db.version;
+
 export const repo = {
-  async load(): Promise<DB | null> {
+  async load(): Promise<LoadResult | null> {
     if (isElectron()) {
       try {
         const json = await window.flow!.load();
         if (!json) return null;
-        return migrate(JSON.parse(json) as Raw);
+        const raw = JSON.parse(json) as Raw;
+        const db = migrate(raw);
+        return { db, repaired: changedSinceStored(raw, db) };
       } catch (err) {
         console.error('Flow: failed to load from main process', err);
       }
@@ -118,7 +188,9 @@ export const repo = {
     try {
       const json = storage.get(KEY);
       if (!json) return null;
-      return migrate(JSON.parse(json) as Raw);
+      const raw = JSON.parse(json) as Raw;
+      const db = migrate(raw);
+      return { db, repaired: changedSinceStored(raw, db) };
     } catch (err) {
       console.error('Flow: failed to load local database', err);
       return null;
