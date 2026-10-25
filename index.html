@@ -1,188 +1,324 @@
 <!doctype html>
 <html lang="en" class="dark">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Flow</title>
-    <!-- Inline mark: no request, so the console stays clean and the app
-         still has an icon when the bundle runs from disk. -->
-    <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAzMiAzMic+PHJlY3Qgd2lkdGg9JzMyJyBoZWlnaHQ9JzMyJyByeD0nOScgZmlsbD0nIzBiMGQxMicvPjxwYXRoIGQ9J00xMSAyM1YxMS41QTIuNSAyLjUgMCAwIDEgMTMuNSA5SDIxJyBzdHJva2U9JyM3YzhjZmYnIHN0cm9rZS13aWR0aD0nMi42JyBzdHJva2UtbGluZWNhcD0ncm91bmQnIGZpbGw9J25vbmUnLz48cGF0aCBkPSdNMTIuNCAxNmg2JyBzdHJva2U9JyM3YzhjZmYnIHN0cm9rZS13aWR0aD0nMi42JyBzdHJva2UtbGluZWNhcD0ncm91bmQnLz48L3N2Zz4=" type="image/svg+xml" />
-    <!-- Type is bundled: Satoshi for the interface, Sentient for prose. No
-         network request is made for a font, so the app looks identical offline
-         and inside a sandboxed preview. -->
-    <link rel="preload" href="/fonts/satoshi-500.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/sentient-400.woff2" as="font" type="font/woff2" crossorigin />
-    <style>
-      /* The launch animation lives in the document, not in the bundle.
-         A React overlay can only appear once React has parsed, which is exactly
-         the blank moment this is meant to cover — so the first thing the window
-         paints is a paper plane already moving, and the app fades up behind it
-         when the database says it is ready. */
-      @font-face {
-        font-family: 'Flow Boot';
-        src: url('/fonts/satoshi-500.woff2') format('woff2');
-        font-weight: 500;
-        font-display: block;
-      }
-      #boot {
-        position: fixed;
-        inset: 0;
-        z-index: 9999;
-        display: grid;
-        place-items: center;
-        overflow: hidden;
-        background: var(--boot-bg, #0b0d12);
-        transition: opacity 220ms ease;
-      }
-      #boot.is-done { opacity: 0; pointer-events: none; }
-      #boot-stage {
-        position: relative;
-        width: 620px;
-        height: 240px;
-        transform: scale(var(--boot-scale, 1));
-      }
-      #boot-trail {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        overflow: visible;
-      }
-      #boot-trail path {
-        fill: none;
-        stroke: var(--boot-accent, #7c8cff);
-        stroke-width: 2;
-        stroke-linecap: round;
-        /* drawn: the dash runs out exactly as the plane reaches the end */
-        stroke-dasharray: 660;
-        stroke-dashoffset: 660;
-        animation: boot-draw 620ms cubic-bezier(0.42, 0, 0.28, 1) 30ms forwards;
-        opacity: 0.9;
-      }
-      .boot-plane {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 30px;
-        height: 30px;
-        margin: -15px 0 0 -15px;
-        color: var(--boot-accent, #7c8cff);
-        offset-path: path('M -20 150 C 150 34, 360 22, 650 84');
-        offset-rotate: auto;
-        offset-distance: 0%;
-        animation: boot-fly 620ms cubic-bezier(0.42, 0, 0.3, 1) 30ms forwards;
-        filter: drop-shadow(0 0 16px color-mix(in srgb, var(--boot-accent, #7c8cff) 45%, transparent));
-      }
-      /* The dip after the flight: the plane banks away once the word is written. */
-      .boot-plane svg { width: 100%; height: 100%; display: block; }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flow</title>
+  <!-- Inline mark: no request, so the console stays clean and the app
+       still has an icon when the bundle runs from disk. -->
+  <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAzMiAzMic+PHJlY3Qgd2lkdGg9JzMyJyBoZWlnaHQ9JzMyJyByeD0nOScgZmlsbD0nIzBiMGQxMicvPjxwYXRoIGQ9J00xMSAyM1YxMS41QTIuNSAyLjUgMCAwIDEgMTMuNSA5SDIxJyBzdHJva2U9JyM3YzhjZmYnIHN0cm9rZS13aWR0aD0nMi42JyBzdHJva2UtbGluZWNhcD0ncm91bmQnIGZpbGw9J25vbmUnLz48cGF0aCBkPSdNMTIuNCAxNmg2JyBzdHJva2U9JyM3YzhjZmYnIHN0cm9rZS13aWR0aD0nMi42JyBzdHJva2UtbGluZWNhcD0ncm91bmQnLz48L3N2Zz4=" type="image/svg+xml" />
+  <!-- Type is bundled: Satoshi for the interface, Sentient for prose. No
+       network request is made for a font, so the app looks identical offline
+       and inside a sandboxed preview. -->
+  <link rel="preload" href="/fonts/satoshi-500.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/sentient-400.woff2" as="font" type="font/woff2" crossorigin />
+  <style>
+    /* The launch animation lives in the document, not in the bundle.
+       A React overlay can only appear once React has parsed, which is exactly
+       the blank moment this is meant to cover, so the first thing the window
+       paints is already moving, and the app fades up behind it when the
+       database says it is ready.
 
-      #boot-word {
-        position: absolute;
-        left: 50%;
-        top: 63%;
-        transform: translate(-50%, -50%);
-        display: flex;
-        font-family: 'Flow Boot', 'Satoshi', system-ui, sans-serif;
-        font-size: 92px;
-        font-weight: 500;
-        letter-spacing: -0.045em;
-        line-height: 1;
-        color: var(--boot-text, #eef1f8);
+       The idea: the word "Flow" is a vessel, and it fills with liquid.
+         1. A drop falls and lands. Ripples spread out from it.
+         2. Two waves rise through the letters, the back one in the accent
+            colour, the front one in the text colour. They keep sliding
+            sideways, in opposite directions, so the surface always moves.
+         3. Once the letters are full, a streak of light sweeps across them.
+         4. A slow breathing glow keeps the screen alive if boot is slow.
+       All of it is inline SVG and CSS. Nothing is requested from the network. */
+    @font-face {
+      font-family: 'Flow Boot';
+      src: url('/fonts/satoshi-500.woff2') format('woff2');
+      font-weight: 500;
+      font-display: block;
+    }
+    #boot {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      background: var(--boot-bg, #0b0d12);
+      transition: opacity 240ms ease;
+    }
+    #boot.is-done { opacity: 0; pointer-events: none; }
+    #boot-stage {
+      position: relative;
+      width: 620px;
+      height: 240px;
+      transform: scale(var(--boot-scale, 1));
+    }
+
+    /* Glow behind the word. It opens as the water rises, then breathes. */
+    #boot-stage::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 560px;
+      height: 240px;
+      transform: translate(-50%, -50%) scale(0.7);
+      background: radial-gradient(
+        closest-side,
+        color-mix(in srgb, var(--boot-accent, #7c8cff) 24%, transparent),
+        transparent
+      );
+      opacity: 0;
+      animation:
+        boot-bloom 900ms cubic-bezier(0.22, 0.61, 0.36, 1) 300ms forwards,
+        boot-breathe 2800ms ease-in-out 1500ms infinite alternate;
+    }
+
+    #boot-art {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      transform-origin: 50% 50%;
+      transition: transform 280ms cubic-bezier(0.4, 0, 0.2, 1), filter 280ms ease;
+    }
+    /* As the splash leaves, the word drifts toward the viewer and softens. */
+    #boot.is-done #boot-art { transform: scale(1.05); filter: blur(2px); }
+
+    #boot-art text {
+      font-family: 'Flow Boot', 'Satoshi', system-ui, sans-serif;
+      font-size: 112px;
+      font-weight: 500;
+      letter-spacing: -0.045em;
+    }
+
+    /* The empty vessel: a faint outline that is there before the water. */
+    .b-outline {
+      fill: none;
+      stroke: var(--boot-text, #eef1f8);
+      stroke-width: 1.2;
+      opacity: 0;
+      animation: boot-fade-in 360ms ease 60ms forwards;
+    }
+
+    /* Swell lines: two slow ribbons drawn behind the word. */
+    .b-swell {
+      fill: none;
+      stroke: var(--boot-accent, #7c8cff);
+      stroke-width: 1.4;
+      stroke-linecap: round;
+      stroke-dasharray: 1;
+      stroke-dashoffset: 1;
+      opacity: 0.24;
+      animation: boot-swell 1300ms cubic-bezier(0.4, 0.1, 0.2, 1) forwards;
+    }
+    .b-swell-2 { opacity: 0.14; animation-delay: 120ms; }
+    .b-swell-1 { animation-delay: 20ms; }
+
+    /* The drop, and the rings it leaves. */
+    .b-drop {
+      fill: var(--boot-accent, #7c8cff);
+      transform-box: fill-box;
+      transform-origin: 50% 50%;
+      opacity: 0;
+      animation: boot-drop 260ms cubic-bezier(0.55, 0, 0.9, 0.5) 20ms forwards;
+      filter: drop-shadow(0 0 8px color-mix(in srgb, var(--boot-accent, #7c8cff) 70%, transparent));
+    }
+    .b-ring {
+      fill: none;
+      stroke: var(--boot-accent, #7c8cff);
+      stroke-width: 1.6;
+      vector-effect: non-scaling-stroke;
+      transform-box: fill-box;
+      transform-origin: 50% 50%;
+      opacity: 0;
+      transform: scale(0);
+      animation: boot-ring 780ms cubic-bezier(0.15, 0.6, 0.3, 1) forwards;
+    }
+    .b-ring-1 { animation-delay: 260ms; }
+    .b-ring-2 { animation-delay: 400ms; }
+
+    /* The water. Each .b-level rises; each .b-wave inside it slides sideways.
+       The wave path repeats every 310 units, so sliding by exactly 310 loops
+       without a visible seam. */
+    .b-level {
+      transform: translateY(215px);
+      animation: boot-rise 1050ms cubic-bezier(0.4, 0.1, 0.25, 1) forwards;
+    }
+    .b-level-back  { --end: -34px; animation-delay: 220ms; }
+    .b-level-front { --end: -12px; animation-delay: 340ms; }
+    .b-wave-back {
+      fill: var(--boot-accent, #7c8cff);
+      opacity: 0.7;
+      animation: boot-slide-left 2200ms linear infinite;
+    }
+    .b-wave-front {
+      fill: var(--boot-text, #eef1f8);
+      animation: boot-slide-right 1700ms linear infinite;
+    }
+
+    /* A streak of accent light that passes over the full letters. */
+    .b-glint {
+      fill: url(#boot-glint-grad);
+      transform: translateX(0) skewX(-20deg);
+      opacity: 0;
+      animation: boot-glint 560ms cubic-bezier(0.4, 0, 0.2, 1) 1180ms forwards;
+    }
+    #boot-glint-grad stop { stop-color: var(--boot-accent, #7c8cff); }
+
+    @keyframes boot-fade-in { to { opacity: 0.2; } }
+    @keyframes boot-swell { to { stroke-dashoffset: 0; } }
+    @keyframes boot-drop {
+      0%   { opacity: 0; transform: translateY(0) scaleY(1); }
+      20%  { opacity: 1; transform: translateY(22px) scaleY(1.5); }
+      88%  { opacity: 1; transform: translateY(142px) scaleY(1.7); }
+      100% { opacity: 0; transform: translateY(150px) scale(0.3, 0.6); }
+    }
+    @keyframes boot-ring {
+      0%   { opacity: 0.85; transform: scale(0); }
+      100% { opacity: 0;    transform: scale(1); }
+    }
+    @keyframes boot-rise {
+      from { transform: translateY(215px); }
+      to   { transform: translateY(var(--end)); }
+    }
+    @keyframes boot-slide-left {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-310px); }
+    }
+    @keyframes boot-slide-right {
+      from { transform: translateX(-310px); }
+      to   { transform: translateX(0); }
+    }
+    @keyframes boot-glint {
+      0%   { opacity: 0; transform: translateX(0) skewX(-20deg); }
+      15%  { opacity: 1; }
+      85%  { opacity: 1; }
+      100% { opacity: 0; transform: translateX(820px) skewX(-20deg); }
+    }
+    @keyframes boot-bloom {
+      from { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+      to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+    @keyframes boot-breathe {
+      from { opacity: 1;   transform: translate(-50%, -50%) scale(1); }
+      to   { opacity: 0.6; transform: translate(-50%, -50%) scale(1.07); }
+    }
+
+    @media (max-width: 700px) { #boot-stage { --boot-scale: 0.62; } }
+    @media (max-height: 520px) { #boot-stage { --boot-scale: 0.55; } }
+
+    /* Less motion means the word is simply there: full, still, no drop,
+       no rippling, no waves sliding. */
+    #boot.is-still .b-outline { animation: none; opacity: 0.2; }
+    #boot.is-still .b-swell { animation: none; stroke-dashoffset: 0; }
+    #boot.is-still .b-drop,
+    #boot.is-still .b-ring,
+    #boot.is-still .b-glint { display: none; }
+    #boot.is-still .b-level { animation: none; transform: translateY(var(--end)); }
+    #boot.is-still .b-wave-back,
+    #boot.is-still .b-wave-front { animation: none; }
+    #boot.is-still #boot-stage::before { animation: none; opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    #boot.is-still #boot-art { transition: none; }
+    @media (prefers-reduced-motion: reduce) {
+      .b-outline { animation: none; opacity: 0.2; }
+      .b-swell { animation: none; stroke-dashoffset: 0; }
+      .b-drop, .b-ring, .b-glint { display: none; }
+      .b-level { animation: none; transform: translateY(var(--end)); }
+      .b-wave-back, .b-wave-front { animation: none; }
+      #boot-stage::before { animation: none; opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      #boot-art, #boot.is-done #boot-art { transition: none; transform: none; filter: none; }
+    }
+  </style>
+</head>
+<body>
+<!-- Launch: a drop lands, and the word fills with liquid. -->
+<div id="boot" aria-hidden="true">
+  <div id="boot-stage">
+    <svg id="boot-art" viewBox="0 0 620 240" aria-hidden="true">
+      <defs>
+        <clipPath id="boot-clip">
+          <text x="310" y="160" text-anchor="middle">Flow</text>
+        </clipPath>
+        <linearGradient id="boot-glint-grad" x1="0" x2="1" y1="0" y2="0">
+          <stop offset="0" stop-opacity="0" />
+          <stop offset="0.5" stop-opacity="0.65" />
+          <stop offset="1" stop-opacity="0" />
+        </linearGradient>
+      </defs>
+
+      <!-- swell lines behind the word -->
+      <path class="b-swell b-swell-1" pathLength="1"
+            d="M -120 128 C 40 70, 150 198, 310 138 S 560 66, 740 116" />
+      <path class="b-swell b-swell-2" pathLength="1"
+            d="M -120 160 C 60 112, 170 214, 330 168 S 580 100, 740 150" />
+
+      <!-- the vessel -->
+      <text class="b-outline" x="310" y="160" text-anchor="middle">Flow</text>
+
+      <!-- the water, clipped to the letters -->
+      <g clip-path="url(#boot-clip)">
+        <g class="b-level b-level-back">
+          <path class="b-wave-back"
+                d="M -310 0 q 77.5 -28 155 0 t 155 0 t 155 0 t 155 0 t 155 0 t 155 0 t 155 0 t 155 0 V 400 H -310 Z" />
+        </g>
+        <g class="b-level b-level-front">
+          <path class="b-wave-front"
+                d="M -310 0 q 77.5 -28 155 0 t 155 0 t 155 0 t 155 0 t 155 0 t 155 0 t 155 0 t 155 0 V 400 H -310 Z" />
+        </g>
+        <rect class="b-glint" x="-140" y="0" width="110" height="240" />
+      </g>
+
+      <!-- the drop and its ripples -->
+      <circle class="b-drop" cx="310" cy="30" r="5" />
+      <ellipse class="b-ring b-ring-1" cx="310" cy="190" rx="250" ry="26" />
+      <ellipse class="b-ring b-ring-2" cx="310" cy="190" rx="190" ry="19" />
+    </svg>
+  </div>
+</div>
+<div id="root"></div>
+<script>
+  /* Paint the splash in the theme the app is about to use: reading two
+     fields out of the stored database costs nothing and avoids a dark flash
+     for a light-theme window. */
+  (function () {
+    var boot = document.getElementById('boot');
+    var started = performance.now();
+    /* Long enough for the drop, the fill and the light sweep to finish. */
+    var MIN = 1500;
+    var still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var ready = false;
+    try {
+      var raw = localStorage.getItem('flow.db.v3');
+      if (raw) {
+        var db = JSON.parse(raw);
+        var theme = (db && db.settings && db.settings.theme) || {};
+        var dark = theme.mode !== 'light';
+        boot.style.setProperty('--boot-bg', dark ? '#0b0d12' : '#f4f5f9');
+        boot.style.setProperty('--boot-text', dark ? '#eef1f8' : '#14161d');
+        if (theme.accent) boot.style.setProperty('--boot-accent', theme.accent);
+        if (db && db.settings && db.settings.behavior && db.settings.behavior.reduceMotion) still = true;
       }
-      #boot-word span {
-        display: block;
-        opacity: 0;
-        transform: translateY(12px);
-        animation: boot-letter 260ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
-      }
-      /* Each letter lands where the plane has just been, so the word reads as
-         something the flight left behind. */
-      #boot-word span:nth-child(1) { animation-delay: 380ms; }
-      #boot-word span:nth-child(2) { animation-delay: 420ms; }
-      #boot-word span:nth-child(3) { animation-delay: 460ms; }
-      #boot-word span:nth-child(4) { animation-delay: 500ms; }
+    } catch (e) { /* a broken database is the app's problem, not the splash's */ }
 
-      @keyframes boot-draw { to { stroke-dashoffset: 0; } }
-      @keyframes boot-fly { to { offset-distance: 100%; opacity: 0.92; } }
-      @keyframes boot-letter {
-        0% { opacity: 0; transform: translateY(8px); filter: blur(4px); }
-        100% { opacity: 1; transform: translateY(0); filter: blur(0); }
-      }
+    if (still) { boot.classList.add('is-still'); MIN = 380; }
 
-      @media (max-width: 700px) { #boot-stage { --boot-scale: 0.62; } }
-      @media (max-height: 520px) { #boot-stage { --boot-scale: 0.55; } }
-
-      /* Less motion means the word is simply there: no flight, no reveal. */
-      #boot.is-still #boot-trail path { animation: none; stroke-dashoffset: 260; }
-      #boot.is-still .boot-plane { animation: none; offset-distance: 62%; }
-      #boot.is-still #boot-word span { animation: none; opacity: 1; transform: none; filter: none; }
-      @media (prefers-reduced-motion: reduce) {
-        #boot-trail path { animation: none; stroke-dashoffset: 260; }
-        .boot-plane { animation: none; offset-distance: 62%; }
-        #boot-word span { animation: none; opacity: 1; transform: none; filter: none; }
-      }
-    </style>
-  </head>
-  <body>
-    <!-- Launch: a paper plane crosses the window and leaves the wordmark behind. -->
-    <div id="boot" aria-hidden="true">
-      <div id="boot-stage">
-        <svg id="boot-trail" viewBox="0 0 620 240" preserveAspectRatio="none" aria-hidden="true">
-          <path d="M -20 150 C 150 34, 360 22, 650 84" />
-        </svg>
-        <div class="boot-plane">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M21.9 2.4a.75.75 0 0 1 .16.8l-6.1 18.2a.75.75 0 0 1-1.38.13l-3.2-6.2-6.3-3.3a.75.75 0 0 1 .05-1.36L21.2 2.25a.75.75 0 0 1 .7.15Z" />
-            <path d="M21.9 2.4 11.4 15.3l.35 1.55L21.9 2.4Z" fill="#fff" opacity="0.25" />
-          </svg>
-        </div>
-        <div id="boot-word"><span>F</span><span>l</span><span>o</span><span>w</span></div>
-      </div>
-    </div>
-    <div id="root"></div>
-    <script>
-      /* Paint the splash in the theme the app is about to use: reading two
-         fields out of the stored database costs nothing and avoids a dark flash
-         for a light-theme window. */
-      (function () {
-        var boot = document.getElementById('boot');
-        var started = performance.now();
-        var MIN = 800;
-        var still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        var ready = false;
-        try {
-          var raw = localStorage.getItem('flow.db.v3');
-          if (raw) {
-            var db = JSON.parse(raw);
-            var theme = (db && db.settings && db.settings.theme) || {};
-            var dark = theme.mode !== 'light';
-            boot.style.setProperty('--boot-bg', dark ? '#0b0d12' : '#f4f5f9');
-            boot.style.setProperty('--boot-text', dark ? '#eef1f8' : '#14161d');
-            if (theme.accent) boot.style.setProperty('--boot-accent', theme.accent);
-            if (db && db.settings && db.settings.behavior && db.settings.behavior.reduceMotion) still = true;
-          }
-        } catch (e) { /* a broken database is the app's problem, not the splash's */ }
-
-        if (still) { boot.classList.add('is-still'); MIN = 380; }
-
-        function hide() {
-          if (boot.classList.contains('is-done')) return;
-          boot.classList.add('is-done');
-          setTimeout(function () { if (boot.parentNode) boot.parentNode.removeChild(boot); }, 280);
-        }
-        /* The app calls this once the database is in memory. The splash stays
-           for its full sentence either way — it is short enough not to matter
-           when boot is slow and it is the whole point when boot is fast. */
-        window.__flowBootDone = function () {
-          ready = true;
-          var wait = Math.max(0, MIN - (performance.now() - started));
-          setTimeout(hide, wait);
-        };
-        /* Nothing may leave the window covered: if the bundle never reports,
-           the splash leaves on its own. */
-        setTimeout(hide, 3600);
-      })();
-    </script>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+    function hide() {
+      if (boot.classList.contains('is-done')) return;
+      boot.classList.add('is-done');
+      setTimeout(function () { if (boot.parentNode) boot.parentNode.removeChild(boot); }, 300);
+    }
+    /* The app calls this once the database is in memory. The splash stays
+       for its full sentence either way — it is short enough not to matter
+       when boot is slow and it is the whole point when boot is fast. */
+    window.__flowBootDone = function () {
+      ready = true;
+      var wait = Math.max(0, MIN - (performance.now() - started));
+      setTimeout(hide, wait);
+    };
+    /* Nothing may leave the window covered: if the bundle never reports,
+       the splash leaves on its own. */
+    setTimeout(hide, 3600);
+  })();
+</script>
+<script type="module" src="/src/main.tsx"></script>
+</body>
 </html>
