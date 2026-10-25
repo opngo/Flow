@@ -1,8 +1,8 @@
 {
   "name": "flow",
   "productName": "Flow",
-  "version": "1.6.0",
-  "description": "Flow — all-in-one, local-first productivity desktop suite",
+  "version": "1.7.0",
+  "description": "Flow \u2014 all-in-one, local-first productivity desktop suite",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
@@ -72,7 +72,7 @@
   "build": {
     "appId": "com.flow.app",
     "productName": "Flow",
-    "copyright": "Copyright © 2026 opngo",
+    "copyright": "Copyright \u00a9 2026 opngo",
     "directories": {
       "output": "release",
       "buildResources": "build"
