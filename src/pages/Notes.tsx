@@ -203,9 +203,13 @@ export default function Notes() {
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search notes" className="h-9 flex-1 bg-transparent text-[12.5px] placeholder:text-faint" />
           </div>
           <div className="flex w-64 flex-wrap gap-1">
-            <button onClick={() => setFolder('all')} className={cn('focusable chip', folder === 'all' && 'text-accent')} style={folder === 'all' ? { background: 'var(--accent-soft)' } : undefined}>All</button>
+            <button onClick={() => setFolder('all')} data-tip="Every folder" className={cn('focusable chip', folder === 'all' && 'text-accent')} style={folder === 'all' ? { background: 'var(--accent-soft)' } : undefined}>
+              <Icon name="Layers" size={10} /> All
+            </button>
             {folders.map((f) => (
-              <button key={f} onClick={() => setFolder(f)} className={cn('focusable chip', folder === f && 'text-accent')} style={folder === f ? { background: 'var(--accent-soft)' } : undefined}>{f}</button>
+              <button key={f} onClick={() => setFolder(f)} data-tip={`${f} notes`} className={cn('focusable chip', folder === f && 'text-accent')} style={folder === f ? { background: 'var(--accent-soft)' } : undefined}>
+                <Icon name="Folder" size={10} /> {f}
+              </button>
             ))}
           </div>
           <div className="flex w-64 min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1">

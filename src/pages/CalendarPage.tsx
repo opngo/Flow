@@ -164,7 +164,9 @@ export default function CalendarPage() {
             <button onClick={() => step(-1)} aria-label="Previous" data-tip="Previous" className="focusable flex h-8 w-8 items-center justify-center rounded-[10px] text-muted hover:bg-s2 hover:text-ink">
               <Icon name="ChevronLeft" size={15} />
             </button>
-            <button onClick={() => setCursor(new Date())} className="focusable h-8 rounded-[10px] px-2.5 text-[12.5px] text-ink hover:bg-s2">Today</button>
+            <button onClick={() => setCursor(new Date())} data-tip="Jump to today" className="focusable flex h-8 items-center gap-1.5 rounded-[10px] px-2.5 text-[12.5px] text-ink hover:bg-s2">
+              <Icon name="CalendarCheck" size={12} /> Today
+            </button>
             <button onClick={() => step(1)} aria-label="Next" data-tip="Next" className="focusable flex h-8 w-8 items-center justify-center rounded-[10px] text-muted hover:bg-s2 hover:text-ink">
               <Icon name="ChevronRight" size={15} />
             </button>

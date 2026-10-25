@@ -4,6 +4,11 @@ import { useFlow } from '../store';
 import { useUI } from '../ui';
 import { Btn, Chip, Icon, Panel, SectionHead, TextInput, Toggle } from '../components/ui';
 import { TOOLS, TOOL_GROUPS } from '../lib/nav';
+
+/** A glyph per filter so the row survives no-text mode. */
+const GROUP_ICON: Record<string, string> = {
+  All: 'Grid2x2', Enabled: 'CheckCheck', Pinned: 'Pin',
+};
 import { cn } from '../lib/utils';
 
 export default function Tools() {
@@ -51,8 +56,12 @@ export default function Tools() {
         </div>
         <div className="flex flex-wrap gap-1">
           {['All', 'Enabled', 'Pinned', ...TOOL_GROUPS].map((g) => (
-            <button key={g} onClick={() => setGroup(g)} className={cn('focusable chip', group === g && 'text-accent')}
-              style={group === g ? { background: 'var(--accent-soft)' } : undefined}>{g}</button>
+            <button key={g} onClick={() => setGroup(g)} data-tip={`${g} tools`}
+              className={cn('focusable chip', group === g && 'text-accent')}
+              style={group === g ? { background: 'var(--accent-soft)' } : undefined}>
+              <Icon name={GROUP_ICON[g] ?? 'Boxes'} size={11} />
+              {g}
+            </button>
           ))}
         </div>
       </div>
