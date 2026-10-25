@@ -173,9 +173,9 @@ that let a line of command syntax become a task title.
   dropped instead of passed through, a half-typed `{repeat:dai` is cleaned off the line, the capture
   box no longer falls back to the raw line, and `addTodo`/`addNote` strip brace-shaped text at the
   write. Reminder titles are cleaned as they are built, so a reminder cannot quote syntax back.
-- **Migration 7 repairs the titles already stored.** Existing todos and notes have their braces
-  stripped once on load (`schema 7`); a title that was nothing but commands becomes `New task` /
-  `Untitled note` rather than an empty row.
+- **Migration 7 repairs the titles already stored.** Existing todos, notes, reminders and
+  notification titles have their braces stripped once on load (`schema 7`); a title that was nothing
+  but commands becomes `New task` / `Untitled note` rather than an empty row.
 - **`{repeat:daily}` on a captured task now sticks.** The token was parsed and then dropped, so the
   line said daily and the task was one-off; the todo path now writes `rrule`.
 - **The clock layer swallowed every click.** `.clock-wrap` is a `position: fixed; inset: 0` layer,

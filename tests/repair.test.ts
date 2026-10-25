@@ -121,12 +121,14 @@ describe('title repair', () => {
         TodoSchema.parse({ id: 't2', title: 'Buy milk', createdAt: now, updatedAt: now }),
       ],
       notes: [NoteSchema.parse({ id: 'n1', title: '{type:note}', createdAt: now, updatedAt: now })],
+      notifications: [{ id: 'r1', kind: 'reminder', title: 'Due soon: {type:task}{when:tomorrow }', at: now, missed: true }],
     } as unknown as Parameters<typeof migrate>[0];
     const out = migrate(db);
     const titles = out.todos.map((t) => t.title);
     expect(titles[0]).toBe('New task');
     expect(titles[1]).toBe('Buy milk');
     expect(out.notes[0].title).toBe('Untitled note');
+    expect(out.notifications[0].title).toBe('Due soon:');
     for (const t of [...out.todos.map((x) => x.title), ...out.notes.map((x) => x.title)]) {
       expect(t).not.toMatch(/[{}]/);
     }
