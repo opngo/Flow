@@ -54,6 +54,39 @@ export default function Timers() {
   const todayMin = bucket[format(new Date(), 'yyyy-MM-dd')]?.minutes ?? 0;
   const weekMin = Object.entries(bucket).filter(([d]) => new Date(`${d}T12:00:00`) >= startOfWeek(new Date(), { weekStartsOn: 1 })).reduce((a, [, v]) => a + v.minutes, 0);
 
+  /* The empty tab used to be an empty state over a blank page. These fill the
+     column beside it: what this week actually looked like, the last things that
+     ran, and what is attached to what. */
+  const week = useMemo(() => {
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      const key = format(d, 'yyyy-MM-dd');
+      return { key, minutes: bucket[key]?.minutes ?? 0, isToday: i === 6, day: format(d, 'EEEEE') };
+    });
+    return { days, max: Math.max(1, ...days.map((d) => d.minutes)) };
+  }, [bucket]);
+
+  const recentSessions = useMemo(
+    () => [...db.focusSessions].sort((a, b) => +new Date(b.startedAt) - +new Date(a.startedAt)).slice(0, 6),
+    [db.focusSessions],
+  );
+
+  /* What to offer when a tab is empty: the labels that have actually run,
+     longest first, with how many times. */
+  const suggestions = useMemo(() => {
+    const map = new Map<string, { min: number; count: number }>();
+    for (const x of recentSessions) {
+      const label = x.label?.trim() || 'Focus';
+      const prev = map.get(label);
+      map.set(label, { min: Math.max(prev?.min ?? 0, x.actualMin || 25), count: (prev?.count ?? 0) + 1 });
+    }
+    return [...map.entries()]
+      .map(([label, v]) => ({ label, min: v.min, count: v.count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [recentSessions]);
+
   const start = () => {
     flow.startTimer({
       kind, label: label || (kind === 'stopwatch' ? 'Stopwatch' : `${minutes} min`),
@@ -92,7 +125,8 @@ export default function Timers() {
       </div>
 
       {tab === 'timesheet' ? <Timesheet /> : tab === 'tracker' ? <Tracker /> : tab === 'routines' ? <Routines /> : (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 xl:grid-cols-[1fr_320px]">
+        <div className="grid content-start gap-3 md:grid-cols-2">
           {timers.filter((t) => (tab === 'stopwatch' ? t.kind === 'stopwatch' : tab === 'interval' ? t.kind === 'interval' : t.kind === 'countdown' || t.kind === 'exam'))
             .map((t) => {
               const elapsed = t.accumulatedMs + (t.startedAt ? Date.now() - new Date(t.startedAt).getTime() : 0);
@@ -158,23 +192,120 @@ export default function Timers() {
               );
             })}
           {!timers.filter((t) => (tab === 'stopwatch' ? t.kind === 'stopwatch' : tab === 'interval' ? t.kind === 'interval' : t.kind === 'countdown' || t.kind === 'exam')).length && (
-            <div className="md:col-span-2 xl:col-span-3">
-              <EmptyState icon="AlarmClock" title="No timers here" body="Start one from a preset below or create a custom timer."
-                action={<Btn variant="primary" icon="Plus" onClick={() => setNewOpen(true)}>New timer</Btn>} />
+            <div className="md:col-span-2">
+              {/* An empty tab is an invitation, not a notice: the space is filled
+                  with what has actually run, each one a single click to restart. */}
+              <Panel className="p-3.5">
+                <SectionHead
+                  title="Nothing running"
+                  subtitle={suggestions.length ? 'Start one of these again, or set your own minutes' : 'Set your own minutes to begin'}
+                  right={<Btn size="sm" variant="primary" icon="Plus" onClick={() => setNewOpen(true)}>New timer</Btn>}
+                />
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {suggestions.map((x) => (
+                    <button
+                      key={x.label}
+                      onClick={() => { flow.startTimer({ label: x.label, plannedMin: x.min, kind: 'countdown', endsAt: new Date(Date.now() + x.min * 60000).toISOString() }); toast({ title: 'Timer started', body: `${x.label} — ${x.min} min`, tone: 'success' }); }}
+                      className="focusable group flex items-center gap-2.5 rounded-[12px] bg-s1 px-3 py-2.5 text-left hover:bg-s2"
+                    >
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-s2">
+                        <Icon name="Hourglass" size={14} className="text-accent" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[12.5px]">{x.label}</span>
+                        <span className="num block text-[10.5px] text-faint">{x.min} min · {x.count}×</span>
+                      </span>
+                      <Icon name="Play" size={13} className="shrink-0 text-accent" />
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setNewOpen(true)}
+                    className="focusable flex items-center gap-2.5 rounded-[12px] px-3 py-2.5 text-left text-muted hover:bg-s1"
+                  >
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-s1">
+                      <Icon name="Plus" size={14} />
+                    </span>
+                    <span className="text-[12.5px]">Custom timer</span>
+                  </button>
+                </div>
+              </Panel>
             </div>
           )}
         </div>
+
+        <div className="space-y-3">
+          <Panel className="p-3.5">
+            <SectionHead title="This week" subtitle={`${minsToHM(weekMin)} across ${week.days.filter((d) => d.minutes).length} days`} />
+            <div className="flex items-end gap-1.5">
+              {week.days.map((d) => (
+                <div key={d.key} className="flex flex-1 flex-col items-center gap-1" data-tip={`${d.day} · ${minsToHM(d.minutes)}`}>
+                  <span
+                    className="w-full rounded-[4px]"
+                    style={{
+                      height: `${Math.max(4, (d.minutes / week.max) * 58)}px`,
+                      background: d.minutes
+                        ? d.isToday ? 'var(--accent)' : 'color-mix(in srgb, var(--accent) 38%, transparent)'
+                        : 'color-mix(in srgb, var(--text-faint) 14%, transparent)',
+                    }}
+                  />
+                  <span data-label="meta" className={cn('text-[9px]', d.isToday ? 'text-accent' : 'text-faint')}>{d.day}</span>
+                </div>
+              ))}
+            </div>
+          </Panel>
+
+          <Panel className="p-3.5">
+            <SectionHead title="Run it again" subtitle="Your most recent timers" />
+            <div className="space-y-1">
+              {[...new Set(recentSessions.map((x) => x.label?.trim() || 'Focus'))].slice(0, 4).map((name) => {
+                const mins = recentSessions.find((x) => (x.label?.trim() || 'Focus') === name)?.actualMin ?? 25;
+                return (
+                  <button
+                    key={name}
+                    onClick={() => { flow.startTimer({ label: name, plannedMin: mins, kind: 'countdown', endsAt: new Date(Date.now() + mins * 60000).toISOString() }); toast({ title: 'Timer started', body: `${name} — ${mins} min`, tone: 'success' }); }}
+                    className="focusable flex w-full items-center gap-2 rounded-[9px] px-2 py-1.5 text-left hover:bg-s1"
+                  >
+                    <Icon name="RotateCcw" size={12} className="text-accent" />
+                    <span className="min-w-0 flex-1 truncate text-[12px]">{name}</span>
+                    <span className="num shrink-0 text-[10.5px] text-faint">{mins}m</span>
+                  </button>
+                );
+              })}
+              {!recentSessions.length && (
+                <div className="px-2 py-2 text-[11.5px] text-faint" data-label="meta">Nothing has run yet</div>
+              )}
+            </div>
+          </Panel>
+
+          <Panel className="p-3.5">
+            <SectionHead title="Recently logged" subtitle="Finished blocks, newest first" />
+            <div className="space-y-0.5">
+              {recentSessions.slice(0, 5).map((x) => (
+                <div key={x.id} className="flex items-center gap-2 px-2 py-1 text-[11.5px]">
+                  <Icon name={x.kind === 'focus' ? 'Timer' : 'Coffee'} size={11} className="text-faint" />
+                  <span className="truncate text-muted">{x.label?.trim() || 'Focus'}</span>
+                  <span className="num ml-auto shrink-0 text-faint">{format(new Date(x.startedAt), 'EEE h:mm a')}</span>
+                  <span className="num w-10 shrink-0 text-right" style={{ color: db.subjects.find((sub) => sub.id === x.subjectId)?.color }}>{x.actualMin}m</span>
+                </div>
+              ))}
+              {!recentSessions.length && (
+                <div className="px-2 py-2 text-[11.5px] text-faint" data-label="meta">No sessions logged yet</div>
+              )}
+            </div>
+          </Panel>
+        </div>
+        </div>
       )}
 
-      <Panel className="p-3">
+      <Panel className="p-3.5">
         <SectionHead title="Presets" subtitle="One click to start" />
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
           {PRESETS.map((p) => (
             <button key={p.label} onClick={() => flow.startTimer({ label: p.label, plannedMin: p.min, kind: 'countdown', endsAt: new Date(Date.now() + p.min * 60000).toISOString() })}
-              className="focusable flex items-center gap-2 rounded-[12px] bg-s1 px-3 py-2 text-[12px] hover:bg-s2">
+              className="focusable flex items-center gap-2 rounded-[12px] bg-s1 px-3 py-2.5 text-[12px] hover:bg-s2">
               <Icon name={p.icon} size={14} className="text-accent" />
               {p.label}
-              <span className="num text-[10.5px] text-faint">{p.min}m</span>
+              <span className="num ml-auto text-[10.5px] text-faint">{p.min}m</span>
             </button>
           ))}
         </div>

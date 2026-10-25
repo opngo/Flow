@@ -84,6 +84,40 @@ export default function Habits() {
           hides how the habits are actually going. */}
       <HabitYearStrip />
 
+      {view === 'week' && (() => {
+        /* What is still open today, one tap each. The grid below is for looking
+           back; this row is for the thing you actually came here to do. */
+        const open = activeHabits.filter((h) => isHabitScheduled(h, today) && !logFor(h.id, today));
+        if (!open.length) return null;
+        return (
+          <Panel className="p-3">
+            <SectionHead
+              title={`${open.length} still open today`}
+              subtitle="One tap to check in — long press or right-click for more"
+              right={<Btn size="sm" variant="ghost" icon="CheckCheck" onClick={() => open.forEach((h) => checkIn(h.id, dayKey(today), h.target.type === 'boolean' ? 1 : h.target.value))}>All done</Btn>}
+            />
+            <div className="flex flex-wrap gap-2">
+              {open.map((h) => (
+                <button
+                  key={h.id}
+                  onClick={() => checkIn(h.id, dayKey(today), h.target.type === 'boolean' ? 1 : h.target.value)}
+                  onContextMenu={(e) => { e.preventDefault(); setSkipFor({ habit: h, date: dayKey(today) }); }}
+                  className="focusable flex items-center gap-2 rounded-[12px] px-2.5 py-2 text-[12px] hover:bg-s2"
+                  style={{ background: 'var(--surface-1)' }}
+                  data-tip={`Check in ${h.name}${h.target.type !== 'boolean' ? ` · ${h.target.value}${h.target.type === 'duration' ? ' min' : '×'}` : ''}`}
+                >
+                  <span className="flex h-6 w-6 items-center justify-center rounded-[8px]" style={{ background: `color-mix(in srgb, ${h.color} 16%, transparent)` }}>
+                    <Icon name={h.icon} size={12} style={{ color: h.color }} />
+                  </span>
+                  {h.name}
+                  <Icon name="Circle" size={12} className="text-faint" />
+                </button>
+              ))}
+            </div>
+          </Panel>
+        );
+      })()}
+
       {view === 'week' && (
         <Panel className="p-3">
           <SectionHead title="This week" subtitle={fmtDate(week[0], 'MMM d') + ' – ' + fmtDate(week[6], 'MMM d')} />
@@ -115,6 +149,38 @@ export default function Habits() {
                       </span>
                       <div className="min-w-0">
                         <div className="truncate text-[12.5px]">{h.name}</div>
+                        <div className="flex items-center gap-1.5 text-[10px] text-faint">
+                          {(() => {
+                            /* Thirty days of history as eight ticks: the shape of
+                               a habit is easier to read than its percentage. */
+                            const bars = Array.from({ length: 8 }, (_, i) => {
+                              const start = addDays(today, -29 + i * 4);
+                              let due = 0;
+                              let done = 0;
+                              for (let k = 0; k < 4; k += 1) {
+                                const d = addDays(start, k);
+                                if (d > today || !isHabitScheduled(h, d)) continue;
+                                due += 1;
+                                if (logFor(h.id, d) && !logFor(h.id, d)?.skipped) done += 1;
+                              }
+                              return due ? done / due : null;
+                            });
+                            return (
+                              <span className="flex items-end gap-[2px]" data-tip="Consistency over the last 30 days">
+                                {bars.map((v, i) => (
+                                  <span
+                                    key={i}
+                                    className="w-[3px] rounded-[1px]"
+                                    style={{
+                                      height: `${4 + (v ?? 0) * 6}px`,
+                                      background: v == null ? 'color-mix(in srgb, var(--text-faint) 18%, transparent)' : v >= 1 ? h.color : `color-mix(in srgb, ${h.color} ${Math.round(25 + v * 60)}%, transparent)`,
+                                    }}
+                                  />
+                                ))}
+                              </span>
+                            );
+                          })()}
+                        </div>
                         <div className="text-[10px] text-faint">
                           {h.schedule.type === 'timesPerWeek' ? `${h.schedule.times}x / week` : h.schedule.type === 'daily' ? 'every day' : h.schedule.type === 'weekdays' ? h.schedule.days.map((d) => ['S', 'M', 'T', 'W', 'T', 'F', 'S'][d]).join('') : h.schedule.type}
                           {h.target.type !== 'boolean' ? ` · ${h.target.value}${h.target.type === 'duration' ? 'm' : 'x'}` : ''}

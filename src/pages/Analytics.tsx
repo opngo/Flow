@@ -58,6 +58,43 @@ export default function Analytics() {
   const values = useMemo(() => Object.fromEntries(Object.entries(bucket).map(([k, v]) => [k, v.minutes])), [bucket]);
   const th = useMemo(() => (custom ? custom.split(',').map((x) => Number(x.trim())).filter((n) => !Number.isNaN(n)) : thresholds(Object.values(values))), [values, custom]);
   const stats = useMemo(() => summaryStats(bucket), [bucket]);
+
+  /* Two panels under the calendar, where the page used to just stop: how the
+     year is running by month, and what the sessions are spent on. Both follow
+     the same filters as the heatmap above, so the page never contradicts
+     itself. */
+  const months = useMemo(() => {
+    const out = Array.from({ length: 12 }, (_, m) => {
+      const minutes = Object.entries(bucket)
+        .filter(([d]) => Number(d.slice(0, 4)) === year && Number(d.slice(5, 7)) === m + 1)
+        .reduce((a, [, v]) => a + v.minutes, 0);
+      return { month: m, minutes };
+    });
+    return { out, max: Math.max(1, ...out.map((o) => o.minutes)) };
+  }, [bucket, year]);
+
+  const bySubject = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const s of filtered) {
+      const key = s.subjectId ?? '__none';
+      totals.set(key, (totals.get(key) ?? 0) + s.actualMin);
+    }
+    const rows = [...totals.entries()]
+      .map(([id, minutes]) => ({
+        id,
+        minutes,
+        name: db.subjects.find((x) => x.id === id)?.name ?? 'Unassigned',
+        color: db.subjects.find((x) => x.id === id)?.color ?? 'var(--text-faint)',
+      }))
+      .sort((a, b) => b.minutes - a.minutes);
+    const total = Math.max(1, rows.reduce((a, r) => a + r.minutes, 0));
+    return { rows, total };
+  }, [filtered, db.subjects]);
+
+  const topSessions = useMemo(
+    () => [...filtered].sort((a, b) => b.actualMin - a.actualMin).slice(0, 5),
+    [filtered],
+  );
   const grid = useMemo(() => buildYearGrid(year, weekStart), [year, weekStart]);
 
   const exportSVG = () => {
@@ -210,6 +247,70 @@ export default function Analytics() {
           </div>
         )}
       </Panel>
+
+      {tab === 'heatmap' && (
+        <div className="grid gap-3 lg:grid-cols-[1.6fr_1fr]">
+          <Panel className="p-3.5">
+            <SectionHead title="Month by month" subtitle={`${minsToHM(months.out.reduce((a, m) => a + m.minutes, 0))} across ${year}`} />
+            <div className="flex items-end gap-1.5">
+              {months.out.map((m) => {
+                const active = m.minutes > 0;
+                return (
+                  <div key={m.month} className="flex flex-1 flex-col items-center gap-1" data-tip={`${format(new Date(year, m.month, 1), 'MMMM')} · ${minsToHM(m.minutes)}`}>
+                    <span className="num text-[9.5px] text-faint">{active ? `${Math.round(m.minutes / 60)}h` : ''}</span>
+                    <span
+                      className="w-full rounded-[4px]"
+                      style={{
+                        height: `${Math.max(4, (m.minutes / months.max) * 70)}px`,
+                        background: m.month === new Date().getMonth() && year === new Date().getFullYear()
+                          ? 'var(--accent)'
+                          : active ? 'color-mix(in srgb, var(--accent) 42%, transparent)' : 'color-mix(in srgb, var(--text-faint) 13%, transparent)',
+                      }}
+                    />
+                    {/* Three letters, not one: a single letter gives three Ts and two Ss. */}
+                    <span data-label="meta" className="text-[9px] text-faint">{format(new Date(year, m.month, 1), 'MMM')}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </Panel>
+
+          <Panel className="p-3.5">
+            <SectionHead title="Where the time goes" subtitle="Every filtered session, by subject" />
+            <div className="mb-2 flex h-2 overflow-hidden rounded-full" style={{ background: 'var(--surface-2)' }}>
+              {bySubject.rows.map((r) => (
+                <span key={r.id} style={{ width: `${(r.minutes / bySubject.total) * 100}%`, background: r.color }} />
+              ))}
+            </div>
+            <div className="space-y-1">
+              {bySubject.rows.slice(0, 5).map((r) => (
+                <div key={r.id} className="flex items-center gap-2 text-[11.5px]">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: r.color }} />
+                  <span className="min-w-0 flex-1 truncate text-muted" data-label="meta">{r.name}</span>
+                  <span className="num shrink-0 text-faint">{Math.round((r.minutes / bySubject.total) * 100)}%</span>
+                  <span className="num w-14 shrink-0 text-right">{minsToHM(r.minutes)}</span>
+                </div>
+              ))}
+              {!bySubject.rows.length && (
+                <div className="px-1 py-2 text-[11.5px] text-faint" data-label="meta">Nothing logged for these filters</div>
+              )}
+            </div>
+            {topSessions.length > 0 && (
+              <div className="mt-3 border-t pt-2" style={{ borderColor: 'color-mix(in srgb, var(--text-faint) 12%, transparent)' }}>
+                <div className="mb-1 text-[10px] uppercase tracking-[0.07em] text-faint" data-label="meta">Longest blocks</div>
+                {topSessions.slice(0, 3).map((x) => (
+                  <div key={x.id} className="flex items-center gap-2 py-0.5 text-[11px]">
+                    <Icon name="Flame" size={10} className="text-warning" />
+                    <span className="truncate text-muted">{x.label?.trim() || db.subjects.find((sub) => sub.id === x.subjectId)?.name || 'Focus'}</span>
+                    <span className="num ml-auto shrink-0 text-faint">{format(new Date(x.startedAt), 'MMM d')}</span>
+                    <span className="num w-10 shrink-0 text-right">{x.actualMin}m</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Panel>
+        </div>
+      )}
 
       {/* day detail */}
       <Modal open={!!dayPanel} onClose={() => setDayPanel(null)} title={dayPanel ? format(new Date(`${dayPanel}T12:00:00`), 'EEEE, MMMM d') : ''} wide

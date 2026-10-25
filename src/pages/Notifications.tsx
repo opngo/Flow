@@ -27,6 +27,33 @@ export default function Notifications() {
   const [devNote, setDevNote] = useState(false);
 
   const items = db.notifications.filter((n) => filter === 'all' || n.kind === filter);
+
+  /* A flat list of timestamps makes a week of notifications unreadable. Grouping
+     by day is the difference between a log and an inbox. */
+  const grouped = useMemo(() => {
+    const groups = new Map<string, typeof items>();
+    for (const n of [...items].sort((a, b) => +new Date(b.at) - +new Date(a.at))) {
+      const key = format(new Date(n.at), 'yyyy-MM-dd');
+      const list = groups.get(key) ?? [];
+      list.push(n);
+      groups.set(key, list);
+    }
+    const label = (key: string) => {
+      const d = new Date(`${key}T12:00:00`);
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const y = new Date();
+      y.setDate(y.getDate() - 1);
+      if (key === today) return 'Today';
+      if (key === format(y, 'yyyy-MM-dd')) return 'Yesterday';
+      return format(d, 'EEEE, MMM d');
+    };
+    return [...groups.entries()].map(([key, list]) => ({
+      key,
+      label: label(key),
+      unread: list.filter((n) => !n.read).length,
+      list,
+    }));
+  }, [items]);
   const unread = db.notifications.filter((n) => !n.read).length;
   const upcoming = useMemo(() => [...db.reminders].filter((r) => !r.delivered).sort((a, b) => +new Date(a.fireAt) - +new Date(b.fireAt)), [db.reminders]);
   const quiet = quietHoursActive(db.settings);
@@ -81,8 +108,18 @@ export default function Notifications() {
               </button>
             ))}
           </div>
-          <div className="space-y-1">
-            {items.map((n) => (
+          <div className="space-y-3">
+            {grouped.map((group) => (
+              <div key={group.key}>
+                <div className="mb-1 flex items-center gap-1.5 px-1">
+                  <span className="text-[10px] uppercase tracking-[0.07em] text-faint" data-label="meta">{group.label}</span>
+                  <span className="num text-[10px] text-faint" data-label="meta">{group.list.length}</span>
+                  {group.unread > 0 && (
+                    <span className="num rounded-[5px] px-1.5 text-[9.5px]" style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>{group.unread} new</span>
+                  )}
+                </div>
+                <div className="space-y-1">
+            {group.list.map((n) => (
               <div key={n.id} className={cn('flex items-start gap-2 rounded-[11px] px-2.5 py-2', n.read ? 'bg-s1/40' : 'bg-s1')}>
                 <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-[8px]" style={{ background: n.missed ? 'color-mix(in srgb, var(--warning) 16%, transparent)' : 'var(--surface-2)', color: n.missed ? 'var(--warning)' : 'var(--text-muted)' }}>
                   <Icon name={n.kind === 'todo' ? 'CheckSquare' : n.kind === 'habit' ? 'Flame' : n.kind === 'timer' ? 'Timer' : n.kind === 'mark' ? 'GraduationCap' : n.kind === 'wellness' ? 'HeartPulse' : 'Bell'} size={12} />
@@ -103,7 +140,33 @@ export default function Notifications() {
                 </div>
               </div>
             ))}
+                </div>
+              </div>
+            ))}
             {!items.length && <EmptyState icon="Bell" title="Nothing here" body="Notifications you receive will be kept here with their actions." />}
+            {items.length > 0 && (
+              <div className="flex items-center justify-center gap-1.5 pt-1 text-[10.5px] text-faint" data-label="meta">
+                <Icon name="Archive" size={11} /> That is everything kept locally
+              </div>
+            )}
+          </div>
+
+          {/* What the app has been doing, beside what it has been telling you.
+              The activity log was only ever visible on the dashboard. */}
+          <div className="mt-3">
+            <SectionHead title="Recent activity" subtitle="Everything Flow recorded, newest first" />
+            <div className="space-y-0.5">
+              {db.activity.slice(-10).reverse().map((a) => (
+                <div key={a.id} className="flex items-center gap-2 rounded-[9px] px-2 py-1.5 hover:bg-s1">
+                  <span className="h-1 w-1 shrink-0 rounded-full" style={{ background: 'var(--text-faint)' }} />
+                  <span className="min-w-0 flex-1 truncate text-[11.5px] text-muted">{a.text}</span>
+                  <span className="shrink-0 text-[10px] text-faint" data-label="meta">{format(new Date(a.at), 'MMM d, h:mm a')}</span>
+                </div>
+              ))}
+              {!db.activity.length && (
+                <div className="px-2 py-2 text-[11.5px] text-faint" data-label="meta">Nothing recorded yet</div>
+              )}
+            </div>
           </div>
         </Panel>
 

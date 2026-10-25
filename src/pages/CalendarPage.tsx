@@ -40,7 +40,7 @@ export default function CalendarPage() {
   const [view, setView] = useState<View>('month');
   const [cursor, setCursor] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
-  const [panelDay, setPanelDay] = useState<Date | null>(null);
+  const [panelDay, setPanelDay] = useState<Date | null>(new Date());
   const [editing, setEditing] = useState<CalendarEvent | null>(null);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Partial<CalendarEvent>>({});
@@ -78,6 +78,39 @@ export default function CalendarPage() {
     habits: db.habits.filter((h) => isHabitScheduled(h, day)),
     sessions: db.focusSessions.filter((f) => isSameDay(new Date(f.startedAt), day)).length,
   });
+
+  /* The week the month is parked on, as a strip above the grid: the month view
+     gives no sense of where "now" sits, and the strip gives it for one row. */
+  const strip = useMemo(() => {
+    const start = startOfWeek(panelDay ?? cursor, { weekStartsOn: weekStart });
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = addDays(start, i);
+      const items = dayItems(d);
+      return {
+        date: d,
+        load: items.events.length + items.assessments.length + items.todos.length,
+        habits: items.habits.length,
+        sessions: items.sessions,
+      };
+    });
+  }, [panelDay, cursor, weekStart, db]);
+
+  /* The next fourteen days that actually hold something. Before this the rail
+     only existed once a day had been clicked, and was empty on a fresh open. */
+  const agenda = useMemo(() => {
+    const out: Array<{ date: Date; kind: 'event' | 'assessment' | 'todo'; title: string; at?: string; color?: string; id: string }> = [];
+    for (let i = 0; i < 45 && out.length < 24; i += 1) {
+      const d = addDays(new Date(), i);
+      eventsOn(d).forEach((e) => out.push({ date: d, kind: 'event', title: e.title, at: format(new Date(e.start), 'h:mm a'), color: e.color, id: e.id }));
+      db.marks
+        .filter((m) => m.status === 'pending' && isSameDay(new Date(m.date), d))
+        .forEach((m) => out.push({ date: d, kind: 'assessment', title: m.title, color: db.subjects.find((x) => x.id === m.subjectId)?.color, id: m.id }));
+      db.todos
+        .filter((t) => t.status !== 'done' && t.dueAt && isSameDay(new Date(t.dueAt), d))
+        .forEach((t) => out.push({ date: d, kind: 'todo', title: t.title, id: t.id }));
+    }
+    return out;
+  }, [db, query]);
 
   const openNew = (start: Date, minutes = 60) => {
     setEditing(null);
@@ -184,6 +217,45 @@ export default function CalendarPage() {
         </div>
       </div>
 
+      {view === 'month' && (
+        <div className="grid shrink-0 grid-cols-4 gap-2 md:grid-cols-7">
+          {strip.map(({ date, load, habits, sessions }) => {
+            const selected = panelDay ? isSameDay(date, panelDay) : false;
+            return (
+              <button
+                key={date.toISOString()}
+                onClick={() => { setPanelDay(date); setCursor(date); }}
+                className={cn(
+                  'focusable rounded-[12px] px-2.5 py-2 text-left transition-colors',
+                  selected ? 'bg-accentsoft' : 'bg-s1 hover:bg-s2',
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <span data-label="meta" className={cn('text-[10px] uppercase tracking-[0.07em]', selected ? 'text-accent' : 'text-faint')}>{format(date, 'EEE')}</span>
+                  {isToday(date) && <span className="h-1 w-1 rounded-full" style={{ background: 'var(--accent)' }} />}
+                </div>
+                <div className="num mt-0.5 text-[16px] font-semibold leading-none">{format(date, 'd')}</div>
+                <div className="mt-1.5 flex items-center gap-1">
+                  {Array.from({ length: Math.min(4, load) }, (_, i) => (
+                    <span key={i} className="h-1 w-1 rounded-full" style={{ background: 'var(--accent)' }} />
+                  ))}
+                  {habits > 0 && (
+                    <span className="num ml-auto flex items-center gap-0.5 text-[10px] text-faint" data-tip={`${habits} habits scheduled`}>
+                      <Icon name="Flame" size={9} />{habits}
+                    </span>
+                  )}
+                  {sessions > 0 && (
+                    <span className="num flex items-center gap-0.5 text-[10px] text-faint" data-tip={`${sessions} focus sessions`}>
+                      <Icon name="Timer" size={9} />{sessions}
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {view === 'month' && (
@@ -220,6 +292,31 @@ export default function CalendarPage() {
             />
           )}
         </div>
+
+        {view === 'month' && !panelDay && (
+          <Panel className="w-full shrink-0 p-3 lg:w-[320px]">
+            <SectionHead title="Coming up" subtitle="The next events, deadlines and assessments" />
+            <div className="space-y-0.5">
+              {agenda.slice(0, 12).map((row) => (
+                <div key={`${row.kind}-${row.id}`} className="flex items-center gap-2 rounded-[9px] px-2 py-1.5 hover:bg-s1">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: row.color ?? 'var(--text-faint)' }} />
+                  <span className="min-w-0 flex-1 truncate text-[12px]">{row.title}</span>
+                  <span className="shrink-0 text-[10.5px] text-faint" data-label="meta">
+                    {format(row.date, 'MMM d')}{row.at ? ` · ${row.at}` : ''}
+                  </span>
+                </div>
+              ))}
+              {!agenda.length && (
+                <div className="flex items-center gap-1.5 px-2 py-3 text-[11.5px] text-faint" data-label="meta">
+                  <Icon name="CalendarCheck" size={12} /> Nothing scheduled ahead
+                </div>
+              )}
+            </div>
+            <div className="mt-2 text-[10.5px] text-faint" data-label="meta">
+              Click a day to see everything on it
+            </div>
+          </Panel>
+        )}
 
         {view === 'month' && panelDay && (
           <MonthDayRail

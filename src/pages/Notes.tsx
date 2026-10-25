@@ -64,6 +64,17 @@ export default function Notes() {
 
   const html = useMemo(() => (note ? marked.parse(note.body, { async: false, gfm: true, breaks: true }) as string : ''), [note]);
 
+  /** The heading outline: markdown headings, in document order, with the level
+   *  so the rail can indent them. */
+  const headings = useMemo(() => {
+    if (!note) return [];
+    return note.body
+      .split('\n')
+      .map((line) => /^(#{1,4})\s+(.+)$/.exec(line.trim()))
+      .filter((m): m is RegExpExecArray => !!m)
+      .map((m, i) => ({ id: `h${i}`, level: m[1].length, text: m[2].replace(/[*_`]/g, '') }));
+  }, [note]);
+
   /** Insert [[Title]] at the caret in the raw markdown editor. */
   const insertLink = (title: string) => {
     if (!note) return;
@@ -129,7 +140,7 @@ export default function Notes() {
           <div className="grid min-h-0 flex-1 gap-2 lg:grid-cols-[1fr_240px]">
             <div className="min-h-0 overflow-hidden rounded-[var(--radius)] bg-s1/60">
               {preview ? (
-                <div className="markdown notebook h-full overflow-y-auto px-5 py-4"
+                <div id="note-body" className="markdown notebook h-full overflow-y-auto px-5 py-4"
                   dangerouslySetInnerHTML={{ __html: html }} />
               ) : (
                 <textarea
@@ -154,23 +165,85 @@ export default function Notes() {
                   </div>
                 </Panel>
                 <Panel className="p-3">
-                  <div className="label mb-1.5">Links</div>
-                  {outgoing.length > 0 && (
-                    <div className="mb-2">
-                      <div className="text-[10.5px] text-faint">Outgoing</div>
-                      {outgoing.map((o) => (
-                        <button key={o} onClick={() => { const target = db.notes.find((n) => n.title.toLowerCase() === o.toLowerCase()); if (target) setParams({ open: target.id }); else { const n = addNote({ title: o }); setParams({ open: n.id }); } }}
-                          className="focusable block w-full truncate rounded-[8px] px-1.5 py-1 text-left text-[11.5px] text-accent hover:bg-s1">
-                          {o}
+                  <div className="mb-1.5 flex items-center gap-1.5">
+                    <Icon name="Link2" size={11} className="text-faint" />
+                    <span className="label">Links</span>
+                    <span className="num ml-auto text-[10px] text-faint">{outgoing.length + backlinks.length}</span>
+                  </div>
+                  <div className="mb-1 flex items-center gap-1.5 text-[10px] uppercase tracking-[0.06em] text-faint" data-label="meta">
+                    <Icon name="ArrowUpRight" size={9} /> Outgoing
+                    <span className="num">{outgoing.length}</span>
+                  </div>
+                  {outgoing.map((o) => {
+                    const exists = db.notes.some((n) => n.title.toLowerCase() === o.toLowerCase());
+                    return (
+                      <button key={o} onClick={() => { const target = db.notes.find((n) => n.title.toLowerCase() === o.toLowerCase()); if (target) setParams({ open: target.id }); else { const n = addNote({ title: o }); setParams({ open: n.id }); } }}
+                        className="focusable flex w-full items-center gap-1.5 rounded-[8px] px-1.5 py-1 text-left text-[11.5px] hover:bg-s1"
+                        data-tip={exists ? `Open “${o}”` : `Create “${o}”`}>
+                        <Icon name={exists ? 'FileText' : 'FilePlus2'} size={10} className={exists ? 'text-accent' : 'text-faint'} />
+                        <span className={cn('min-w-0 flex-1 truncate', exists ? 'text-accent' : 'text-muted')}>{o}</span>
+                        {!exists && <span className="shrink-0 text-[9px] text-faint" data-label="meta">new</span>}
+                      </button>
+                    );
+                  })}
+                  {!outgoing.length && <div className="px-1.5 pb-1 text-[11px] text-faint" data-label="meta">Nothing links out yet</div>}
+                  <div className="mb-1 mt-2 flex items-center gap-1.5 text-[10px] uppercase tracking-[0.06em] text-faint" data-label="meta">
+                    <Icon name="ArrowDownLeft" size={9} /> Backlinks
+                    <span className="num">{backlinks.length}</span>
+                  </div>
+                  {backlinks.map((b) => (
+                    <button key={b.id} onClick={() => setParams({ open: b.id })} className="focusable flex w-full items-center gap-1.5 rounded-[8px] px-1.5 py-1 text-left text-[11.5px] hover:bg-s1">
+                      <Icon name="FileText" size={10} className="shrink-0 text-faint" />
+                      <span className="min-w-0 flex-1 truncate">{b.title}</span>
+                    </button>
+                  ))}
+                  {!backlinks.length && (
+                    <div className="px-1.5 text-[11px] text-faint" data-label="meta">
+                      {outgoing.length ? 'No note points here yet' : 'Type [[another note]] to connect'}
+                    </div>
+                  )}
+                </Panel>
+
+                {/* The heading outline of the open note: real navigation in a long
+                    document, and it fills the rail the stats left empty. */}
+                <Panel className="p-3">
+                  <div className="mb-1.5 flex items-center gap-1.5">
+                    <Icon name="List" size={11} className="text-faint" />
+                    <span className="label">Outline</span>
+                  </div>
+                  {headings.length > 0 ? (
+                    <div className="space-y-0.5">
+                      {headings.map((h, i) => (
+                        <button
+                          key={`${h.text}-${i}`}
+                          onClick={() => {
+                            const container = document.getElementById('note-body');
+                            const target = container?.querySelectorAll('h1, h2, h3, h4')[Number(h.id.replace('h', ''))];
+                            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          }}
+                          className="focusable block w-full truncate rounded-[7px] px-1.5 py-0.5 text-left hover:bg-s1"
+                          style={{ paddingLeft: `${6 + (h.level - 1) * 10}px`, fontSize: h.level === 1 ? 12 : 11.5 }}
+                        >
+                          <span className={h.level === 1 ? 'text-ink' : 'text-muted'}>{h.text}</span>
                         </button>
                       ))}
                     </div>
+                  ) : (
+                    <div className="px-1.5 text-[11px] text-faint" data-label="meta">Add ## headings to outline this note</div>
                   )}
-                  <div className="text-[10.5px] text-faint">Backlinks</div>
-                  {backlinks.map((b) => (
-                    <button key={b.id} onClick={() => setParams({ open: b.id })} className="focusable block w-full truncate rounded-[8px] px-1.5 py-1 text-left text-[11.5px] hover:bg-s1">{b.title}</button>
-                  ))}
-                  {!backlinks.length && !outgoing.length && <div className="text-[11px] text-faint">No links yet. Type [[another note]] to connect.</div>}
+                </Panel>
+
+                <Panel className="p-3">
+                  <div className="label mb-1.5">In this notebook</div>
+                  <div className="space-y-1">
+                    {db.notes.filter((n) => n.id !== note.id).slice(0, 3).map((n) => (
+                      <button key={n.id} onClick={() => setParams({ open: n.id })} className="focusable w-full rounded-[8px] px-1.5 py-1 text-left hover:bg-s1">
+                        <div className="truncate text-[11.5px]">{n.title}</div>
+                        <div className="text-[10px] text-faint" data-label="meta">{format(new Date(n.updatedAt), 'MMM d')}</div>
+                      </button>
+                    ))}
+                    <Btn size="sm" variant="soft" icon="Plus" full onClick={() => { const n = addNote({ folder: note.folder }); setParams({ open: n.id }); }}>New note here</Btn>
+                  </div>
                 </Panel>
               </div>
             )}
