@@ -19,6 +19,7 @@ import { nowISO, uuid } from './lib/utils';
 import { spawnNextTodo } from './lib/habits';
 import { escalatingOverdueTimes, todoReminderTimes } from './lib/scheduler';
 import { parseQuickAdd } from './lib/nlp';
+import { cleanLine } from './lib/commands';
 
 export type Toast = { id: string; title: string; body?: string; tone?: 'default' | 'success' | 'warning' | 'danger'; route?: string; actions?: Array<{ label: string; run: () => void }> };
 
@@ -232,12 +233,16 @@ export const useFlow = create<FlowState>((set, get) => ({
 
   /* ------------------------------------------------------------ todos */
   addTodo(partial) {
+    /* Braces are command syntax, never a title. A line made only of tokens
+       (`{type:task}{when:tomorrow }`) has no name of its own, so it takes the
+       plain default rather than saving the syntax. */
     const todo: Todo = {
       id: uuid(), title: 'New task', notes: '', tags: [], priority: 0, loggedMin: 0,
       status: 'todo', reminders: [], checklist: [], attachments: [],
       createdAt: nowISO(), updatedAt: nowISO(), order: Date.now() % 100000,
       ...partial,
     };
+    todo.title = cleanLine(todo.title) || 'New task';
     get().add('todos', todo);
     get().logActivity('todo', `Created "${todo.title}"`);
     if (todo.dueAt) get().syncTodoReminders(todo.id);
@@ -257,7 +262,7 @@ export const useFlow = create<FlowState>((set, get) => ({
         id: uuid(),
         targetKind: 'todo',
         targetId: todo.id,
-        title: todo.dueAt && at.getTime() <= new Date(todo.dueAt).getTime() ? `Due soon: ${todo.title}` : `Overdue: ${todo.title}`,
+        title: todo.dueAt && at.getTime() <= new Date(todo.dueAt).getTime() ? `Due soon: ${cleanLine(todo.title)}` : `Overdue: ${cleanLine(todo.title)}`,
         body: todo.notes.slice(0, 120) || 'Created automatically from the due date.',
         fireAt: at.toISOString(),
         delivered: false,
@@ -785,6 +790,7 @@ export const useFlow = create<FlowState>((set, get) => ({
       tags: partial.tags ?? [], pinned: false, journal: partial.journal ?? false, mood: partial.mood,
       createdAt: nowISO(), updatedAt: nowISO(), ...partial,
     };
+    note.title = cleanLine(note.title) || 'Untitled note';
     get().add('notes', note);
     return note;
   },

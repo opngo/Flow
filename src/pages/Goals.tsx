@@ -22,6 +22,15 @@ export default function Goals() {
   const [editing, setEditing] = useState<Goal | null>(null);
   const [open, setOpen] = useState(false);
 
+  /* `?new=1` is the command bar's way in: the same dialog the plus opens. */
+  useEffect(() => {
+    if (!params.get('new')) return;
+    setEditing(null);
+    setOpen(true);
+    params.delete('new');
+    setParams(params, { replace: true });
+  }, [params, setParams]);
+
   const studyMinutes = useMemo(() => Object.values(bucketSessions(db.focusSessions)).reduce((a, b) => a + b.minutes, 0), [db.focusSessions]);
 
   const autoProgress = (g: Goal): { value: number; detail: string } => {

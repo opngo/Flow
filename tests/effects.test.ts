@@ -104,7 +104,7 @@ describe('noise', () => {
 
 describe('settings migration to backdrop', () => {
   it('defaults the backdrop block and bumps the schema version', () => {
-    expect(SCHEMA_VERSION).toBe(6);
+    expect(SCHEMA_VERSION).toBe(7);
     const db = migrate({ version: 3, todos: [], decks: [], activity: [] });
     expect(db.settings.backdrop).toEqual({
       effect: 'none',

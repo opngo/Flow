@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   activeToken,
   applySuggestion,
+  cleanLine,
   COMMAND_KEYS,
   parseCommands,
   readDate,
@@ -111,5 +112,26 @@ describe('suggestions', () => {
     const next = applySuggestion('{priority:hi', '{priority:high}', '{priority:hi'.length);
     expect(next.text).toBe('{priority:high}');
     expect(next.caret).toBe(next.text.length);
+  });
+
+  it('never leaves a brace in the text, even on a line made only of commands', () => {
+    /* The bug this guards: a capture of `{type:task}{when:tomorrow }` saved
+       its own syntax as the title, and every reminder repeated it back. */
+    const parsed = parseCommands('{type:task}{when:tomorrow }{repeat:daily}{priority:low}{subject:History}', ctx);
+    expect(parsed.fields.subject).toBe('History');
+    expect(parsed.text).toBe('');
+    expect(parsed.text).not.toContain('{');
+  });
+
+  it('drops a token whose key does not exist instead of passing it through', () => {
+    const parsed = parseCommands('Call the bank {wen:tomorrow}', ctx);
+    expect(parsed.text).toBe('Call the bank');
+    expect(parsed.text).not.toMatch(/[{}]/);
+  });
+
+  it('cleans a half-typed token too', () => {
+    expect(cleanLine('{type:task')).toBe('');
+    expect(cleanLine('Read poetry {repeat:dai')).toBe('Read poetry');
+    expect(cleanLine('Plans {when:tomorrow} and notes')).toBe('Plans and notes');
   });
 });

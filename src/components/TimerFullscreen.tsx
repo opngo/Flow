@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { useFlow } from '../store';
 import { useUI } from '../ui';
 import { useNavigate } from 'react-router-dom';
-import { Icon, Slider } from './ui';
+import { Icon } from './ui';
 import { AppBackdrop } from './Backdrop';
 import { bucketSessions } from '../lib/analytics';
 import { minsToClock, minsToHM, mixHex, endDrift, cn } from '../lib/utils';
@@ -195,7 +195,16 @@ export function TimerFullscreen() {
 
   const [hint, setHint] = useState<string | null>(null);
   const [hover, setHover] = useState(false);
-  const [customMin, setCustomMin] = useState(25);
+  /* The countdown is typed straight into the clock face. Two fields, minutes
+     and seconds, hold the raw digits so a half-typed number never fights the
+     formatting; the millisecond value is derived from them. */
+  const [typedMin, setTypedMin] = useState('25');
+  const [typedSec, setTypedSec] = useState('00');
+  const [editing, setEditing] = useState(false);
+  const minRef = useRef<HTMLInputElement>(null);
+  const secRef = useRef<HTMLInputElement>(null);
+  const typedMs = Math.max(1000, ((Number(typedMin) || 0) * 60 + (Number(typedSec) || 0)) * 1000);
+  const customMin = typedMs / 60000;
   const hintTimer = useRef<number | null>(null);
   const holdTimer = useRef<number | null>(null);
 
@@ -225,6 +234,10 @@ export function TimerFullscreen() {
     return undefined;
   }, [db.timers, mode]);
 
+  /* The countdown clock is the one time you set by hand, and only before it
+     exists: once it is running the digits belong to the clock. */
+  const editableTime = mode === 'timer' && !liveTimer;
+
   const pomodoroRunning = !!f?.running;
   const timerRunning = !!liveTimer?.running;
   const running =
@@ -242,7 +255,7 @@ export function TimerFullscreen() {
     ? liveTimer.running
       ? Math.max(0, (liveTimer.endsAt ? new Date(liveTimer.endsAt).getTime() : 0) - now)
       : Math.max(0, (liveTimer.endsAt ? new Date(liveTimer.endsAt).getTime() : Date.now() + liveTimer.accumulatedMs) - Date.now())
-    : customMin * 60000;
+    : typedMs;
   const elapsedMs = liveTimer
     ? liveTimer.accumulatedMs + (liveTimer.running && liveTimer.startedAt ? now - new Date(liveTimer.startedAt).getTime() : 0)
     : 0;
@@ -348,10 +361,6 @@ export function TimerFullscreen() {
   const progressPath = sliver > (mode === 'stopwatch' ? 0 : BAND + 6) && arcFraction > 0
     ? archSection(geom.cx, geom.cy, geom.rx, geom.ry, 0, arcFraction, cornerRadius)
     : null;
-  // The dot rides the arc itself. It used to be clamped to the part of the band
-  // that still fits on screen, which parked it near the frame edge while the
-  // fill kept going — the two read as disconnected.
-  const [dotX, dotY] = archPoint(geom.cx, geom.cy, geom.rx, geom.ry, arcFraction);
 
   /* ------------------------------------------------------------- actions */
 
@@ -361,7 +370,7 @@ export function TimerFullscreen() {
       else startFocus({ todoId: f?.todoId, subjectId: f?.subjectId, mixId: profile?.mixId });
     } else if (mode === 'timer') {
       if (liveTimer) resumeTimer(liveTimer.id);
-      else startTimer({ kind: 'countdown', label: `${customMin} minute timer`, plannedMin: customMin });
+      else startTimer({ kind: 'countdown', label: `${clockText(typedMs)} timer`, plannedMin: customMin });
     } else if (liveTimer) {
       resumeTimer(liveTimer.id);
     } else {
@@ -430,6 +439,13 @@ export function TimerFullscreen() {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       poke();
+      /* The clock face is a text field now: digits typed into it belong to the
+         countdown, not to the mode shortcuts. */
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        if (e.key === 'Escape') { e.preventDefault(); (target as HTMLInputElement).blur(); }
+        return;
+      }
       const key = e.key.toLowerCase();
       if (e.metaKey || e.ctrlKey) {
         if (key === 'enter') { e.preventDefault(); close(); }
@@ -530,23 +546,62 @@ export function TimerFullscreen() {
                 }}
               />
             )}
-            {/* Playhead: a small bead in the text colour — white on dark,
-                black on light — so it reads as a marker rather than a light.
-                It rides the arc wherever the arc is; while the arc is still
-                outside the frame there is nothing to mark, so it is not drawn
-                and cannot appear to stick to an edge. */}
-            {dotX > -HALF_BAND && dotX < vp.w + HALF_BAND && (
-              <circle cx={dotX} cy={dotY} r={HALF_BAND * 0.5} className="clock-dot" />
-            )}
           </svg>
 
           <div className="clock-face">
-            <div
-              className={cn('immersive-digits', running && 'is-running', digits.length > 5 && 'is-long', digits.length > 7 && 'is-longer')}
-              style={{ color: running ? 'var(--text)' : 'var(--text-muted)' }}
-            >
-              {digits}
-            </div>
+            {editableTime ? (
+              /* The countdown before it starts is a clock you write into:
+                 minutes and seconds are the display itself, so there is no
+                 second place to set the same number. */
+              <div
+                className={cn('immersive-digits clock-time', typedMin.length > 2 && 'is-long')}
+                style={{ color: editing ? 'var(--text)' : 'var(--text-muted)' }}
+              >
+                <input
+                  ref={minRef}
+                  className="clock-time-field"
+                  value={typedMin}
+                  inputMode="numeric"
+                  aria-label="Countdown minutes"
+                  onFocus={(e) => { setEditing(true); e.currentTarget.select(); }}
+                  onBlur={() => { setEditing(false); setTypedMin((v) => (v === '' ? '0' : v)); }}
+                  onChange={(e) => {
+                    const next = e.target.value.replace(/\D/g, '').slice(0, 3);
+                    setTypedMin(next);
+                    if (next.length === 2) secRef.current?.focus();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowUp') { e.preventDefault(); setTypedMin((v) => String(Math.min(999, (Number(v) || 0) + 1))); }
+                    if (e.key === 'ArrowDown') { e.preventDefault(); setTypedMin((v) => String(Math.max(0, (Number(v) || 0) - 1))); }
+                  }}
+                  style={{ width: `${Math.max(1, typedMin.length)}ch` }}
+                />
+                <span className="clock-time-colon" aria-hidden="true">:</span>
+                <input
+                  ref={secRef}
+                  className="clock-time-field"
+                  value={typedSec}
+                  inputMode="numeric"
+                  aria-label="Countdown seconds"
+                  onFocus={(e) => { setEditing(true); e.currentTarget.select(); }}
+                  onBlur={() => { setEditing(false); setTypedSec((v) => String(Math.min(59, Number(v) || 0)).padStart(2, '0')); }}
+                  onChange={(e) => setTypedSec(e.target.value.replace(/\D/g, '').slice(0, 2))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowUp') { e.preventDefault(); setTypedSec((v) => String(Math.min(59, (Number(v) || 0) + 1)).padStart(2, '0')); }
+                    if (e.key === 'ArrowDown') { e.preventDefault(); setTypedSec((v) => String(Math.max(0, (Number(v) || 0) - 1)).padStart(2, '0')); }
+                    if (e.key === 'Backspace' && !typedSec) minRef.current?.focus();
+                  }}
+                  style={{ width: `${Math.max(2, typedSec.length)}ch` }}
+                />
+              </div>
+            ) : (
+              <div
+                className={cn('immersive-digits', running && 'is-running', digits.length > 5 && 'is-long', digits.length > 7 && 'is-longer')}
+                style={{ color: running ? 'var(--text)' : 'var(--text-muted)' }}
+              >
+                {digits}
+              </div>
+            )}
             <div className="immersive-chrome mt-3 flex items-center justify-center gap-2 text-[12px] text-muted">
               {mode === 'pomodoro' && (
                 <>
@@ -561,7 +616,7 @@ export function TimerFullscreen() {
               {mode === 'timer' && (
                 <span className="flex items-center gap-1.5">
                   <Icon name="Hourglass" size={12} />
-                  {liveTimer ? liveTimer.label : `${customMin} minute countdown`}
+                  {liveTimer ? liveTimer.label : `${clockText(typedMs)} countdown`}
                 </span>
               )}
               {mode === 'stopwatch' && (
@@ -603,7 +658,7 @@ export function TimerFullscreen() {
             {mode === 'timer' && (
               <>
                 <span className="num">{clockText(timerLeft)} left</span>
-                <span className="num">{liveTimer?.plannedMin ?? customMin} min planned</span>
+                <span className="num">{clockText((liveTimer?.plannedMin ?? customMin) * 60000)} planned</span>
               </>
             )}
             {mode === 'stopwatch' && (
@@ -618,22 +673,6 @@ export function TimerFullscreen() {
 
       <div className="immersive-chrome relative" style={{ padding: '0 var(--immersive-pad)' }}>
         <div className="mx-auto flex w-full max-w-[420px] flex-col items-center gap-2">
-          {/* duration picker, only before a countdown exists */}
-          {mode === 'timer' && !liveTimer && (
-            <div className="w-full space-y-2 rounded-[14px] p-3"
-              style={{ background: 'color-mix(in srgb, var(--surface-1) 70%, transparent)' }}>
-              <div className="flex flex-wrap justify-center gap-1.5">
-                {[5, 10, 15, 25, 45, 60].map((m) => (
-                  <button key={m} onClick={() => setCustomMin(m)}
-                    className={cn('focusable chip num', customMin === m && 'text-accent')}
-                    style={customMin === m ? { background: 'var(--accent-soft)' } : undefined}>{m}</button>
-                ))}
-              </div>
-              <Slider value={customMin} min={1} max={120} step={1} label="Countdown minutes"
-                format={(v) => `${v} min`} onChange={setCustomMin} />
-            </div>
-          )}
-
           {mode === 'stopwatch' && laps.length > 0 && (
             <div className="flex max-h-[92px] w-full flex-wrap justify-center gap-1.5 overflow-y-auto no-scrollbar">
               {laps.map((lap, i) => (

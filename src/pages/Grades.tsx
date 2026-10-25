@@ -187,6 +187,17 @@ function SubjectDetail({ subject }: { subject: Subject }) {
   const [subjectOpen, setSubjectOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [asZero, setAsZero] = useState({ pending: false, missing: true });
+  const [params, setParams] = useSearchParams();
+
+  /* `?newMark=1` is the command bar's mark creator: the same dialog the plus
+     opens, already inside a subject. */
+  useEffect(() => {
+    if (!params.get('newMark')) return;
+    setEditingMark(null);
+    setMarkOpen(true);
+    params.delete('newMark');
+    setParams(params, { replace: true });
+  }, [params, setParams]);
 
   const marks = db.marks.filter((m) => m.subjectId === subject.id);
   const grade = computeSubjectGrade(subject, db.marks, { treatPendingAsZero: asZero.pending, treatMissingAsZero: asZero.missing });
