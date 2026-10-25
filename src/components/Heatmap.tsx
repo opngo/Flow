@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { Popover as _P } from '@headlessui/react';
 import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
+import { useFlow } from '../store';
 
 export type HeatmapProps = {
   weeks: Date[][];
@@ -23,14 +24,23 @@ export type HeatmapProps = {
    *  where half the habits were done shows a half-filled square rather than
    *  dropping a whole intensity level. */
   partial?: boolean;
+  /** `filled` fills each square from the bottom, like a bar in a column;
+   *  `steps` is the older five-level ladder. Defaults to the user's setting,
+   *  which ships as `filled`. */
+  fill?: 'filled' | 'steps';
 };
 
 /** GitHub-style contribution grid: 53 x 7, five intensity levels (spec §9). */
 export function Heatmap({
   weeks, values, thresholds = [15, 30, 60, 120], color = 'var(--accent)', cell = 11, gap = 3,
   onDayClick, showMonthLabels = true, showWeekdayLabels = true, formatTooltip, emptyLabel = 'No activity',
-  displayMask, weekStart = 1, partial = false,
+  displayMask, weekStart = 1, partial = false, fill,
 }: HeatmapProps) {
+  const pref = useFlow((s) => s.db.settings.ui.heatmap);
+  const mode = fill ?? pref;
+  /* Filled cells are drawn as slightly tall columns, so a day that is half
+     done reads as half a bar rather than as a square with a stain on it. */
+  const cellH = mode === 'filled' ? Math.round(cell * 1.25) : cell;
   const [hover, setHover] = useState<{ x: number; y: number; date: string; value: number } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const tipRef = useRef<HTMLDivElement>(null);
@@ -69,6 +79,10 @@ export function Heatmap({
     return `color-mix(in srgb, ${color} ${opacities[lvl] * 100}%, transparent)`;
   };
 
+  /** Share of the way up the cell a day gets: the fraction itself for
+   *  coverage maps, the value against the top threshold otherwise. */
+  const shareOf = (v: number) => (partial ? Math.min(1, v) : Math.min(1, v / Math.max(1, thresholds[3])));
+
   const monthLabels = useMemo(() => {
     const out: Array<{ label: string; col: number }> = [];
     let lastMonth = -1;
@@ -97,8 +111,8 @@ export function Heatmap({
       )}
       <div className="flex gap-1.5">
         {showWeekdayLabels && (
-          <div className="flex flex-col justify-between pr-0.5 text-[9.5px] text-faint" style={{ height: 7 * (cell + gap) }}>
-            {weekdayNames.map((n, i) => <span key={i} style={{ height: cell, lineHeight: `${cell}px` }}>{n}</span>)}
+          <div className="flex flex-col justify-between pr-0.5 text-[9.5px] text-faint" style={{ height: 7 * (cellH + gap) }}>
+            {weekdayNames.map((n, i) => <span key={i} style={{ height: cellH, lineHeight: `${cellH}px` }}>{n}</span>)}
           </div>
         )}
         <div className="flex" style={{ gap }}>
@@ -108,6 +122,7 @@ export function Heatmap({
                 const key = format(day, 'yyyy-MM-dd');
                 const v = values[key] ?? 0;
                 const lvl = level(v);
+                const share = shareOf(v);
                 return (
                   <motion.button
                     key={key}
@@ -119,22 +134,29 @@ export function Heatmap({
                       setHover({ x: rect.left + rect.width / 2, y: rect.top, date: key, value: v });
                     }}
                     onMouseLeave={() => setHover(null)}
-                    whileHover={{ scale: 1.25 }}
+                    whileHover={{ scale: 1.22 }}
                     transition={{ duration: 0.12 }}
                     className="focusable relative overflow-hidden rounded-[2.5px]"
                     style={{
                       width: cell,
-                      height: cell,
-                      background: partial ? 'color-mix(in srgb, var(--text-faint) 22%, transparent)' : bg(lvl),
-                      boxShadow: partial ? 'inset 0 0 0 1px color-mix(in srgb, var(--text-faint) 7%, transparent)' : undefined,
+                      height: cellH,
+                      background: mode === 'steps' && !partial
+                        ? bg(lvl)
+                        : 'color-mix(in srgb, var(--text-faint) 20%, transparent)',
+                      boxShadow: mode === 'steps' && !partial
+                        ? undefined
+                        : 'inset 0 0 0 1px color-mix(in srgb, var(--text-faint) 8%, transparent)',
                     }}
                     aria-label={`${key}: ${displayMask ? displayMask(v, key) : v}`}
                   >
-                    {partial && v > 0 && (
+                    {/* A filled cell grows out of the bottom edge, so a row of
+                        days reads as a row of small columns and the height is
+                        the share done, not a colour someone has to decode. */}
+                    {mode === 'filled' && v > 0 && (
                       <motion.span
-                        className="absolute inset-y-0 left-0"
+                        className="absolute inset-x-0 bottom-0"
                         initial={false}
-                        animate={{ width: `${Math.min(1, v) * 100}%` }}
+                        animate={{ height: `${Math.max(6, Math.min(1, share) * 100)}%` }}
                         transition={{ duration: 0.22, ease: [0.22, 0.61, 0.36, 1] }}
                         style={{ background: color }}
                       />
@@ -171,14 +193,19 @@ export function Heatmap({
 }
 
 export function HeatLegend({ thresholds, color, unit = 'min' }: { thresholds: number[]; color?: string; unit?: string }) {
+  const pref = useFlow((s) => s.db.settings.ui.heatmap);
   return (
     <div className="flex items-center gap-1 text-[10px] text-faint">
       <span>Less</span>
-      {[0, 1, 2, 3, 4].map((l) => (
-        <span key={l} className="rounded-[2.5px]" style={{
+      {[0, 0.25, 0.5, 0.75, 1].map((f) => (
+        <span key={f} className="relative overflow-hidden rounded-[2.5px]" style={{
           width: 10, height: 10,
-          background: l === 0 ? 'color-mix(in srgb, var(--text-faint) 14%, transparent)' : `color-mix(in srgb, ${color ?? 'var(--accent)'} ${[0, 28, 50, 72, 100][l]}%, transparent)`,
-        }} />
+          background: 'color-mix(in srgb, var(--text-faint) 20%, transparent)',
+        }}>
+          {pref === 'filled'
+            ? f > 0 && <span className="absolute inset-x-0 bottom-0" style={{ height: `${f * 100}%`, background: color ?? 'var(--accent)' }} />
+            : f > 0 && <span className="absolute inset-0" style={{ background: `color-mix(in srgb, ${color ?? 'var(--accent)'} ${f * 100}%, transparent)` }} />}
+        </span>
       ))}
       <span>More</span>
       <span className="ml-2 text-faint">{thresholds.map((t, i) => `${t}${i < thresholds.length - 1 ? ' · ' : ''}`).join('')} {unit}</span>

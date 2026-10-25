@@ -6,6 +6,8 @@ type UIState = {
   paletteOpen: boolean;
   paletteQuery: string;
   quickAddOpen: boolean;
+  /** Text the capture box opens with, so a command can pre-fill its braces. */
+  quickAddSeed: string;
   notificationOpen: boolean;
   sidebarHover: boolean;
   sidebarPinned: boolean;
@@ -18,7 +20,7 @@ type UIState = {
   toasts: ToastItem[];
   openPalette: (query?: string) => void;
   closePalette: () => void;
-  setQuickAdd: (open: boolean) => void;
+  setQuickAdd: (open: boolean, seed?: string) => void;
   setNotificationOpen: (open: boolean) => void;
   setSidebarHover: (v: boolean) => void;
   toggleSidebarPinned: () => void;
@@ -35,6 +37,7 @@ export const useUI = create<UIState>((set, get) => ({
   paletteOpen: false,
   paletteQuery: '',
   quickAddOpen: false,
+  quickAddSeed: '',
   notificationOpen: false,
   sidebarHover: false,
   sidebarPinned: false,
@@ -46,7 +49,7 @@ export const useUI = create<UIState>((set, get) => ({
   toasts: [],
   openPalette: (query = '') => set({ paletteOpen: true, paletteQuery: query }),
   closePalette: () => set({ paletteOpen: false, paletteQuery: '' }),
-  setQuickAdd: (open) => set({ quickAddOpen: open }),
+  setQuickAdd: (open, seed = '') => set({ quickAddOpen: open, quickAddSeed: open ? seed : '' }),
   setNotificationOpen: (open) => set({ notificationOpen: open }),
   setSidebarHover: (v) => set({ sidebarHover: v }),
   toggleSidebarPinned: () => set({ sidebarPinned: !get().sidebarPinned }),

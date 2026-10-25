@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { useFlow, useUnreadCount } from '../store';
 import { useUI } from '../ui';
@@ -65,7 +65,7 @@ export function Titlebar() {
   const settings = useFlow((s) => s.db.settings);
   const updateSettings = useFlow((s) => s.updateSettings);
   const unread = useUnreadCount();
-  const { openPalette, setQuickAdd, setMiniMode, miniMode, setImmersive } = useUI();
+  const { openPalette, setMiniMode, miniMode, setImmersive } = useUI();
   const labels = useLabels();
   const trail = useTrail();
   const [maximized, setMaximized] = useState(false);
@@ -131,7 +131,6 @@ export function Titlebar() {
           <span data-label="minor">Search or command</span>
           <kbd data-label="meta" className="num rounded bg-s2 px-1 py-0.5 text-[10px] text-muted">{navigator.userAgent.includes('Mac') ? 'CMD' : 'CTRL'} K</kbd>
         </button>
-        <IconBtn icon="Plus" label="Capture a task" onClick={() => setQuickAdd(true)} />
         <IconBtn icon="Maximize" label="Immersive timer" onClick={() => setImmersive(true)} />
         <IconBtn icon="AppWindow" label="Mini mode" active={miniMode} onClick={() => setMiniMode(!miniMode)} />
         <NotificationBell unread={unread} />
@@ -253,6 +252,8 @@ export function Sidebar({ onPrefetch }: { onPrefetch?: (route: string) => void }
   const items = (conf.items.length ? conf.items : []).filter((i) => !i.hidden);
   const list = items.length ? items : [];
   const [hovering, setHovering] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
+  const [railY, setRailY] = useState<number | null>(null);
 
   const auto = conf.mode === 'auto';
   const expanded = !auto || sidebarHover || sidebarPinned || hovering;
@@ -261,6 +262,16 @@ export function Sidebar({ onPrefetch }: { onPrefetch?: (route: string) => void }
   const width = iconOnly ? 64 : conf.width;
 
   const activeTimerCount = timers + (focus?.running ? 1 : 0);
+
+  /** The accent line is one element that travels between rows rather than a
+   *  line per row that appears and disappears. It is positioned from the live
+   *  layout every time the route, the width or the label density changes, so
+   *  it still lands on the right row when rows move. */
+  useLayoutEffect(() => {
+    const wrap = listRef.current;
+    const row = wrap?.querySelector<HTMLElement>('[aria-current="page"]');
+    setRailY(wrap && row ? row.offsetTop + 9 : null);
+  }, [location.pathname, expanded, iconOnly, list.length, conf.width]);
 
   // Hovering a row starts the route chunk download, so the click is instant.
   const warm = (route: string) => onPrefetch?.(route.split('?')[0]);
@@ -288,7 +299,15 @@ export function Sidebar({ onPrefetch }: { onPrefetch?: (route: string) => void }
         aria-label="Main navigation"
         aria-hidden={!expanded}
       >
-        <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-2 no-scrollbar" style={{ width }}>
+        <div ref={listRef} className="relative flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-2 no-scrollbar" style={{ width }}>
+          <motion.span
+            aria-hidden
+            initial={false}
+            animate={{ y: railY ?? 0, opacity: railY == null ? 0 : 1 }}
+            transition={{ type: 'spring', stiffness: 560, damping: 34, mass: 0.5 }}
+            className="rail-glow pointer-events-none absolute left-1 top-0 h-[18px] w-[3px] rounded-full"
+            style={{ background: 'var(--accent)' }}
+          />
           {Array.from(new Set(visibleList.map((i) => i.group))).map((group) => (
             <div key={group} className="mb-1">
               {!iconOnly && !minimal && group !== 'Main' && (
@@ -312,18 +331,6 @@ export function Sidebar({ onPrefetch }: { onPrefetch?: (route: string) => void }
                     )}
                     style={active ? { background: 'var(--accent-soft)' } : undefined}
                   >
-                    {/* The rail is drawn per row rather than shared through a
-                        layout animation: a shared one travelled between rows
-                        over several frames, so it read as lagging behind the
-                        click, and the layout transform overrode the centring
-                        offset and pushed it toward the bottom of the pill. */}
-                    {active && (
-                      <span
-                        aria-hidden
-                        className="pointer-events-none absolute left-1 top-[9px] h-[18px] w-[3px] rounded-full"
-                        style={{ background: 'var(--accent)' }}
-                      />
-                    )}
                     <Icon name={item.icon} size={16} className={active ? 'text-accent' : ''} />
                     {!iconOnly && <span className="flex-1 truncate text-left" data-label="nav">{item.label}</span>}
                     {badge > 0 && !iconOnly && (
